@@ -1,23 +1,16 @@
 ﻿using BenchmarkDotNet.Filters;
 using BenchmarkDotNet.Running;
 using Bogus;
-using ExpDataWorkerBeta.Data;
-using ExpDataWorkerBeta.Data.Enums;
-using ExpDataWorkerBeta.Data.Models;
+using ExpDataWorker.Data.Enums;
+using ExpDataWorker.Data.Models;
+using ExpDataWorker.Data;
 using ExpDataWorkerBeta.Feature.Aggregating;
 using ExpDataWorkerBeta.Feature.Filtering;
 using ExpDataWorkerBeta.Feature.Ordering;
 using ExpDataWorkerBeta.Feature.Pagination;
 using ExpDataWorkerBeta.Feature.PropertySelectors;
-using ExpDataWorkerBeta.Feature.Utils;
 using Microsoft.EntityFrameworkCore;
-using Perfolizer.Mathematics.OutlierDetection;
-using System.Dynamic;
 
-//BenchmarkRunner.Run(typeof(Program).Assembly);
-//BenchmarkRunner.Run<ExpDataWorkerBeta.Feature.Benchmarks.SearchValueBenchmark>();
-
-//return;
 var context = new AppDbContext();
 
 var logicFilters = new List<FilterNode>

@@ -1,10 +1,8 @@
-﻿using ExpDataWorkerBeta.Data.Enums;
-using ExpDataWorkerBeta.Feature.Exceptions;
+﻿using ExpDataWorkerBeta.Feature.Exceptions;
 using ExpDataWorkerBeta.Feature.Utils;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using Microsoft.EntityFrameworkCore.Metadata.Internal;
 using System.Collections;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace ExpDataWorkerBeta.Feature.Filtering
 {
@@ -18,6 +16,17 @@ namespace ExpDataWorkerBeta.Feature.Filtering
 		private const string METHOD_NAME_ALL = "All";
 		private const string METHOD_NAME_EQUALS = "Equals";
 		private const string METHOD_NAME_TO_STRING = "ToString";
+
+		//TODO: Replicate for all other methods used above
+		private static MethodInfo AnyMethodInfo = typeof(Enumerable)
+			.GetMethods()
+			.Where(m => m.Name == METHOD_NAME_ANY && m.GetParameters().Length == 2)
+			.First();
+		private static MethodInfo AllMethodInfo = typeof(Enumerable)
+			.GetMethods()
+			.Where(m => m.Name == METHOD_NAME_ALL && m.GetParameters().Length == 2)
+			.First();
+		
 
 		public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue, IEnumerable<FilterNode> logicFilters)
 		{
@@ -470,10 +479,7 @@ namespace ExpDataWorkerBeta.Feature.Filtering
 				}
 			}
 
-			var anyMethod = typeof(Enumerable).GetMethods()
-				.Where(m => m.Name == METHOD_NAME_ANY && m.GetParameters().Length == 2)
-				.First()
-				.MakeGenericMethod(elementType);
+			var anyMethod = AnyMethodInfo.MakeGenericMethod(elementType);
 			var lambda = Expression.Lambda(combinedExpression!, parameter);
 			return Expression.Call(anyMethod, propertyExpression, lambda);
 		}
@@ -526,15 +532,8 @@ namespace ExpDataWorkerBeta.Feature.Filtering
 				}
 			}
 
-			var allMethod = typeof(Enumerable).GetMethods()
-				.Where(m => m.Name == METHOD_NAME_ALL && m.GetParameters().Length == 2)
-				.First()
-				.MakeGenericMethod(elementType);
-
-			var anyMethod = typeof(Enumerable).GetMethods()
-				.Where(m => m.Name == METHOD_NAME_ANY && m.GetParameters().Length == 2)
-				.First()
-				.MakeGenericMethod(elementType);
+			var allMethod = AllMethodInfo.MakeGenericMethod(elementType);
+			var anyMethod = AnyMethodInfo.MakeGenericMethod(elementType);
 
 			var anyLambda = Expression.Lambda(Expression.Equal(parameter, parameter2), parameter2);
 			var anyMethodCall = Expression.Call(anyMethod, propertyExpression, anyLambda);
@@ -657,10 +656,7 @@ namespace ExpDataWorkerBeta.Feature.Filtering
 
 		private static MethodCallExpression CreateEnumerableContainsExpression(Expression propertyExpression, string value)
 		{
-			var anyMethod = typeof(Enumerable).GetMethods()
-				.Where(m => m.Name == METHOD_NAME_ANY && m.GetParameters().Length == 2)
-				.First()
-				.MakeGenericMethod(typeof(string));
+			var anyMethod = AnyMethodInfo.MakeGenericMethod(typeof(string));
 			var containMethod = typeof(string).GetMethod(METHOD_NAME_CONTAINS, [typeof(string)])!;
 
 			var parameter = Expression.Parameter(typeof(string), "y");

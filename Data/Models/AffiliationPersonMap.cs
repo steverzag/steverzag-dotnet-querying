@@ -1,11 +1,11 @@
-﻿using ExpDataWorkerBeta.Data.Enums;
+﻿using ExpDataWorker.Data.Enums;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorkerBeta.Data.Models
+namespace ExpDataWorker.Data.Models
 {
 	public class AffiliationPersonMap
 	{

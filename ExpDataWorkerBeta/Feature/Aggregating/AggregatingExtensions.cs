@@ -1,15 +1,7 @@
-﻿using ExpDataWorkerBeta.Data.Models;
-using ExpDataWorkerBeta.Feature.PropertySelectors;
+﻿using ExpDataWorkerBeta.Feature.PropertySelectors;
 using ExpDataWorkerBeta.Feature.Utils;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
-using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.Aggregating
 {

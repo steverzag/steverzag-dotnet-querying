@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorkerBeta.Data.Models
+namespace ExpDataWorker.Data.Models
 {
 	public class Address
 	{

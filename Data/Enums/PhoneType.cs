@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorkerBeta.Data.Enums
+namespace ExpDataWorker.Data.Enums
 {
 	public enum PhoneType
 	{

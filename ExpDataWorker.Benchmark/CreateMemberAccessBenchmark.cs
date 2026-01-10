@@ -1,5 +1,5 @@
 ﻿using BenchmarkDotNet.Attributes;
-using ExpDataWorkerBeta.Data.Models;
+using ExpDataWorker.Data.Models;
 using ExpDataWorkerBeta.Feature.Utils;
 using System;
 using System.Collections.Generic;
@@ -8,7 +8,7 @@ using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorkerBeta.Feature.Benchmarks
+namespace ExpDataWorker.Benchmark
 {
 	[MemoryDiagnoser]
 	public class CreateMemberAccessBenchmark

@@ -1,14 +1,14 @@
 ﻿using Bogus;
-using ExpDataWorkerBeta.Data.Enums;
-using ExpDataWorkerBeta.Data.Models;
+using ExpDataWorker.Data.Enums;
+using ExpDataWorker.Data.Models;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 
-namespace ExpDataWorkerBeta.Data
+namespace ExpDataWorker.Data
 {
-	internal class AppDbContext : DbContext
+	public class AppDbContext : DbContext
 	{
 		//public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
 

@@ -1,4 +1,5 @@
-﻿using ExpDataWorkerBeta.Feature.Utils;
+﻿using ExpDataWorkerBeta.Feature.PropertySelectors;
+using ExpDataWorkerBeta.Feature.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,6 +9,26 @@ namespace ExpDataWorkerBeta.Feature.Ordering
 {
 	public static class OrderingExtensions
 	{
+
+		public static IQueryable<T> ApplyOrder<T>(this IQueryable<T> query, PropertySelector selector, OrderDirection direction)
+		{
+			if (selector is null)
+				return query;
+
+			var paramExp = Expression.Parameter(typeof(T), name: "p");
+			var propertyToOrderByExp = Expression.Convert(
+				ExpressionUtils.CreateMemberAccess(paramExp, selector)
+				, typeof(object));
+
+			var orderByLambdaExp = Expression.Lambda<Func<T, object>>(propertyToOrderByExp, paramExp);
+
+			query = direction == OrderDirection.Ascending
+				? query.OrderBy(orderByLambdaExp)
+				: query.OrderByDescending(orderByLambdaExp);
+
+			return query;
+		}
+
 		public static IQueryable<T> ApplyOrder<T>(this IQueryable<T> query, IEnumerable<OrderParameters> orderParameters)
 		{
 			if (orderParameters is null || !orderParameters.Any())

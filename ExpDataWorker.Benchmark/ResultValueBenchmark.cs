@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorkerBeta.Feature.Benchmarks
+namespace ExpDataWorker.Benchmark
 {
 	[MemoryDiagnoser]
 	public class SearchValueBenchmark
