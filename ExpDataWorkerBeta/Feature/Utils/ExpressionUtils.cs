@@ -1,0 +1,341 @@
+﻿using ExpDataWorkerBeta.Feature.ExpressionFunctions;
+using ExpDataWorkerBeta.Feature.PropertySelectors;
+using ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors;
+using System.Collections.Concurrent;
+using System.Linq.Expressions;
+using System.Reflection;
+
+namespace ExpDataWorkerBeta.Feature.Utils
+{
+	public class ExpressionUtils
+	{
+		private static readonly MethodInfo EnumerableSelectDef;
+		private static readonly MethodInfo EnumerableSelectManyDef;
+		private static readonly ConcurrentDictionary<Type, Type?> EnumerableElementTypeCache = new();
+		private static readonly ConcurrentDictionary<Type, (Type? Key, Type? Element)?> EnumerableGroupingTypeCache = new();
+
+		static ExpressionUtils()
+		{
+			var methods = typeof(Enumerable).GetMethods(BindingFlags.Public | BindingFlags.Static);
+			foreach (var m in methods)
+			{
+				if (!m.IsGenericMethodDefinition) continue;
+				if (m.GetParameters().Length != 2) continue;
+
+				if (m.Name == "Select" && EnumerableSelectDef == null)
+					EnumerableSelectDef = m;
+				else if (m.Name == "SelectMany" && EnumerableSelectManyDef == null)
+					EnumerableSelectManyDef = m;
+
+				if (EnumerableSelectDef != null && EnumerableSelectManyDef != null)
+					break;
+			}
+		}
+
+		public static bool TryGetEnumerableElementType(Type type, out Type? elementType)
+		{
+			if (EnumerableElementTypeCache.TryGetValue(type, out elementType))
+				return elementType is not null;
+
+			if (type == typeof(string))
+			{
+				elementType = null;
+				EnumerableElementTypeCache[type] = null;
+				return false;
+			}
+
+			if (type.IsArray)
+			{
+				elementType = type.GetElementType();
+				EnumerableElementTypeCache[type] = elementType;
+				return elementType is not null;
+			}
+
+			if (type.IsGenericType)
+			{
+				var gdef = type.GetGenericTypeDefinition();
+				if (gdef == typeof(IEnumerable<>))
+				{
+					elementType = type.GetGenericArguments()[0];
+					EnumerableElementTypeCache[type] = elementType;
+					return true;
+				}
+				else if(gdef == typeof(IGrouping<,>))
+				{
+					var keyType = gdef.GetGenericArguments()[0];
+					var elementTypeFromGrouping = gdef.GetGenericArguments()[1];
+					elementType = elementTypeFromGrouping;
+					EnumerableElementTypeCache[type] = elementType;
+					return true;
+				}
+			}
+
+			var interfaces = type.GetInterfaces();
+			for (int i = 0; i < interfaces.Length; i++)
+			{
+				var it = interfaces[i];
+				if (!it.IsGenericType) continue;
+				if (it.GetGenericTypeDefinition() == typeof(IEnumerable<>))
+				{
+					elementType = it.GetGenericArguments()[0];
+					EnumerableElementTypeCache[type] = elementType;
+					return true;
+				}
+			}
+
+			elementType = null;
+			EnumerableElementTypeCache[type] = null;
+			return false;
+		}
+
+		public static Expression CreateMemberAccess(Expression target, PropertySelector selector)
+		{
+			if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target;
+
+			var temp = selector;
+
+			Expression memberAccess = target!;
+			while (temp is not null)
+			{ 
+				memberAccess = temp switch 				
+				{
+					CountAggregationSelector => memberAccess.CreateAggregateCountFunction(),
+					MinAggregationSelector => memberAccess.CreateAggregateMinFunction(),
+					MaxAggregationSelector => memberAccess.CreateAggregateMaxFunction(),
+					AvgAggregationSelector => memberAccess.CreateAggregateAvgFunction(),
+					SumAggregationSelector => memberAccess.CreateAggregateSumFunction(),
+					PropertySelector { PlainValue: var ps } when !string.IsNullOrEmpty(ps) => CreateMemberAccessRec(memberAccess, ps.Split('.'), 0),
+					PropertySelector { PlainValue: var ps } when !string.IsNullOrEmpty(ps) => CreateMemberAccessRec(memberAccess, ps.Split('.'), 0),
+					_ => throw new InvalidOperationException("Unsupported selector type")
+				};
+				temp = temp.ChildSelector;
+			}
+
+			return memberAccess;
+		}
+
+		public static Expression CreateGroupingMemberAccess(Expression target, PropertySelector selector)
+		{
+			if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target;
+			var temp = selector;
+			Expression memberAccess = target!;
+
+			if(!TryGetGroupingTypes(memberAccess.Type, out var keyType, out var elementType) && elementType != null)
+			{
+				throw new InvalidOperationException("Target expression is not a grouping type");
+			}
+
+			memberAccess = CreateGroupingMemberAccess(memberAccess, selector.PlainValue.Split('.'), 0);
+
+			if(selector.ChildSelector is null)
+			{
+				return memberAccess;
+			}
+
+			return CreateMemberAccess(memberAccess, selector.ChildSelector);
+		}
+
+		private static Expression CreateGroupingMemberAccess(Expression target, string[] parts, int index)
+		{
+			Expression current = target;
+
+			for (int i = index; i < parts.Length; i++)
+			{
+				//var part = parts[i];
+				//var property = target;
+				//var propertyType = property.Type;
+
+				if (TryGetGroupingTypes(target.Type, out var _, out var elementType) && elementType != null)
+				{
+					var param = Expression.Parameter(elementType, "y");
+
+					var innerAccess = CreateGroupingMemberAccess(param, parts, index);
+					var nextIndex = i + 1;
+					//if (nextIndex >= parts.Length)
+					//{
+					//	current = property;
+					//	break;
+					//}
+
+					
+
+					if (TryGetEnumerableElementType(innerAccess.Type, out var innerElement) && innerElement != null)
+					{
+						var enumerableOfResultType = typeof(IEnumerable<>).MakeGenericType(innerElement);
+						var lambdaType = typeof(Func<,>).MakeGenericType(param.Type, enumerableOfResultType);
+						var lambda = Expression.Lambda(lambdaType, innerAccess, param);
+
+						var method = EnumerableSelectManyDef!.MakeGenericMethod(elementType, innerElement);
+						current = Expression.Call(method, target, lambda);
+					}
+					else
+					{
+						var lambda = Expression.Lambda(innerAccess, param);
+						var resultType = innerAccess.Type;
+						var method = EnumerableSelectDef!.MakeGenericMethod(elementType, resultType);
+
+						current = Expression.Call(method, target, lambda);
+					}
+
+					break;
+				}
+				else if (TryGetEnumerableElementType(target.Type, out elementType) && elementType != null)
+				{ 
+				
+					var param = Expression.Parameter(elementType, "y");
+					var nextIndex = i + 1;
+					if (nextIndex >= parts.Length)
+					{
+						current = target;
+						break;
+					}
+					var innerAccess = CreateMemberAccessRec(param, parts, nextIndex);
+					if (TryGetEnumerableElementType(innerAccess.Type, out var innerElement) && innerElement != null)
+					{
+						var enumerableOfResultType = typeof(IEnumerable<>).MakeGenericType(innerElement);
+						var lambdaType = typeof(Func<,>).MakeGenericType(param.Type, enumerableOfResultType);
+						var lambda = Expression.Lambda(lambdaType, innerAccess, param);
+						var method = EnumerableSelectManyDef!.MakeGenericMethod(elementType, innerElement);
+						current = Expression.Call(method, target, lambda);
+					}
+					else
+					{
+						var lambda = Expression.Lambda(innerAccess, param);
+						var resultType = innerAccess.Type;
+						var method = EnumerableSelectDef!.MakeGenericMethod(elementType, resultType);
+						current = Expression.Call(method, target, lambda);
+					}
+					break;
+				}
+				else
+				{
+					var part = parts[i];
+					var property = Expression.PropertyOrField(current, part);
+					current = property;
+				}
+			}
+
+			return current;
+		}
+
+		private static Expression CreateMemberAccessRec(Expression target, string[] parts, int index)
+		{
+			Expression current = target;
+
+			for (int i = index; i < parts.Length; i++)
+			{
+				var part = parts[i];
+				var property = Expression.PropertyOrField(current, part);
+				var propertyType = property.Type;
+
+				if (TryGetEnumerableElementType(propertyType, out var elementType) && elementType != null)
+				{
+					var param = Expression.Parameter(elementType, "y");
+
+					var nextIndex = i + 1;
+					if (nextIndex >= parts.Length)
+					{
+						current = property;
+						break;
+					}
+
+					var innerAccess = CreateMemberAccessRec(param, parts, nextIndex);
+
+					if (TryGetEnumerableElementType(innerAccess.Type, out var innerElement) && innerElement != null)
+					{
+						var enumerableOfResultType = typeof(IEnumerable<>).MakeGenericType(innerElement);
+						var lambdaType = typeof(Func<,>).MakeGenericType(param.Type, enumerableOfResultType);
+						var lambda = Expression.Lambda(lambdaType, innerAccess, param);
+
+						var method = EnumerableSelectManyDef!.MakeGenericMethod(elementType, innerElement);
+						current = Expression.Call(method, property, lambda);
+					}
+					else
+					{
+						var lambda = Expression.Lambda(innerAccess, param);
+						var resultType = innerAccess.Type;
+						var method = EnumerableSelectDef!.MakeGenericMethod(elementType, resultType);
+
+						current = Expression.Call(method, property, lambda);
+					}
+
+					break;
+				}
+				else
+				{
+					current = property;
+				}
+			}
+
+			return current;
+		}
+
+		public static string ToFlatString(Expression exp)
+		{
+			if (exp is BinaryExpression be && be.NodeType == ExpressionType.OrElse)
+			{
+				return $"{ToFlatString(be.Left)} || {ToFlatString(be.Right)}";
+			}
+			return exp.ToString();
+		}
+
+		public static bool TryGetGroupingTypes(Type type, out Type? keyType, out Type? elementType)
+		{
+			// fast cache hit
+			if (EnumerableGroupingTypeCache.TryGetValue(type, out var cached))
+			{
+				if (cached.HasValue)
+				{
+					keyType = cached.Value.Key;
+					elementType = cached.Value.Element;
+					return keyType is not null && elementType is not null;
+				}
+
+				keyType = null;
+				elementType = null;
+				return false;
+			}
+
+			// Avoid treating string as enumerable/grouping
+			if (type == typeof(string))
+			{
+				keyType = null;
+				elementType = null;
+				EnumerableGroupingTypeCache[type] = null;
+				return false;
+			}
+
+			// If the type itself is a generic IGrouping<,>
+			if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(IGrouping<,>))
+			{
+				var args = type.GetGenericArguments();
+				keyType = args[0];
+				elementType = args[1];
+				EnumerableGroupingTypeCache[type] = (keyType, elementType);
+				return true;
+			}
+
+			// Inspect interfaces for IGrouping<,>
+			var interfaces = type.GetInterfaces();
+			for (int i = 0; i < interfaces.Length; i++)
+			{
+				var it = interfaces[i];
+				if (!it.IsGenericType) continue;
+				if (it.GetGenericTypeDefinition() == typeof(IGrouping<,>))
+				{
+					var args = it.GetGenericArguments();
+					keyType = args[0];
+					elementType = args[1];
+					EnumerableGroupingTypeCache[type] = (keyType, elementType);
+					return true;
+				}
+			}
+
+			// Not an IGrouping
+			keyType = null;
+			elementType = null;
+			EnumerableGroupingTypeCache[type] = null;
+			return false;
+		}
+	}
+}
