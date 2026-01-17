@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 {
-	public record CountAggregationSelector() : PropertySelector(FunctionDefaults.CountAggregateFunction);
+	public record CountAggregationSelector() : PropertySelector(SelectorDefaults.CountAggregateFunction);
 }

@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors;
+using System.Text;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors
 {
@@ -16,18 +17,25 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 
 			foreach (var selectorPart in selectorParts)
 			{
-				var isFunctionPart = selectorPart.StartsWith(FunctionDefaults.FunctionStart);
+				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.FunctionStart);
+
 				PropertySelector propertySelector;
 
 				if (isFunctionPart)
 				{
 					propertySelector = selectorPart switch
 					{
-						FunctionDefaults.CountAggregateFunction => new AggregationSelectors.CountAggregationSelector(),
-						FunctionDefaults.SumAggregateFunction => new AggregationSelectors.SumAggregationSelector(),
-						FunctionDefaults.AvgAggregateFunction => new AggregationSelectors.AvgAggregationSelector(),
-						FunctionDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),
-						FunctionDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
+						SelectorDefaults.CountAggregateFunction => new AggregationSelectors.CountAggregationSelector(),
+						SelectorDefaults.SumAggregateFunction => new AggregationSelectors.SumAggregationSelector(),
+						SelectorDefaults.AvgAggregateFunction => new AggregationSelectors.AvgAggregationSelector(),
+						SelectorDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),
+						SelectorDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
+
+						SelectorDefaults.ElementFirst => new FirstElementSelector(),
+						SelectorDefaults.ElementLast => new LastElementSelector(),
+						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) =>
+							new ElementAtSelector(),
+
 						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")
 					};
 				}
@@ -51,10 +59,5 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 
 			return result;
 		}
-
-		//public PropertySelector(string plainValue)
-		//{
-		//	PlainValue = plainValue;
-		//}
 	}
 }

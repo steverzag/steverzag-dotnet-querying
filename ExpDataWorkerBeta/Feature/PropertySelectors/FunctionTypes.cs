@@ -4,17 +4,17 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 {
 	public enum FunctionTypes
 	{
-		[Display(Name = FunctionDefaults.CountAggregateFunction)]
+		[Display(Name = SelectorDefaults.CountAggregateFunction)]
 		Count = 1,
-		[Display(Name = FunctionDefaults.CountAggregateFunction)]
+		[Display(Name = SelectorDefaults.CountAggregateFunction)]
 		CountDistinct,
-		[Display(Name = FunctionDefaults.SumAggregateFunction)]
+		[Display(Name = SelectorDefaults.SumAggregateFunction)]
 		Sum,
-		[Display(Name = FunctionDefaults.AvgAggregateFunction)]
+		[Display(Name = SelectorDefaults.AvgAggregateFunction)]
 		Average,
-		[Display(Name = FunctionDefaults.MinAggregateFunction)]
+		[Display(Name = SelectorDefaults.MinAggregateFunction)]
 		Min,
-		[Display(Name = FunctionDefaults.MaxAggregateFunction)]
+		[Display(Name = SelectorDefaults.MaxAggregateFunction)]
 		Max
 	}
 }

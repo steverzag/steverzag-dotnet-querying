@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 {
-	public record MaxAggregationSelector() : PropertySelector(FunctionDefaults.MaxAggregateFunction);
+	public record MaxAggregationSelector() : PropertySelector(SelectorDefaults.MaxAggregateFunction);
 }

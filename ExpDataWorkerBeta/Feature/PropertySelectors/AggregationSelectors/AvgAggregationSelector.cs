@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 {
-	public record AvgAggregationSelector() : PropertySelector(FunctionDefaults.AvgAggregateFunction);
+	public record AvgAggregationSelector() : PropertySelector(SelectorDefaults.AvgAggregateFunction);
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors
 {
-	public class FunctionDefaults
+	public class SelectorDefaults
 	{
 		public const string FunctionStart = "*FN_";
 		public const string CountAggregateFunction = FunctionStart + "AGGR_COUNT";
@@ -15,6 +15,11 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 		public const string AvgAggregateFunction = FunctionStart + "AGGR_AVG";
 		public const string MinAggregateFunction = FunctionStart + "AGGR_MIN";
 		public const string MaxAggregateFunction = FunctionStart + "AGGR_MAX";
+
+		public const string ElementFirst = FunctionStart + "ELM_FIRST";
+		public const string ElementLast = FunctionStart + "ELM_LAST";
+		public const string ElementAtIndex = FunctionStart + "ELM_ATINDEX";
+
 
 	}
 }

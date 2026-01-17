@@ -1,15 +1,16 @@
 ﻿using BenchmarkDotNet.Filters;
 using BenchmarkDotNet.Running;
 using Bogus;
+using ExpDataWorker.Data;
 using ExpDataWorker.Data.Enums;
 using ExpDataWorker.Data.Models;
-using ExpDataWorker.Data;
 using ExpDataWorkerBeta.Feature.Aggregating;
 using ExpDataWorkerBeta.Feature.Filtering;
 using ExpDataWorkerBeta.Feature.Ordering;
 using ExpDataWorkerBeta.Feature.Pagination;
 using ExpDataWorkerBeta.Feature.PropertySelectors;
 using Microsoft.EntityFrameworkCore;
+using System.Linq;
 
 var context = new AppDbContext();
 
@@ -76,7 +77,7 @@ var logicFilters = new List<FilterNode>
 	},
 	new ()
 	{
-		FieldSelector = nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + FunctionDefaults.AvgAggregateFunction,
+		FieldSelector = nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.AvgAggregateFunction,
 		FilterCondition = FilterCondition.Equals,
 		SearchValue = 12044.5,
 		FilterLogicOption = LogicalConnector.And,
@@ -85,7 +86,7 @@ var logicFilters = new List<FilterNode>
 
 var persons = await context.Persons
 	.ApplyOrder([
-		new OrderParameters(nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + FunctionDefaults.SumAggregateFunction, OrderDirection.Descending),
+		new OrderParameters(nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.SumAggregateFunction, OrderDirection.Descending),
 	])
 	//.ApplyBaseFilter(
 	//	[nameof(AppPerson.DateOfBirth), nameof(AppPerson.Email), nameof(AppPerson.Name), string.Join(".", [nameof(AppPerson.Address), nameof(Address.State)])],
@@ -124,11 +125,12 @@ var aggregate2 = await context.Persons
 	(
 		new List<GroupedByProperty>
 		{
-			new (nameof(AppPerson.Phones) + "|" + FunctionDefaults.CountAggregateFunction, g.Key.GroupKey0)
+			new (nameof(AppPerson.Phones) + "|" + SelectorDefaults.CountAggregateFunction, g.Key.GroupKey0)
 		},
 		new List<AggregateValue>
 		{
-			new (FunctionDefaults.CountAggregateFunction, g.Select(y => y.Id).Count())
+			new (SelectorDefaults.CountAggregateFunction, g.Select(y => y.Id).Count()),
+			new (SelectorDefaults.ElementFirst, g.OrderBy(y => y.Id).Select(y => y.Id).LastOrDefault())
 		}
 	))
 	.ToListAsync();
@@ -136,8 +138,8 @@ var aggregate2 = await context.Persons
 var aggregate = await context.Persons
 	.ApplyAggregate(new AggregateParameters
 	{
-		GroupBySelectors = [nameof(AppPerson.Phones) + "|" + FunctionDefaults.CountAggregateFunction],
-		AggregateSelectors = [nameof(AppPerson.Id) + "|" + FunctionDefaults.CountAggregateFunction]
+		GroupBySelectors = [nameof(AppPerson.Phones) + "|" + SelectorDefaults.CountAggregateFunction],
+		AggregateSelectors = [nameof(AppPerson.Id) + "|" + SelectorDefaults.CountAggregateFunction, nameof(AppPerson.Id) + "|" + SelectorDefaults.ElementLast]
 	})
 	.ToListAsync();
 

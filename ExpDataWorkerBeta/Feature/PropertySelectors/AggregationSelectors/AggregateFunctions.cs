@@ -6,7 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using ExpDataWorkerBeta.Feature.Utils;
 
-namespace ExpDataWorkerBeta.Feature.ExpressionFunctions
+namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 {
 	public static class AggregateFunctions
 	{

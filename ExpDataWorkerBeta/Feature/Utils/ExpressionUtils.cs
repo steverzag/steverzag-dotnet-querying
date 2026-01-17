@@ -1,6 +1,6 @@
-﻿using ExpDataWorkerBeta.Feature.ExpressionFunctions;
-using ExpDataWorkerBeta.Feature.PropertySelectors;
+﻿using ExpDataWorkerBeta.Feature.PropertySelectors;
 using ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors;
+using ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -104,7 +104,9 @@ namespace ExpDataWorkerBeta.Feature.Utils
 					MaxAggregationSelector => memberAccess.CreateAggregateMaxFunction(),
 					AvgAggregationSelector => memberAccess.CreateAggregateAvgFunction(),
 					SumAggregationSelector => memberAccess.CreateAggregateSumFunction(),
-					PropertySelector { PlainValue: var ps } when !string.IsNullOrEmpty(ps) => CreateMemberAccessRec(memberAccess, ps.Split('.'), 0),
+					FirstElementSelector => memberAccess.CreateElementFirstOrDefaultFunction(),
+					LastElementSelector => memberAccess.CreateElementLastOrDefaultFunction(),
+					//ElementAtSelector { Index: var idx } => memberAccess.CreateElementAtFunction(idx),
 					PropertySelector { PlainValue: var ps } when !string.IsNullOrEmpty(ps) => CreateMemberAccessRec(memberAccess, ps.Split('.'), 0),
 					_ => throw new InvalidOperationException("Unsupported selector type")
 				};
