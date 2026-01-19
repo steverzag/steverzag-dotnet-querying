@@ -105,10 +105,10 @@ namespace ExpDataWorkerBeta.Feature.Utils
 					AvgAggregationSelector => memberAccess.CreateAggregateAvgFunction(),
 					SumAggregationSelector => memberAccess.CreateAggregateSumFunction(),
 					FirstElementSelector => memberAccess.CreateElementFirstOrDefaultFunction(),
-					LastElementSelector => memberAccess.CreateElementLastOrDefaultFunction(),
+					LastElementSelector lastElementSelector => memberAccess.CreateElementLastOrDefaultFunction(lastElementSelector),
 					//ElementAtSelector { Index: var idx } => memberAccess.CreateElementAtFunction(idx),
 					PropertySelector { PlainValue: var ps } when !string.IsNullOrEmpty(ps) => CreateMemberAccessRec(memberAccess, ps.Split('.'), 0),
-					_ => throw new InvalidOperationException("Unsupported selector type")
+					_ => throw new InvalidOperationException($"Unsupported selector type: {temp.PlainValue}")
 				};
 				temp = temp.ChildSelector;
 			}

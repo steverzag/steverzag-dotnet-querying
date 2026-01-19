@@ -9,5 +9,9 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors
 	public record FirstElementSelector() : PropertySelector(SelectorDefaults.ElementFirst)
 	{
 
+		public FirstElementSelector(List<PropertySelector> parameters) : this()
+		{
+			
+		}
 	}
 }
