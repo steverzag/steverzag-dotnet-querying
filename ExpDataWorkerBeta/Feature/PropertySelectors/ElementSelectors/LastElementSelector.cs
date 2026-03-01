@@ -9,10 +9,11 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors
 {
-	public record LastElementSelector : ParameterizedFunctionPropertySelector
+	public record LastElementSelector : FunctionPropertySelector
 	{
 		public LastElementSelector() : base(SelectorDefaults.ElementLast)
 		{
+			//CreateAccessor = (target) => target.CreateElementLastOrDefaultFunction();
 		}
 
 		public LastElementSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementLast, parameters)
@@ -21,17 +22,9 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors
 
 		public override void InitializeOverloads()
 		{
-			var emptyParameters = new SortedList<int, Type>();
-			var emptyFunctionParameters = new FunctionPropertySelectorParameters(emptyParameters);
+			// Overload with no parameters
+			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateElementLastOrDefaultFunction());
 			Overloads.Add(emptyFunctionParameters);
-
-			var orderParamType = typeof(OrderSpecifiers);
-			var orderParameters = new SortedList<int, Type>
-			{
-				{ 0, orderParamType }
-			};
-			var orderFunctionParameters = new FunctionPropertySelectorParameters(orderParameters);
-			Overloads.Add(orderFunctionParameters);
 		}
 	}
 }

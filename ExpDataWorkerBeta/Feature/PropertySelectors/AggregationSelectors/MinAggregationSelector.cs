@@ -6,5 +6,11 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 {
-	public record MinAggregationSelector() : PropertySelector(SelectorDefaults.MinAggregateFunction);
+	public record MinAggregationSelector : PropertySelector
+	{
+		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)
+		{
+			CreateAccessor = (target) => target.CreateAggregateMinFunction();
+		}
+	}
 }

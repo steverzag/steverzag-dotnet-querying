@@ -51,7 +51,7 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 			for (int i = 0; i < aggregateParameters.GroupBySelectors.Count; i++)
 			{
 				var keyGroupSelector = $"{nameof(IGrouping<T, GroupByKeys>.Key)}.{GroupByKeyPrefix}{i}";
-				var keyGroupExp = ExpressionUtils.CreateMemberAccess(selectParam, new PropertySelector(keyGroupSelector));
+				var keyGroupExp = ExpressionUtils.CreateMemberAccess(selectParam, keyGroupSelector);
 			
 				var newGroupedByPropertyExp = Expression.New(groupedByPropertyConstructor,
 					Expression.Constant(aggregateParameters.GroupBySelectors[i].PlainValue),
@@ -74,7 +74,7 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 
 			foreach (var aggregateSelector in aggregateParameters.AggregateSelectors)
 			{
-				var aggregateExp = ExpressionUtils.CreateGroupingMemberAccess(selectParam, aggregateSelector);
+				var aggregateExp = ExpressionUtils.CreateMemberAccess(selectParam, aggregateSelector);//ExpressionUtils.CreateGroupingMemberAccess(selectParam, aggregateSelector);
 			
 				var newAggregateValueExp = Expression.New(aggregateValueConstructor,
 					Expression.Constant(aggregateSelector.PlainValue),

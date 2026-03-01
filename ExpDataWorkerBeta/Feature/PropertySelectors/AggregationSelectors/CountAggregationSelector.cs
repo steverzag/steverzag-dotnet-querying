@@ -6,5 +6,11 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 {
-	public record CountAggregationSelector() : PropertySelector(SelectorDefaults.CountAggregateFunction);
+	public record CountAggregationSelector : PropertySelector
+	{
+		public CountAggregationSelector() : base(SelectorDefaults.CountAggregateFunction)
+		{
+			CreateAccessor = (target) => target.CreateAggregateCountFunction();
+		}
+	}
 }

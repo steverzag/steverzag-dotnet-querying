@@ -1,13 +1,29 @@
 ﻿using ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors;
+using ExpDataWorkerBeta.Feature.PropertySelectors.OrderingSelectors;
+using ExpDataWorkerBeta.Feature.Utils;
+using System.Linq.Expressions;
 using System.Text;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors
 {
-	public record PropertySelector(string PlainValue)
+	public record PropertySelector
 	{
 		private const char PropertyDelimiter = '|';
-		public string PlainValue { get; init; } = PlainValue;
+		public string PlainValue { get; init; }
 		public PropertySelector? ChildSelector { get; set; }
+
+		public virtual Func<Expression, Expression> CreateAccessor { get; init; }
+
+		public PropertySelector(string plainValue)
+		{
+			PlainValue = plainValue;
+			CreateAccessor = (Expression target) =>
+			{
+				var propertyNames = PlainValue.Split('.');
+
+				return ExpressionUtils.CreateMemberAccessRec(target, propertyNames, 0);
+			};
+		}
 
 		public static implicit operator PropertySelector(string selector)
 		{
@@ -24,9 +40,6 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 
 				if (isFunctionPart)
 				{
-					var parameters = TryGetkParameters(selectorPart);
-					var isParameteredFunction = parameters.Count > 0;
-
 					propertySelector = selectorPart switch
 					{
 						SelectorDefaults.CountAggregateFunction => new AggregationSelectors.CountAggregationSelector(),
@@ -37,7 +50,7 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 
 						SelectorDefaults.ElementFirst => new FirstElementSelector(),
 						SelectorDefaults.ElementLast => new LastElementSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && isParameteredFunction =>
+						_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new LastElementSelector(parameters),
 						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) =>
 							new ElementAtSelector(),
@@ -49,8 +62,12 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 				{
 					propertySelector = selectorPart switch
 					{
-						SelectorDefaults.OrderAscending => new OrderingSelector.OrderAscendingSpecifierSelector(),
-						SelectorDefaults.OrderDescending => new OrderingSelector.OrderDescendingSpecifierSelector(),
+						SelectorDefaults.OrderAscending => new OrderByAscendingSelector(),
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && !TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new OrderByAscendingSelector(),
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new OrderByAscendingSelector(parameters),
+						//SelectorDefaults.OrderDescending => new OrderBy(),
 						_ => throw new NotSupportedException($"The specifier '{selectorPart}' is not supported.")
 					};
 				}
@@ -75,11 +92,13 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 			return result;
 		}
 
-		private static List<PropertySelector> TryGetkParameters(string selector)
+		private static bool TryGetParameters(string selector, out List<PropertySelector> parameters)
 		{
 			var startingParenthesesIndex = selector.IndexOf('(');
-			if (startingParenthesesIndex is -1)
-				return Enumerable.Empty<PropertySelector>().ToList();
+			if (startingParenthesesIndex is -1) { 
+				parameters = [];
+				return false;
+			}
 
 			var result = new List<PropertySelector>();
 			var endingParenthesesIndex = selector.LastIndexOf(')');
@@ -125,7 +144,10 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 					}
 				}
 			}
-			return result;
+
+			parameters = result;
+
+			return parameters.Count > 0;
 		}
 	}
 }

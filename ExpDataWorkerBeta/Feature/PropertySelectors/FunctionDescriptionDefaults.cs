@@ -24,5 +24,7 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 
 		public const string OrderAscending = SpecifierStart + "ORDER_ASC";
 		public const string OrderDescending = SpecifierStart + "ORDER_DESC";
+		public const string ThenOrderByAscending = SpecifierStart + "THEN_ORDER_ASC";
+		public const string ThenOrderByDescending = SpecifierStart + "THEN_ORDER_DESC";
 	}
 }

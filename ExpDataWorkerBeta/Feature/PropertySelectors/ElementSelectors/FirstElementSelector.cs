@@ -6,12 +6,11 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors
 {
-	public record FirstElementSelector() : PropertySelector(SelectorDefaults.ElementFirst)
+	public record FirstElementSelector : PropertySelector
 	{
-
-		public FirstElementSelector(List<PropertySelector> parameters) : this()
+		public FirstElementSelector() : base(SelectorDefaults.ElementFirst)
 		{
-			
+			CreateAccessor = (target) => target.CreateElementFirstOrDefaultFunction();
 		}
 	}
 }

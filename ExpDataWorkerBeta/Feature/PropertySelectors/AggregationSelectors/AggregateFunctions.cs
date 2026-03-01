@@ -1,21 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Linq.Expressions;
+using ExpDataWorkerBeta.Feature.PropertySelectors.SelectorImplementations;
 using ExpDataWorkerBeta.Feature.Utils;
 
 namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 {
 	public static class AggregateFunctions
 	{
-
-		private const string AggregateCountFunctionName = "Count";
-		private const string AggregateSumFunctionName = "Sum";
-		private const string AggregateMinFunctionName = "Min";
-		private const string AggregateMaxFunctionName = "Max";
-		private const string AggregateAverageFunctionName = "Average";
 
 		public static MethodCallExpression CreateAggregateCountFunction(this Expression target)
 		{ 
@@ -24,12 +14,10 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
-			var countMethod = typeof(Enumerable).GetMethods()
-				.First(m => m.Name == AggregateCountFunctionName && m.GetParameters().Length == 1)
+			var countMethod = MethodInfos.CountMethodInfo
 				.MakeGenericMethod(elementTypeFromEnumerable!);
 
 			var result = Expression.Call(countMethod, target);
-
 			return result;
 		}
 
@@ -40,9 +28,7 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
-			var sumMethod = typeof(Enumerable).GetMethods()
-				.First(m => m.Name == AggregateSumFunctionName && m.GetParameters().Length == 1);
-
+			var sumMethod = MethodInfos.SumMethodInfo;
 			var result = Expression.Call(sumMethod, target);
 
 			return result;
@@ -55,9 +41,7 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
-			var minMethod = typeof(Enumerable).GetMethods()
-				.First(m => m.Name == AggregateMinFunctionName && m.GetParameters().Length == 1);
-
+			var minMethod = MethodInfos.MinMethodInfo;
 			return Expression.Call(minMethod, target);
 		}
 
@@ -68,9 +52,7 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
-			var maxMethod = typeof(Enumerable).GetMethods()
-				.First(m => m.Name == AggregateMaxFunctionName && m.GetParameters().Length == 1);
-
+			var maxMethod = MethodInfos.MaxMethodInfo;
 			return Expression.Call(maxMethod, target);
 		}
 
@@ -81,9 +63,7 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
-			var avgMethod = typeof(Enumerable).GetMethods()
-				.First(m => m.Name == AggregateAverageFunctionName && m.GetParameters().Length == 1);
-
+			var avgMethod = MethodInfos.AverageMethodInfo;
 			return Expression.Call(avgMethod, target);
 		}
 	}

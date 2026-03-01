@@ -130,7 +130,7 @@ var aggregate2 = await context.Persons
 		new List<AggregateValue>
 		{
 			new (SelectorDefaults.CountAggregateFunction, g.Select(y => y.Id).Count()),
-			new (SelectorDefaults.ElementFirst, g.OrderBy(y => y.Id).Select(y => y.Id).LastOrDefault())
+			new (SelectorDefaults.ElementLast, g.OrderBy(y => y.Id).Select(y => y.Id).LastOrDefault())
 		}
 	))
 	.ToListAsync();
@@ -139,7 +139,9 @@ var aggregate = await context.Persons
 	.ApplyAggregate(new AggregateParameters
 	{
 		GroupBySelectors = [nameof(AppPerson.Phones) + "|" + SelectorDefaults.CountAggregateFunction],
-		AggregateSelectors = [nameof(AppPerson.Id) + "|" + SelectorDefaults.CountAggregateFunction, nameof(AppPerson.Id) + "|" + SelectorDefaults.ElementLast]
+		//AggregateSelectors = [nameof(AppPerson.Id) + "|" + SelectorDefaults.CountAggregateFunction, nameof(AppPerson.Id) + "|" + SelectorDefaults.OrderAscending + "|" + SelectorDefaults.ElementLast]
+		AggregateSelectors = [nameof(AppPerson.Id) + "|" + SelectorDefaults.CountAggregateFunction, SelectorDefaults.OrderAscending + $"({nameof(AppPerson.Id)})" + "|" + SelectorDefaults.ElementLast]
+
 	})
 	.ToListAsync();
 
