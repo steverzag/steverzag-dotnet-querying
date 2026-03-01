@@ -4,9 +4,9 @@ using System.Linq.Expressions;
 
 namespace ExpDataWorker.PropertySelector.ElementSelectors
 {
-	public static class ElementFunctions
+	internal static class Implementations
 	{
-		public static MethodCallExpression CreateElementFirstOrDefaultFunction(this Expression target)
+		internal static MethodCallExpression CreateElementFirstOrDefaultFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{
@@ -20,7 +20,7 @@ namespace ExpDataWorker.PropertySelector.ElementSelectors
 			return result;
 		}
 
-		public static MethodCallExpression CreateElementLastOrDefaultFunction(this Expression target)
+		internal static MethodCallExpression CreateElementLastOrDefaultFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{

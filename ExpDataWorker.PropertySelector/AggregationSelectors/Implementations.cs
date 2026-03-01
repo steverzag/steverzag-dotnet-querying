@@ -3,10 +3,10 @@ using ExpDataWorker.PropertySelector.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelector.AggregationSelectors
 {
-	public static class AggregateFunctions
+	internal static class Implementations
 	{
 
-		public static MethodCallExpression CreateAggregateCountFunction(this Expression target)
+		internal static MethodCallExpression CreateAggregateCountFunction(this Expression target)
 		{ 
 			if(!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{
@@ -20,7 +20,7 @@ namespace ExpDataWorker.PropertySelector.AggregationSelectors
 			return result;
 		}
 
-		public static MethodCallExpression CreateAggregateSumFunction(this Expression target)
+		internal static MethodCallExpression CreateAggregateSumFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType))
 			{
@@ -33,7 +33,7 @@ namespace ExpDataWorker.PropertySelector.AggregationSelectors
 			return result;
 		}
 
-		public static MethodCallExpression CreateAggregateMinFunction(this Expression target)
+		internal static MethodCallExpression CreateAggregateMinFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType))
 			{
@@ -44,7 +44,7 @@ namespace ExpDataWorker.PropertySelector.AggregationSelectors
 			return Expression.Call(minMethod, target);
 		}
 
-		public static MethodCallExpression CreateAggregateMaxFunction(this Expression target)
+		internal static MethodCallExpression CreateAggregateMaxFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType))
 			{
@@ -55,7 +55,7 @@ namespace ExpDataWorker.PropertySelector.AggregationSelectors
 			return Expression.Call(maxMethod, target);
 		}
 
-		public static MethodCallExpression CreateAggregateAvgFunction(this Expression target)
+		internal static MethodCallExpression CreateAggregateAvgFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType))
 			{
