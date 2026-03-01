@@ -20,6 +20,11 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Data\ExpDataWorker.Data.csproj" />
+    <ProjectReference Include="..\ExpDataWorker.PropertySelector\ExpDataWorker.PropertySelector.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Feature\PropertySelectors\" />
   </ItemGroup>
 
 </Project>

@@ -1,10 +1,9 @@
-﻿using ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors;
-using ExpDataWorkerBeta.Feature.PropertySelectors.OrderingSelectors;
-using ExpDataWorkerBeta.Feature.Utils;
-using System.Linq.Expressions;
+﻿using System.Linq.Expressions;
 using System.Text;
+using ExpDataWorker.PropertySelector.ElementSelectors;
+using ExpDataWorker.PropertySelector.OrderingSelectors;
 
-namespace ExpDataWorkerBeta.Feature.PropertySelectors
+namespace ExpDataWorker.PropertySelector
 {
 	public record PropertySelector
 	{
@@ -17,7 +16,7 @@ namespace ExpDataWorkerBeta.Feature.PropertySelectors
 		public PropertySelector(string plainValue)
 		{
 			PlainValue = plainValue;
-			CreateAccessor = (Expression target) =>
+			CreateAccessor = (target) =>
 			{
 				var propertyNames = PlainValue.Split('.');
 

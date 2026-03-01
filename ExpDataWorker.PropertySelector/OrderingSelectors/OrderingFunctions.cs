@@ -1,9 +1,9 @@
-﻿using ExpDataWorkerBeta.Feature.PropertySelectors.SelectorImplementations;
-using ExpDataWorkerBeta.Feature.Utils;
+﻿using ExpDataWorker.PropertySelector;
+using ExpDataWorker.PropertySelector.SelectorImplementations;
 using System.IO;
 using System.Linq.Expressions;
 
-namespace ExpDataWorkerBeta.Feature.PropertySelectors.OrderingSelectors
+namespace ExpDataWorker.PropertySelector.OrderingSelectors
 {
 	internal static class OrderingFunctions
 	{

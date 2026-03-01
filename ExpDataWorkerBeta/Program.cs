@@ -4,11 +4,11 @@ using Bogus;
 using ExpDataWorker.Data;
 using ExpDataWorker.Data.Enums;
 using ExpDataWorker.Data.Models;
+using ExpDataWorker.PropertySelector;
 using ExpDataWorkerBeta.Feature.Aggregating;
 using ExpDataWorkerBeta.Feature.Filtering;
 using ExpDataWorkerBeta.Feature.Ordering;
 using ExpDataWorkerBeta.Feature.Pagination;
-using ExpDataWorkerBeta.Feature.PropertySelectors;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 

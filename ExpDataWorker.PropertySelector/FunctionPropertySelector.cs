@@ -1,4 +1,4 @@
-﻿namespace ExpDataWorkerBeta.Feature.PropertySelectors
+﻿namespace ExpDataWorker.PropertySelector
 {
 	public abstract record FunctionPropertySelector : PropertySelector
 	{

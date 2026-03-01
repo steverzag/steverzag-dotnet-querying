@@ -1,23 +1,13 @@
-﻿using ExpDataWorkerBeta.Feature.PropertySelectors.SpecifierTypes;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ExpDataWorkerBeta.Feature.PropertySelectors.OrderingSelectors
+﻿namespace ExpDataWorker.PropertySelector.OrderingSelectors
 {
 	public record OrderByAscendingSelector : FunctionPropertySelector
 	{
 		public OrderByAscendingSelector() : base(SelectorDefaults.OrderAscending)
 		{
-			//CreateAccessor = (target) => target.CreateOrderByAscendingFunction(this);
 		}
 
 		public OrderByAscendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderAscending, parameters)
 		{
-			//CreateAccessor = (target) => target.CreateOrderByAscendingFunction(this);
 		}
 
 		public override void InitializeOverloads()

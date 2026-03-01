@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors
+namespace ExpDataWorker.PropertySelector.ElementSelectors
 {
 	public record FirstElementSelector : PropertySelector
 	{

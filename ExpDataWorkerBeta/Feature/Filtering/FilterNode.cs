@@ -1,4 +1,4 @@
-﻿using ExpDataWorkerBeta.Feature.PropertySelectors;
+﻿using ExpDataWorker.PropertySelector;
 using ExpDataWorkerBeta.Feature.Utils;
 
 namespace ExpDataWorkerBeta.Feature.Filtering

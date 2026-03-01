@@ -1,8 +1,7 @@
 ﻿using System.Linq.Expressions;
-using ExpDataWorkerBeta.Feature.PropertySelectors.SelectorImplementations;
-using ExpDataWorkerBeta.Feature.Utils;
+using ExpDataWorker.PropertySelector.SelectorImplementations;
 
-namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
+namespace ExpDataWorker.PropertySelector.AggregationSelectors
 {
 	public static class AggregateFunctions
 	{

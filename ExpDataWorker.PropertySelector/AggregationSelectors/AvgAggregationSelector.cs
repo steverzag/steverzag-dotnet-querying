@@ -1,13 +1,10 @@
 ﻿
-using ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors;
-
-namespace ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors
+namespace ExpDataWorker.PropertySelector.AggregationSelectors
 {
 	public record AvgAggregationSelector : FunctionPropertySelector
 	{
 		public AvgAggregationSelector() : base(SelectorDefaults.AvgAggregateFunction)
 		{
-			//CreateAccessor = (target) => target.CreateAggregateAvgFunction();
 		}
 
 		public override void InitializeOverloads()

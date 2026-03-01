@@ -1,12 +1,12 @@
-﻿using ExpDataWorkerBeta.Feature.PropertySelectors;
-using ExpDataWorkerBeta.Feature.PropertySelectors.AggregationSelectors;
-using ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors;
-using ExpDataWorkerBeta.Feature.PropertySelectors.OrderingSelectors;
+﻿using ExpDataWorker.PropertySelector;
+using ExpDataWorker.PropertySelector.AggregationSelectors;
+using ExpDataWorker.PropertySelector.ElementSelectors;
+using ExpDataWorker.PropertySelector.OrderingSelectors;
 using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace ExpDataWorkerBeta.Feature.Utils
+namespace ExpDataWorker.PropertySelector
 {
 	public class ExpressionUtils
 	{
@@ -96,99 +96,6 @@ namespace ExpDataWorkerBeta.Feature.Utils
 
 			return memberAccess;
 		}
-
-		//public static Expression CreateGroupingMemberAccess(Expression target, PropertySelector selector)
-		//{
-		//	if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target;
-		//	var temp = selector;
-		//	Expression memberAccess = target!;
-
-		//	if(!TryGetGroupingTypes(memberAccess.Type, out var keyType, out var elementType) && elementType != null)
-		//	{
-		//		throw new InvalidOperationException("Target expression is not a grouping type");
-		//	}
-
-		//	memberAccess = CreateGroupingMemberAccess(memberAccess, selector.PlainValue.Split('.'), 0);
-
-		//	if(selector.ChildSelector is null)
-		//	{
-		//		return memberAccess;
-		//	}
-
-		//	return CreateMemberAccess(memberAccess, selector.ChildSelector);
-		//}
-
-		//private static Expression CreateGroupingMemberAccess(Expression target, string[] parts, int index)
-		//{
-		//	Expression current = target;
-
-		//	for (int i = index; i < parts.Length; i++)
-		//	{
-		//		if (TryGetGroupingTypes(target.Type, out var _, out var elementType) && elementType != null)
-		//		{
-		//			var param = Expression.Parameter(elementType, "y");
-
-		//			var innerAccess = CreateGroupingMemberAccess(param, parts, index);
-		//			var nextIndex = i + 1;
-
-		//			if (TryGetEnumerableElementType(innerAccess.Type, out var innerElement) && innerElement != null)
-		//			{
-		//				var enumerableOfResultType = typeof(IEnumerable<>).MakeGenericType(innerElement);
-		//				var lambdaType = typeof(Func<,>).MakeGenericType(param.Type, enumerableOfResultType);
-		//				var lambda = Expression.Lambda(lambdaType, innerAccess, param);
-
-		//				var method = EnumerableSelectManyDef!.MakeGenericMethod(elementType, innerElement);
-		//				current = Expression.Call(method, target, lambda);
-		//			}
-		//			else
-		//			{
-		//				var lambda = Expression.Lambda(innerAccess, param);
-		//				var resultType = innerAccess.Type;
-		//				var method = EnumerableSelectDef!.MakeGenericMethod(elementType, resultType);
-
-		//				current = Expression.Call(method, target, lambda);
-		//			}
-
-		//			break;
-		//		}
-		//		else if (TryGetEnumerableElementType(target.Type, out elementType) && elementType != null)
-		//		{ 
-
-		//			var param = Expression.Parameter(elementType, "y");
-		//			var nextIndex = i + 1;
-		//			if (nextIndex >= parts.Length)
-		//			{
-		//				current = target;
-		//				break;
-		//			}
-		//			var innerAccess = CreateMemberAccessRec(param, parts, nextIndex);
-		//			if (TryGetEnumerableElementType(innerAccess.Type, out var innerElement) && innerElement != null)
-		//			{
-		//				var enumerableOfResultType = typeof(IEnumerable<>).MakeGenericType(innerElement);
-		//				var lambdaType = typeof(Func<,>).MakeGenericType(param.Type, enumerableOfResultType);
-		//				var lambda = Expression.Lambda(lambdaType, innerAccess, param);
-		//				var method = EnumerableSelectManyDef!.MakeGenericMethod(elementType, innerElement);
-		//				current = Expression.Call(method, target, lambda);
-		//			}
-		//			else
-		//			{
-		//				var lambda = Expression.Lambda(innerAccess, param);
-		//				var resultType = innerAccess.Type;
-		//				var method = EnumerableSelectDef!.MakeGenericMethod(elementType, resultType);
-		//				current = Expression.Call(method, target, lambda);
-		//			}
-		//			break;
-		//		}
-		//		else
-		//		{
-		//			var part = parts[i];
-		//			var property = Expression.PropertyOrField(current, part);
-		//			current = property;
-		//		}
-		//	}
-
-		//	return current;
-		//}
 
 		public static Expression CreateMemberAccessRec(Expression target, string[] parts, int index)
 		{

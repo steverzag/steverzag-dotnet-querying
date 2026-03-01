@@ -19,5 +19,15 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 		public object GroupKey8 { get; set; }
 		public object GroupKey9 { get; set; }
 		public object GroupKey10 { get; set; }
+		public object GroupKey11 { get; set; }
+		public object GroupKey12 { get; set; }
+		public object GroupKey13 { get; set; }
+		public object GroupKey14 { get; set; }
+		public object GroupKey15 { get; set; }
+		public object GroupKey16 { get; set; }
+		public object GroupKey17 { get; set; }
+		public object GroupKey18 { get; set; }
+		public object GroupKey19 { get; set; }
+		public object GroupKey20 { get; set; }
 	}
 }

@@ -1,8 +1,8 @@
-﻿using ExpDataWorkerBeta.Feature.PropertySelectors.SelectorImplementations;
-using ExpDataWorkerBeta.Feature.Utils;
+﻿using ExpDataWorker.PropertySelector;
+using ExpDataWorker.PropertySelector.SelectorImplementations;
 using System.Linq.Expressions;
 
-namespace ExpDataWorkerBeta.Feature.PropertySelectors.ElementSelectors
+namespace ExpDataWorker.PropertySelector.ElementSelectors
 {
 	public static class ElementFunctions
 	{
