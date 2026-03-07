@@ -6,11 +6,17 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelector.AggregationSelectors
 {
-	public record MaxAggregationSelector : PropertySelector
+	public record MaxAggregationSelector : FunctionPropertySelector
 	{
 		public MaxAggregationSelector() : base(SelectorDefaults.MaxAggregateFunction)
 		{
-			CreateAccessor = (target) => target.CreateAggregateMaxFunction();
+		}
+
+		public override void InitializeOverloads()
+		{
+			// Overload with no parameters => Max()
+			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateMaxFunction());
+			Overloads.Add(emptyFunctionParameters);
 		}
 	}
 }

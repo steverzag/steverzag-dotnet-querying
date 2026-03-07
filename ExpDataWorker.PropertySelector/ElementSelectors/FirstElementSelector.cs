@@ -6,11 +6,21 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelector.ElementSelectors
 {
-	public record FirstElementSelector : PropertySelector
+	public record FirstElementSelector : FunctionPropertySelector
 	{
 		public FirstElementSelector() : base(SelectorDefaults.ElementFirst)
 		{
-			CreateAccessor = (target) => target.CreateElementFirstOrDefaultFunction();
+		}
+
+		public FirstElementSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementFirst, parameters)
+		{
+		}
+
+		public override void InitializeOverloads()
+		{
+			// Overload with no parameters => First()
+			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateElementFirstOrDefaultFunction());
+			Overloads.Add(emptyFunctionParameters);
 		}
 	}
 }

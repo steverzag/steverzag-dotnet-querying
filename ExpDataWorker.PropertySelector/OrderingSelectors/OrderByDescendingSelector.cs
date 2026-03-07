@@ -14,11 +14,13 @@
 		{
 			if (Parameters.Count == 0)
 			{
+				// Overload with no parameters => OrderByDescending()
 				var emptyFunctionParameters = new FunctionPropertySelectorOverload([], target => target.CreateOrderByDescendingFunction());
 				Overloads.Add(emptyFunctionParameters);
 			}
 			else if (Parameters.Count == 1)
 			{
+				// Overload with one parameters => OrderByDescending(property_selector)
 				var valueParamType = typeof(PropertySelector);
 				var valueParameters = new SortedList<int, Type>
 				{

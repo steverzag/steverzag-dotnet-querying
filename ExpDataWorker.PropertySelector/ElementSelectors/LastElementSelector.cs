@@ -13,7 +13,7 @@ namespace ExpDataWorker.PropertySelector.ElementSelectors
 
 		public override void InitializeOverloads()
 		{
-			// Overload with no parameters
+			// Overload with no parameters => Last()
 			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateElementLastOrDefaultFunction());
 			Overloads.Add(emptyFunctionParameters);
 		}

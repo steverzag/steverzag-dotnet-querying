@@ -7,11 +7,17 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelector.AggregationSelectors
 {
-	public record MinAggregationSelector : PropertySelector
+	public record MinAggregationSelector : FunctionPropertySelector
 	{
 		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)
 		{
-			CreateAccessor = (target) => target.CreateAggregateMinFunction();
+		}
+
+		public override void InitializeOverloads()
+		{
+			// Overload with no parameters => Min()
+			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateMinFunction());
+			Overloads.Add(emptyFunctionParameters);
 		}
 	}
 }

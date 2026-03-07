@@ -6,11 +6,17 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelector.AggregationSelectors
 {
-	public record SumAggregationSelector : PropertySelector
+	public record SumAggregationSelector : FunctionPropertySelector
 	{
 		public SumAggregationSelector() : base(SelectorDefaults.SumAggregateFunction)
 		{
-			CreateAccessor = (target) => target.CreateAggregateSumFunction();
+		}
+
+		public override void InitializeOverloads()
+		{
+			// Overload with no parameters => Sum()
+			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateSumFunction());
+			Overloads.Add(emptyFunctionParameters);
 		}
 	}
 }
