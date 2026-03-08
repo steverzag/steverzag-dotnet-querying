@@ -12,6 +12,7 @@ namespace ExpDataWorker.PropertySelector
 		public const string SpecifierStart = "*SPEC_";
 
 		public const string CountAggregateFunction = FunctionStart + "AGGR_COUNT";
+		public const string LongCountAggregateFunction = FunctionStart + "AGGR_LONG_COUNT";
 		public const string CountDistinctAggregateFunction = FunctionStart + "AGGR_COUNTDISTINCT";
 		public const string SumAggregateFunction = FunctionStart + "AGGR_SUM";
 		public const string AvgAggregateFunction = FunctionStart + "AGGR_AVG";

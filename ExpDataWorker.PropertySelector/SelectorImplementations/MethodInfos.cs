@@ -23,6 +23,8 @@ namespace ExpDataWorker.PropertySelector.SelectorImplementations
 				.First(m => m.Name == "ThenByDescending" && m.GetParameters().Length == 2);
 		internal readonly static MethodInfo CountMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "Count" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo LongCountMethodInfo = typeof(Enumerable).GetMethods()
+				.First(m => m.Name == "LongCount" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo MaxMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "Max" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo MinMethodInfo = typeof(Enumerable).GetMethods()

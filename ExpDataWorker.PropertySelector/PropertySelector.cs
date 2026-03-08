@@ -42,6 +42,7 @@ namespace ExpDataWorker.PropertySelector
 					propertySelector = selectorPart switch
 					{
 						SelectorDefaults.CountAggregateFunction => new AggregationSelectors.CountAggregationSelector(),
+						SelectorDefaults.LongCountAggregateFunction => new AggregationSelectors.LongCountAggregationSelector(),
 						SelectorDefaults.SumAggregateFunction => new AggregationSelectors.SumAggregationSelector(),
 						SelectorDefaults.AvgAggregateFunction => new AggregationSelectors.AvgAggregationSelector(),
 						SelectorDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),

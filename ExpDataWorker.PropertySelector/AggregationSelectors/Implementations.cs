@@ -20,6 +20,20 @@ namespace ExpDataWorker.PropertySelector.AggregationSelectors
 			return result;
 		}
 
+		internal static MethodCallExpression CreateAggregateLongCountFunction(this Expression target)
+		{ 
+			if(!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
+			{
+				throw new InvalidOperationException("Target is not an enumerable type.");
+			}
+
+			var countMethod = MethodInfos.CountMethodInfo
+				.MakeGenericMethod(elementTypeFromEnumerable!);
+
+			var result = Expression.Call(countMethod, target);
+			return result;
+		}
+
 		internal static MethodCallExpression CreateAggregateSumFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType))
