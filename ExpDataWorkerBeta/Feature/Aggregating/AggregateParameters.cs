@@ -1,5 +1,5 @@
 ﻿
-using ExpDataWorker.PropertySelector;
+using ExpDataWorker.PropertySelectors;
 
 namespace ExpDataWorkerBeta.Feature.Aggregating
 {

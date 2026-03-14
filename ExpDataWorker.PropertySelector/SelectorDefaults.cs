@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorker.PropertySelector
+namespace ExpDataWorker.PropertySelectors
 {
 	public class SelectorDefaults
 	{

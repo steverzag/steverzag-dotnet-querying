@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorker.PropertySelector.ValueSelectors
+namespace ExpDataWorker.PropertySelectors.ValueSelectors
 {
 	internal record IntegerValueSelector : PropertySelector
 	{

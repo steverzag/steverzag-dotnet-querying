@@ -1,9 +1,8 @@
-﻿using ExpDataWorker.PropertySelector;
-using ExpDataWorker.PropertySelector.SelectorImplementations;
-using ExpDataWorker.PropertySelector.ValueSelectors;
+﻿using ExpDataWorker.PropertySelectors.SelectorImplementations;
+using ExpDataWorker.PropertySelectors.ValueSelectors;
 using System.Linq.Expressions;
 
-namespace ExpDataWorker.PropertySelector.ElementSelectors
+namespace ExpDataWorker.PropertySelectors.ElementSelectors
 {
 	internal static class Implementations
 	{

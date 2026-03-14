@@ -1,6 +1,6 @@
 ﻿using System.Linq.Expressions;
 
-namespace ExpDataWorker.PropertySelector.ValueSelectors
+namespace ExpDataWorker.PropertySelectors.ValueSelectors
 {
 	internal static class Implementations
 	{

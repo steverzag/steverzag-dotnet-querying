@@ -1,4 +1,6 @@
-﻿namespace ExpDataWorker.PropertySelector.OrderingSelectors
+﻿using ExpDataWorker.PropertySelectors.OrderingSelectors;
+
+namespace ExpDataWorker.PropertySelectors.OrderingSelectors
 {
 	public record OrderByDescendingSelector : FunctionPropertySelector
 	{

@@ -1,7 +1,7 @@
 ﻿using System.Linq.Expressions;
-using ExpDataWorker.PropertySelector.SelectorImplementations;
+using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
-namespace ExpDataWorker.PropertySelector.AggregationSelectors
+namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
 	internal static class Implementations
 	{

@@ -1,12 +1,8 @@
-﻿using ExpDataWorker.PropertySelector;
-using ExpDataWorker.PropertySelector.AggregationSelectors;
-using ExpDataWorker.PropertySelector.ElementSelectors;
-using ExpDataWorker.PropertySelector.OrderingSelectors;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace ExpDataWorker.PropertySelector
+namespace ExpDataWorker.PropertySelectors
 {
 	public class ExpressionUtils
 	{

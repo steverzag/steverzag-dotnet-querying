@@ -1,4 +1,4 @@
-using ExpDataWorker.PropertySelector;
+using ExpDataWorker.PropertySelectors;
 
 namespace ExpDataWorker.Tests.PropertySelectors;
 

@@ -1,5 +1,5 @@
-using ExpDataWorker.PropertySelector;
-using ExpDataWorker.PropertySelector.OrderingSelectors;
+using ExpDataWorker.PropertySelectors.OrderingSelectors;
+using ExpDataWorker.PropertySelectors;
 
 namespace ExpDataWorker.Tests.PropertySelectors;
 

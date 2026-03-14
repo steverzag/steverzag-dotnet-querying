@@ -4,7 +4,7 @@ using Bogus;
 using ExpDataWorker.Data;
 using ExpDataWorker.Data.Enums;
 using ExpDataWorker.Data.Models;
-using ExpDataWorker.PropertySelector;
+using ExpDataWorker.PropertySelectors;
 using ExpDataWorkerBeta.Feature.Aggregating;
 using ExpDataWorkerBeta.Feature.Filtering;
 using ExpDataWorkerBeta.Feature.Ordering;

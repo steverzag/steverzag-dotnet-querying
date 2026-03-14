@@ -5,7 +5,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorker.PropertySelector.SelectorImplementations
+namespace ExpDataWorker.PropertySelectors.SelectorImplementations
 {
 	internal class MethodInfos
 	{

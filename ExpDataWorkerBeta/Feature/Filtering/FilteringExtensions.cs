@@ -1,4 +1,4 @@
-﻿using ExpDataWorker.PropertySelector;
+﻿using ExpDataWorker.PropertySelectors;
 using ExpDataWorkerBeta.Feature.Exceptions;
 using ExpDataWorkerBeta.Feature.Utils;
 using System.Collections;

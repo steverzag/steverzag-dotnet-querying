@@ -1,11 +1,10 @@
-﻿using ExpDataWorker.PropertySelector.AggregationSelectors;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ExpDataWorker.PropertySelector.AggregationSelectors
+namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
 	public record MinAggregationSelector : FunctionPropertySelector
 	{

@@ -1,5 +1,4 @@
-﻿
-namespace ExpDataWorker.PropertySelector.AggregationSelectors
+﻿namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
 	public record AvgAggregationSelector : FunctionPropertySelector
 	{

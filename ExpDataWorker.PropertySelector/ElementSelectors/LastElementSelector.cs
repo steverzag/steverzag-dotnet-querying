@@ -1,5 +1,4 @@
-﻿
-namespace ExpDataWorker.PropertySelector.ElementSelectors
+﻿namespace ExpDataWorker.PropertySelectors.ElementSelectors
 {
 	public record LastElementSelector : FunctionPropertySelector
 	{

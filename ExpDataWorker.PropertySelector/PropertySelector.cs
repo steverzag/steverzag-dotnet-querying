@@ -1,10 +1,10 @@
 ﻿using System.Linq.Expressions;
 using System.Text;
-using ExpDataWorker.PropertySelector.ElementSelectors;
-using ExpDataWorker.PropertySelector.OrderingSelectors;
-using ExpDataWorker.PropertySelector.ValueSelectors;
+using ExpDataWorker.PropertySelectors.ElementSelectors;
+using ExpDataWorker.PropertySelectors.OrderingSelectors;
+using ExpDataWorker.PropertySelectors.ValueSelectors;
 
-namespace ExpDataWorker.PropertySelector
+namespace ExpDataWorker.PropertySelectors
 {
 	public record PropertySelector//: IPropertyAccesible
 	{

@@ -1,9 +1,8 @@
-﻿using ExpDataWorker.PropertySelector;
-using ExpDataWorker.PropertySelector.SelectorImplementations;
+﻿using ExpDataWorker.PropertySelectors.SelectorImplementations;
 using System.IO;
 using System.Linq.Expressions;
 
-namespace ExpDataWorker.PropertySelector.OrderingSelectors
+namespace ExpDataWorker.PropertySelectors.OrderingSelectors
 {
 	internal static class Implementations
 	{

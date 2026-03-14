@@ -9,7 +9,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.Data", "Data\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.Benchmark", "ExpDataWorker.Benchmark\ExpDataWorker.Benchmark.csproj", "{CA168D09-04CE-450C-8E15-BCE127E11EF6}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.PropertySelector", "ExpDataWorker.PropertySelector\ExpDataWorker.PropertySelector.csproj", "{5673ECF0-77B7-471B-80FA-A8F1028DAD92}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.PropertySelectors", "ExpDataWorker.PropertySelector\ExpDataWorker.PropertySelectors.csproj", "{5673ECF0-77B7-471B-80FA-A8F1028DAD92}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.Tests", "ExpDataWorker.Tests\ExpDataWorker.Tests.csproj", "{38FE184D-4C30-4B68-94A5-963C2724873C}"
 EndProject
