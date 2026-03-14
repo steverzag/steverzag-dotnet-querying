@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.Benchmark", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.PropertySelector", "ExpDataWorker.PropertySelector\ExpDataWorker.PropertySelector.csproj", "{5673ECF0-77B7-471B-80FA-A8F1028DAD92}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExpDataWorker.Tests", "ExpDataWorker.Tests\ExpDataWorker.Tests.csproj", "{38FE184D-4C30-4B68-94A5-963C2724873C}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{5673ECF0-77B7-471B-80FA-A8F1028DAD92}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5673ECF0-77B7-471B-80FA-A8F1028DAD92}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5673ECF0-77B7-471B-80FA-A8F1028DAD92}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38FE184D-4C30-4B68-94A5-963C2724873C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38FE184D-4C30-4B68-94A5-963C2724873C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38FE184D-4C30-4B68-94A5-963C2724873C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38FE184D-4C30-4B68-94A5-963C2724873C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
