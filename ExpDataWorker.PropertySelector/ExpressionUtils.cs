@@ -90,7 +90,7 @@ namespace ExpDataWorker.PropertySelector
 			Expression memberAccess = target!;
 			while (temp is not null)
 			{
-				memberAccess = temp.CreateAccessor(memberAccess);
+				memberAccess = temp.PropertyAccess(memberAccess);
 				temp = temp.ChildSelector;
 			}
 

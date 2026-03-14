@@ -2,21 +2,27 @@
 using System.Text;
 using ExpDataWorker.PropertySelector.ElementSelectors;
 using ExpDataWorker.PropertySelector.OrderingSelectors;
+using ExpDataWorker.PropertySelector.ValueSelectors;
 
 namespace ExpDataWorker.PropertySelector
 {
-	public record PropertySelector
+	public record PropertySelector//: IPropertyAccesible
 	{
 		private const char PropertyDelimiter = '|';
 		public string PlainValue { get; init; }
 		public PropertySelector? ChildSelector { get; set; }
 
-		public virtual Func<Expression, Expression> CreateAccessor { get; init; }
+		public Func<Expression?, Expression> PropertyAccess { get; init; }
+
+		public PropertySelector() {
+			PlainValue = string.Empty;
+			PropertyAccess = (target) => target ?? Expression.Constant(null);
+		}
 
 		public PropertySelector(string plainValue)
 		{
 			PlainValue = plainValue;
-			CreateAccessor = (target) =>
+			PropertyAccess = (target) =>
 			{
 				var propertyNames = PlainValue.Split('.');
 
@@ -48,12 +54,18 @@ namespace ExpDataWorker.PropertySelector
 						SelectorDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),
 						SelectorDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
 
+						SelectorDefaults.OrderAscending => new OrderByAscendingSelector(),
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && !TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new OrderByAscendingSelector(),
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new OrderByAscendingSelector(parameters),
+
 						SelectorDefaults.ElementFirst => new FirstElementSelector(),
 						SelectorDefaults.ElementLast => new LastElementSelector(),
 						_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new LastElementSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) =>
-							new ElementAtSelector(),
+						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new ElementAtSelector(parameters),
 
 						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")
 					};
@@ -62,14 +74,21 @@ namespace ExpDataWorker.PropertySelector
 				{
 					propertySelector = selectorPart switch
 					{
-						SelectorDefaults.OrderAscending => new OrderByAscendingSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && !TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new OrderByAscendingSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new OrderByAscendingSelector(parameters),
 						//SelectorDefaults.OrderDescending => new OrderBy(),
 						_ => throw new NotSupportedException($"The specifier '{selectorPart}' is not supported.")
 					};
+				}
+				else if (int.TryParse(selectorPart, out int intValue))
+				{
+					propertySelector = new IntegerValueSelector(intValue);
+				}
+				else if (double.TryParse(selectorPart, out double doubleValue))
+				{
+					propertySelector = new DoubleValueSelector(doubleValue);
+				}
+				else if (bool.TryParse(selectorPart, out bool boolValue))
+				{
+					propertySelector = new BooleanValueSelector(boolValue);
 				}
 				else
 				{
@@ -79,7 +98,7 @@ namespace ExpDataWorker.PropertySelector
 				if (result is null)
 					result = propertySelector;
 				else
-				{ 	
+				{
 					var current = result;
 					while (current.ChildSelector is not null)
 					{
@@ -95,7 +114,8 @@ namespace ExpDataWorker.PropertySelector
 		private static bool TryGetParameters(string selector, out List<PropertySelector> parameters)
 		{
 			var startingParenthesesIndex = selector.IndexOf('(');
-			if (startingParenthesesIndex is -1) { 
+			if (startingParenthesesIndex is -1)
+			{
 				parameters = [];
 				return false;
 			}
@@ -123,8 +143,8 @@ namespace ExpDataWorker.PropertySelector
 				}
 				else if (nestedParenthesesCount == 0 && ch == ',')
 				{
-					var startIndex = lastParameterEndIndex is 0 
-						? 0 
+					var startIndex = lastParameterEndIndex is 0
+						? 0
 						: lastParameterEndIndex + 1;
 
 					var parameter = innerParameters.Substring(startIndex, i - startIndex).Trim();
@@ -134,7 +154,7 @@ namespace ExpDataWorker.PropertySelector
 						result.Add(propertySelector);
 					}
 				}
-				else if(nestedParenthesesCount == 0 && i == innerParameters.Length - 1)
+				else if (nestedParenthesesCount == 0 && i == innerParameters.Length - 1)
 				{
 					var parameter = innerParameters.Substring(lastParameterEndIndex).Trim();
 					if (!string.IsNullOrEmpty(parameter))

@@ -13,13 +13,15 @@ namespace ExpDataWorker.PropertySelector.SelectorImplementations
 				.First(m => m.Name == "FirstOrDefault" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo LastOrDefaultMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "LastOrDefault" && m.GetParameters().Length == 1);
-		internal readonly static MethodInfo OrderByAscendingMehodInfo = typeof(Enumerable).GetMethods()
+		internal readonly static MethodInfo SkipMethodInfo = typeof(Enumerable).GetMethods()
+				.First(m => m.Name == "Skip" && m.GetParameters().Length == 2);
+		internal readonly static MethodInfo OrderByAscendingMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "OrderBy" && m.GetParameters().Length == 2);
-		internal readonly static MethodInfo OrderByDescendingMehodInfo = typeof(Enumerable).GetMethods()
+		internal readonly static MethodInfo OrderByDescendingMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "OrderByDescending" && m.GetParameters().Length == 2);
-		internal readonly static MethodInfo ThenOrderByAscendingMehodInfo = typeof(Enumerable).GetMethods()
+		internal readonly static MethodInfo ThenOrderByAscendingMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "ThenBy" && m.GetParameters().Length == 2);
-		internal readonly static MethodInfo ThenOrderByDescendingMehodInfo = typeof(Enumerable).GetMethods()
+		internal readonly static MethodInfo ThenOrderByDescendingMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "ThenByDescending" && m.GetParameters().Length == 2);
 		internal readonly static MethodInfo CountMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "Count" && m.GetParameters().Length == 1);

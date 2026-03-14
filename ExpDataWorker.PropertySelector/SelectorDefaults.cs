@@ -23,9 +23,13 @@ namespace ExpDataWorker.PropertySelector
 		public const string ElementLast = FunctionStart + "ELM_LAST";
 		public const string ElementAtIndex = FunctionStart + "ELM_ATINDEX";
 
-		public const string OrderAscending = SpecifierStart + "ORDER_ASC";
-		public const string OrderDescending = SpecifierStart + "ORDER_DESC";
-		public const string ThenOrderByAscending = SpecifierStart + "THEN_ORDER_ASC";
-		public const string ThenOrderByDescending = SpecifierStart + "THEN_ORDER_DESC";
+		public const string OrderAscending = FunctionStart + "ORDER_ASC";
+		public const string OrderDescending = FunctionStart + "ORDER_DESC";
+		public const string ThenOrderByAscending = FunctionStart + "THEN_ORDER_ASC";
+		public const string ThenOrderByDescending = FunctionStart + "THEN_ORDER_DESC";
+
+		public const string IntegerValueSpecifier = SpecifierStart + "INT_VALUE";
+		public const string DoubleValueSpecifier = SpecifierStart + "DOUBLE_VALUE";
+		public const string BooleanValueSpecifier = SpecifierStart + "BOOL_VALUE";
 	}
 }
