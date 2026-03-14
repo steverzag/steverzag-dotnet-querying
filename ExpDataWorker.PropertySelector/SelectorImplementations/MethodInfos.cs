@@ -11,6 +11,10 @@ namespace ExpDataWorker.PropertySelectors.SelectorImplementations
 	{
 		internal readonly static MethodInfo FirstOrDefaultMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "FirstOrDefault" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo SelectMethodInfo = typeof(Enumerable).GetMethods()
+				.First(m => m.Name == "Select" && m.GetParameters().Length == 2);
+		internal readonly static MethodInfo SelectManyMethodInfo = typeof(Enumerable).GetMethods()
+				.First(m => m.Name == "SelectMany" && m.GetParameters().Length == 2);
 		internal readonly static MethodInfo LastOrDefaultMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "LastOrDefault" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo SkipMethodInfo = typeof(Enumerable).GetMethods()

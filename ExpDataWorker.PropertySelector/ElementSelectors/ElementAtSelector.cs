@@ -23,7 +23,7 @@ namespace ExpDataWorker.PropertySelectors.ElementSelectors
 					{ 0, valueParamType }
 				};
 
-				var indexParameterFunctionParameters = new FunctionPropertySelectorOverload(valueParameters, (target) => target.CreateElemeentAtFunction(Parameters[0]));
+				var indexParameterFunctionParameters = new FunctionPropertySelectorOverload(valueParameters, (target) => target.CreateElementAtFunction(Parameters[0]));
 				Overloads.Add(indexParameterFunctionParameters);
 			}
 		}

@@ -34,7 +34,7 @@ namespace ExpDataWorker.PropertySelectors.ElementSelectors
 			return result;
 		}
 
-		internal static MethodCallExpression CreateElemeentAtFunction(this Expression target, PropertySelector index)
+		internal static MethodCallExpression CreateElementAtFunction(this Expression target, PropertySelector index)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{

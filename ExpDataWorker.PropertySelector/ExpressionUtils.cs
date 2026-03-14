@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using ExpDataWorker.PropertySelectors.SelectorImplementations;
+using System.Collections.Concurrent;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -6,28 +7,8 @@ namespace ExpDataWorker.PropertySelectors
 {
 	public class ExpressionUtils
 	{
-		private static readonly MethodInfo EnumerableSelectDef;
-		private static readonly MethodInfo EnumerableSelectManyDef;
 		private static readonly ConcurrentDictionary<Type, Type?> EnumerableElementTypeCache = new();
 		private static readonly ConcurrentDictionary<Type, (Type? Key, Type? Element)?> EnumerableGroupingTypeCache = new();
-
-		static ExpressionUtils()
-		{
-			var methods = typeof(Enumerable).GetMethods(BindingFlags.Public | BindingFlags.Static);
-			foreach (var m in methods)
-			{
-				if (!m.IsGenericMethodDefinition) continue;
-				if (m.GetParameters().Length != 2) continue;
-
-				if (m.Name == "Select" && EnumerableSelectDef == null)
-					EnumerableSelectDef = m;
-				else if (m.Name == "SelectMany" && EnumerableSelectManyDef == null)
-					EnumerableSelectManyDef = m;
-
-				if (EnumerableSelectDef != null && EnumerableSelectManyDef != null)
-					break;
-			}
-		}
 
 		public static bool TryGetEnumerableElementType(Type type, out Type? elementType)
 		{
@@ -120,14 +101,14 @@ namespace ExpDataWorker.PropertySelectors
 						var lambdaType = typeof(Func<,>).MakeGenericType(param.Type, enumerableOfResultType);
 						var lambda = Expression.Lambda(lambdaType, innerAccess, param);
 
-						var method = EnumerableSelectManyDef!.MakeGenericMethod(groupElementType, innerElement);
+						var method = MethodInfos.SelectManyMethodInfo.MakeGenericMethod(groupElementType, innerElement);
 						current = Expression.Call(method, target, lambda);
 					}
 					else
 					{
 						var lambda = Expression.Lambda(innerAccess, param);
 						var resultType = innerAccess.Type;
-						var method = EnumerableSelectDef!.MakeGenericMethod(groupElementType, resultType);
+						var method = MethodInfos.SelectMethodInfo.MakeGenericMethod(groupElementType, resultType);
 
 						current = Expression.Call(method, target, lambda);
 					}
@@ -156,14 +137,14 @@ namespace ExpDataWorker.PropertySelectors
 						var lambdaType = typeof(Func<,>).MakeGenericType(param.Type, enumerableOfResultType);
 						var lambda = Expression.Lambda(lambdaType, innerAccess, param);
 
-						var method = EnumerableSelectManyDef!.MakeGenericMethod(elementType, innerElement);
+						var method = MethodInfos.SelectManyMethodInfo.MakeGenericMethod(elementType, innerElement);
 						current = Expression.Call(method, property, lambda);
 					}
 					else
 					{
 						var lambda = Expression.Lambda(innerAccess, param);
 						var resultType = innerAccess.Type;
-						var method = EnumerableSelectDef!.MakeGenericMethod(elementType, resultType);
+						var method = MethodInfos.SelectMethodInfo.MakeGenericMethod(elementType, resultType);
 
 						current = Expression.Call(method, property, lambda);
 					}
