@@ -39,6 +39,13 @@ namespace ExpDataWorker.PropertySelectors.SelectorImplementations
 				.First(m => m.Name == "Average" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo SumMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "Sum" && m.GetParameters().Length == 1);
-
+		internal readonly static MethodInfo CeilingMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Ceiling" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo FloorMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Floor" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo RoundMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Round" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo Round_2_MethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Round" && m.GetParameters().Length == 2);
 	}
 }

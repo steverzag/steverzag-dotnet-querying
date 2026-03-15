@@ -8,14 +8,14 @@ public class SelectorDefaultsTests
     public void FunctionStart_ShouldHaveCorrectPrefix()
     {
         // Assert
-        Assert.Equal("*FN_", SelectorDefaults.FunctionStart);
+        Assert.Equal("$FN_", SelectorDefaults.FunctionStart);
     }
 
     [Fact]
     public void SpecifierStart_ShouldHaveCorrectPrefix()
     {
         // Assert
-        Assert.Equal("*SPEC_", SelectorDefaults.SpecifierStart);
+        Assert.Equal("$SPEC_", SelectorDefaults.SpecifierStart);
     }
 
     [Theory]

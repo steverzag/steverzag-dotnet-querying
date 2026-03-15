@@ -67,6 +67,9 @@ namespace ExpDataWorker.PropertySelectors
 						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new ElementAtSelector(parameters),
 
+						_ when selectorPart.StartsWith(SelectorDefaults.MathPower) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathPowSelector(parameters),
+
 						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")
 					};
 				}

@@ -10,7 +10,7 @@ namespace ExpDataWorker.PropertySelectors.ValueSelectors
 	{
 		public int Value { get; set; }
 
-		public IntegerValueSelector(int value) : base(SelectorDefaults.IntegerValueSpecifier)
+		public IntegerValueSelector(int value) : base(SelectorDefaults.IntegerValueSpecifier + SelectorDefaults.ValuePrefix + value)
 		{
 			Value = value;
 

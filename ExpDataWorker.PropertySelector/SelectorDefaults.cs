@@ -1,15 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelectors
 {
 	public class SelectorDefaults
 	{
-		public const string FunctionStart = "*FN_";
-		public const string SpecifierStart = "*SPEC_";
+		public const string PropertyDelimiter = "|";
+		public const string NameStart = "$";
+		public const string FunctionStart = NameStart + "FN_";
+		public const string SpecifierStart = NameStart + "SPEC_";
+		public const string ValueStart = NameStart + "VAL_";
+		public const string ArithmeticStart = NameStart + "ARITH_";
+		public const string ValuePrefix = NameStart + ":";
+
 
 		public const string CountAggregateFunction = FunctionStart + "AGGR_COUNT";
 		public const string LongCountAggregateFunction = FunctionStart + "AGGR_LONG_COUNT";
@@ -28,8 +32,30 @@ namespace ExpDataWorker.PropertySelectors
 		public const string ThenOrderByAscending = FunctionStart + "THEN_ORDER_ASC";
 		public const string ThenOrderByDescending = FunctionStart + "THEN_ORDER_DESC";
 
-		public const string IntegerValueSpecifier = SpecifierStart + "INT_VALUE";
-		public const string DoubleValueSpecifier = SpecifierStart + "DOUBLE_VALUE";
-		public const string BooleanValueSpecifier = SpecifierStart + "BOOL_VALUE";
+		public const string MathCeiling = FunctionStart + "MATH_CEILING";
+		public const string MathFloor = FunctionStart + "MATH_CEILING";
+		public const string MathRound = FunctionStart + "MATH_ROUND";
+		public const string MathTruncate = FunctionStart + "MATH_TRUNCATE";
+		public const string MathSign = FunctionStart + "MATH_SIGN";
+		public const string MathPower = FunctionStart + "MATH_POW";
+		public const string MathSqrt = FunctionStart + "MATH_SQRT";
+		public const string MathExp = FunctionStart + "MATH_EXP";
+		public const string MathLog = FunctionStart + "MATH_LOG";
+		public const string MathLog10 = FunctionStart + "MATH_LOG10";
+		public const string MathSin = FunctionStart + "MATH_SIN";
+		public const string MathCos = FunctionStart + "MATH_COS";
+		public const string MathTan = FunctionStart + "MATH_TAN";
+		public const string MathAsin = FunctionStart + "MATH_ASIN";
+		public const string MathAcos = FunctionStart + "MATH_ACOS";
+		public const string MathAtan = FunctionStart + "MATH_ATAN";
+		public const string MathAtan2 = FunctionStart + "MATH_ATAN2";
+		public const string MathMax = FunctionStart + "MATH_MAX";
+		public const string MathMin = FunctionStart + "MATH_MIN";
+
+		public const string IntegerValueSpecifier = ValueStart + "INT";
+		public const string DoubleValueSpecifier = ValueStart + "DOUBLE";
+		public const string BooleanValueSpecifier = ValueStart + "BOOL";
+
+		public const string ArithmeticOperation = ArithmeticStart + "OPERATION";
 	}
 }

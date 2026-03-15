@@ -10,7 +10,7 @@ namespace ExpDataWorker.PropertySelectors.ValueSelectors
 	{
 		public bool Value { get; set; }
 
-		public BooleanValueSelector(bool value) : base(SelectorDefaults.BooleanValueSpecifier)
+		public BooleanValueSelector(bool value) : base(SelectorDefaults.BooleanValueSpecifier + SelectorDefaults.ValuePrefix + value)
 		{
 			Value = value;
 

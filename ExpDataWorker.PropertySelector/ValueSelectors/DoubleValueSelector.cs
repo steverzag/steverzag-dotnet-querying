@@ -10,7 +10,7 @@ namespace ExpDataWorker.PropertySelectors.ValueSelectors
 	{
 		public double Value { get; set; }
 
-		public DoubleValueSelector(double value) : base(SelectorDefaults.DoubleValueSpecifier)
+		public DoubleValueSelector(double value) : base(SelectorDefaults.DoubleValueSpecifier + SelectorDefaults.ValuePrefix + value)
 		{
 			Value = value;
 
