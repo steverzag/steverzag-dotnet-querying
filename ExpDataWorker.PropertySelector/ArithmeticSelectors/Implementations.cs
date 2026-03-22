@@ -3,80 +3,54 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Linq.Expressions;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 {
 	internal static class Implementations
 	{
 
-		internal static Expression CreatePowFunction(this Expression target, PropertySelector number, PropertySelector exponent)
+		public static Expression CreateUnaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector parameter)
 		{
-			var leftExpr = number.PropertyAccess(target);
-			var rightExpr = exponent.PropertyAccess(target);
+			var parameterExpr = ExpressionUtils.CreateMemberAccess(target, parameter);
 
-			if (leftExpr.Type != typeof(double))
+			if (!ArithmeticUtils.IsNumericType(parameterExpr.Type))
 			{
-				leftExpr = Expression.Convert(leftExpr, typeof(double));
+				throw new InvalidOperationException($"Parameters must be of numeric type for {methodInfo.Name} arithmetic function.");
 			}
 
-			if (rightExpr.Type != typeof(double))
+			if (parameterExpr.Type != typeof(double))
 			{
-				rightExpr = Expression.Convert(rightExpr, typeof(double));
+				parameterExpr = Expression.Convert(parameterExpr, typeof(double));
 			}
 
-			return Expression.Power(leftExpr, rightExpr);
+			return Expression.Call(methodInfo, parameterExpr);
 		}
 
-		internal static Expression CreateCeilFunction(this Expression target, PropertySelector number)
+		public static Expression CreateBinaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector param1, PropertySelector param2)
 		{
-			var numberExpr = number.PropertyAccess(target);
-			if (numberExpr.Type != typeof(double))
-			{
-				numberExpr = Expression.Convert(numberExpr, typeof(double));
-			}
-			var ceilMethodInfo = MethodInfos.CeilingMethodInfo;
-			return Expression.Call(ceilMethodInfo, numberExpr);
-		}
+			var paramExpr1 = ExpressionUtils.CreateMemberAccess(target, param1);
+			var paramExpr2 = ExpressionUtils.CreateMemberAccess(target, param2);
 
-		internal static Expression CreateFloorFunction(this Expression target, PropertySelector number)
-		{
-			var numberExpr = number.PropertyAccess(target);
-			if (numberExpr.Type != typeof(double))
+			if (!ArithmeticUtils.IsNumericType(paramExpr1.Type) || !ArithmeticUtils.IsNumericType(paramExpr2.Type))
 			{
-				numberExpr = Expression.Convert(numberExpr, typeof(double));
-			}
-			var floorMethodInfo = MethodInfos.FloorMethodInfo;
-			return Expression.Call(floorMethodInfo, numberExpr);
-		}
-
-		internal static Expression CreateRoundFunction(this Expression target, PropertySelector number)
-		{
-			var numberExpr = number.PropertyAccess(target);
-			if (numberExpr.Type != typeof(double))
-			{
-				numberExpr = Expression.Convert(numberExpr, typeof(double));
-			}
-			var roundMethodInfo = MethodInfos.RoundMethodInfo;
-			return Expression.Call(roundMethodInfo, numberExpr);
-		}
-
-		internal static Expression CreateRoundFunction(this Expression target, PropertySelector number, PropertySelector precission)
-		{
-			var numberExpr = number.PropertyAccess(target);
-			var precissionExpr = precission.PropertyAccess(target);
-			if (numberExpr.Type != typeof(double))
-			{
-				numberExpr = Expression.Convert(numberExpr, typeof(double));
-			}
-			if (precissionExpr.Type != typeof(int))
-			{
-				precissionExpr = Expression.Convert(precissionExpr, typeof(int));
+				throw new InvalidOperationException($"Both parameters must be of numeric types for {methodInfo.Name} arithmetic function.");
 			}
 
-			var roundMethodInfo = MethodInfos.Round_2_MethodInfo;
-			return Expression.Call(roundMethodInfo, numberExpr, precissionExpr);
+			if (paramExpr1.Type != typeof(double))
+			{
+				paramExpr1 = Expression.Convert(paramExpr1, typeof(double));
+			}
+
+			if (paramExpr2.Type != typeof(double))
+			{
+				paramExpr2 = Expression.Convert(paramExpr2, typeof(double));
+			}
+
+			return Expression.Call(methodInfo, paramExpr1, paramExpr2);
 		}
 	}
 }

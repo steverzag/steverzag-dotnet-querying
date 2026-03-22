@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Reflection;
 
 namespace ExpDataWorker.PropertySelectors.SelectorImplementations
 {
@@ -39,13 +34,45 @@ namespace ExpDataWorker.PropertySelectors.SelectorImplementations
 				.First(m => m.Name == "Average" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo SumMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "Sum" && m.GetParameters().Length == 1);
-		internal readonly static MethodInfo CeilingMethodInfo = typeof(Math).GetMethods()
+		internal readonly static MethodInfo MathPowerMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Pow" && m.GetParameters().Length == 2);
+		internal readonly static MethodInfo MathCeilingMethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Ceiling" && m.GetParameters().Length == 1);
-		internal readonly static MethodInfo FloorMethodInfo = typeof(Math).GetMethods()
+		internal readonly static MethodInfo MathFloorMethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Floor" && m.GetParameters().Length == 1);
-		internal readonly static MethodInfo RoundMethodInfo = typeof(Math).GetMethods()
+		internal readonly static MethodInfo MathRoundMethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Round" && m.GetParameters().Length == 1);
-		internal readonly static MethodInfo Round_2_MethodInfo = typeof(Math).GetMethods()
+		internal readonly static MethodInfo MathRound_2_MethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Round" && m.GetParameters().Length == 2);
+		internal readonly static MethodInfo MathTruncateMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Truncate" && m.GetParameters()[0].ParameterType == typeof(double));
+		internal readonly static MethodInfo MathSignMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Sign" && m.GetParameters()[0].ParameterType == typeof(double));
+		internal readonly static MethodInfo MathSqrtMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Sqrt" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathExpMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Exp" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathLogMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Log" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathLog10MethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Log10" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo SinMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Sin" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathCosMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Cos" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathTanMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Tan" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathAsinMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Asin" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathAcosMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Acos" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathAtanMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Atan" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo MathAtan2MethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Atan2" && m.GetParameters().Length == 2);
+		internal readonly static MethodInfo MathMaxMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Max" && m.GetParameters()[0].ParameterType == typeof(double));
+		internal readonly static MethodInfo MathMinMethodInfo = typeof(Math).GetMethods()
+				.First(m => m.Name == "Min" && m.GetParameters()[0].ParameterType == typeof(double));
 	}
 }

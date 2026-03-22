@@ -1,8 +1,9 @@
-﻿using System.Linq.Expressions;
-using System.Text;
+﻿using ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 using ExpDataWorker.PropertySelectors.ElementSelectors;
+using ExpDataWorker.PropertySelectors.Extensions;
 using ExpDataWorker.PropertySelectors.OrderingSelectors;
 using ExpDataWorker.PropertySelectors.ValueSelectors;
+using System.Linq.Expressions;
 
 namespace ExpDataWorker.PropertySelectors
 {
@@ -14,7 +15,7 @@ namespace ExpDataWorker.PropertySelectors
 
 		public Func<Expression?, Expression> PropertyAccess { get; init; }
 
-		public PropertySelector() {
+		protected PropertySelector() {
 			PlainValue = string.Empty;
 			PropertyAccess = (target) => target ?? Expression.Constant(null);
 		}
@@ -32,8 +33,8 @@ namespace ExpDataWorker.PropertySelectors
 
 		public static implicit operator PropertySelector(string selector)
 		{
-			var selectorParts = selector.Split(PropertyDelimiter);
-
+			var selectorParts = selector.SplitPropertySelectors();
+			//var selectorParts = selector.Split("|");
 			PropertySelector result = null!;
 
 			foreach (var selectorPart in selectorParts)
@@ -69,6 +70,42 @@ namespace ExpDataWorker.PropertySelectors
 
 						_ when selectorPart.StartsWith(SelectorDefaults.MathPower) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathPowSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathCeiling) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+	new MathCeilingSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathFloor) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathFloorSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathRound) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathRoundSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathTruncate) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathTruncateSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathSign) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathSignSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathSqrt) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathSqrtSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathExp) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathExpSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathLog) && !selectorPart.StartsWith(SelectorDefaults.MathLog10) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathLogSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathLog10) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathLog10Selector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathSin) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathSinSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathCos) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathCosSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathTan) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathTanSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAsin) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathAsinSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAcos) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathAcosSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan2) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathAtan2Selector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathAtanSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathMax) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathMaxSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.MathMin) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new MathMinSelector(parameters),
 
 						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")
 					};
@@ -155,6 +192,7 @@ namespace ExpDataWorker.PropertySelectors
 					{
 						var propertySelector = (PropertySelector)parameter;
 						result.Add(propertySelector);
+						lastParameterEndIndex = i + 1;
 					}
 				}
 				else if (nestedParenthesesCount == 0 && i == innerParameters.Length - 1)

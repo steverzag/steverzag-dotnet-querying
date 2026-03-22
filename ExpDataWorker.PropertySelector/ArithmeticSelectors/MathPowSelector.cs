@@ -1,4 +1,6 @@
 ﻿
+using ExpDataWorker.PropertySelectors.SelectorImplementations;
+
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 {
 	internal record MathPowSelector : FunctionPropertySelector
@@ -14,7 +16,7 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 		{
 			if (Parameters.Count == 2)
 			{
-				// Overload with two parameter => ElementAt(number)
+				// Overload with two parameter => Max(number1, number2)
 				var valueParamType = typeof(PropertySelector);
 				var valueParameters = new SortedList<int, Type>
 				{
@@ -22,7 +24,8 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 					{ 1, valueParamType }
 				};
 
-				var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, (target) => target.CreatePowFunction(Parameters[0], Parameters[1]));
+				var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
+					target => target.CreateBinaryMathFunction(MethodInfos.MathPowerMethodInfo, Parameters[0], Parameters[1]));
 				Overloads.Add(selectorOverload);
 			}
 		}

@@ -12,7 +12,7 @@ namespace ExpDataWorker.PropertySelectors
 		public const string SpecifierStart = NameStart + "SPEC_";
 		public const string ValueStart = NameStart + "VAL_";
 		public const string ArithmeticStart = NameStart + "ARITH_";
-		public const string ValuePrefix = NameStart + ":";
+		public const string ValuePrefix = ":";
 
 
 		public const string CountAggregateFunction = FunctionStart + "AGGR_COUNT";
@@ -33,7 +33,7 @@ namespace ExpDataWorker.PropertySelectors
 		public const string ThenOrderByDescending = FunctionStart + "THEN_ORDER_DESC";
 
 		public const string MathCeiling = FunctionStart + "MATH_CEILING";
-		public const string MathFloor = FunctionStart + "MATH_CEILING";
+		public const string MathFloor = FunctionStart + "MATH_FLOOR";
 		public const string MathRound = FunctionStart + "MATH_ROUND";
 		public const string MathTruncate = FunctionStart + "MATH_TRUNCATE";
 		public const string MathSign = FunctionStart + "MATH_SIGN";
