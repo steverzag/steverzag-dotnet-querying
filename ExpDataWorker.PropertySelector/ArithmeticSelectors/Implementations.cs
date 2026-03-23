@@ -22,9 +22,18 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 				throw new InvalidOperationException($"Parameters must be of numeric type for {methodInfo.Name} arithmetic function.");
 			}
 
-			if (parameterExpr.Type != typeof(double))
+			var parameters = methodInfo.GetParameters();
+
+			if (parameters.Length != 1)
 			{
-				parameterExpr = Expression.Convert(parameterExpr, typeof(double));
+				throw new InvalidOperationException($"Method {methodInfo.Name} must have exactly one parameters.");
+			}
+
+			var parameter1Type = parameters[0].ParameterType;
+
+			if (parameterExpr.Type != parameter1Type)
+			{
+				parameterExpr = Expression.Convert(parameterExpr, parameter1Type);
 			}
 
 			return Expression.Call(methodInfo, parameterExpr);
@@ -40,14 +49,24 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 				throw new InvalidOperationException($"Both parameters must be of numeric types for {methodInfo.Name} arithmetic function.");
 			}
 
-			if (paramExpr1.Type != typeof(double))
+			var parameters = methodInfo.GetParameters();
+
+			if(parameters.Length != 2)
 			{
-				paramExpr1 = Expression.Convert(paramExpr1, typeof(double));
+				throw new InvalidOperationException($"Method {methodInfo.Name} must have exactly two parameters.");
 			}
 
-			if (paramExpr2.Type != typeof(double))
+			var parameter1Type = parameters[0].ParameterType;
+			var parameter2Type = parameters[1].ParameterType;
+
+			if (paramExpr1.Type != parameter1Type)
 			{
-				paramExpr2 = Expression.Convert(paramExpr2, typeof(double));
+				paramExpr1 = Expression.Convert(paramExpr1, parameter1Type);
+			}
+
+			if (paramExpr2.Type != parameter2Type)
+			{
+				paramExpr2 = Expression.Convert(paramExpr2, parameter2Type);
 			}
 
 			return Expression.Call(methodInfo, paramExpr1, paramExpr2);

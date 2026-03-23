@@ -41,9 +41,9 @@ namespace ExpDataWorker.PropertySelectors.SelectorImplementations
 		internal readonly static MethodInfo MathFloorMethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Floor" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo MathRoundMethodInfo = typeof(Math).GetMethods()
-				.First(m => m.Name == "Round" && m.GetParameters().Length == 1);
+				.First(m => m.Name == "Round" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(double));
 		internal readonly static MethodInfo MathRound_2_MethodInfo = typeof(Math).GetMethods()
-				.First(m => m.Name == "Round" && m.GetParameters().Length == 2);
+				.First(m => m.Name == "Round" && m.GetParameters().Length == 2 && m.GetParameters()[0].ParameterType == typeof(double));
 		internal readonly static MethodInfo MathTruncateMethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Truncate" && m.GetParameters()[0].ParameterType == typeof(double));
 		internal readonly static MethodInfo MathSignMethodInfo = typeof(Math).GetMethods()
