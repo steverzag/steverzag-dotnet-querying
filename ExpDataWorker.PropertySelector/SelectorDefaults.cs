@@ -7,11 +7,11 @@ namespace ExpDataWorker.PropertySelectors
 	public class SelectorDefaults
 	{
 		public const string PropertyDelimiter = "|";
-		public const string NameStart = "$";
-		public const string FunctionStart = NameStart + "FN_";
-		public const string SpecifierStart = NameStart + "SPEC_";
-		public const string ValueStart = NameStart + "VAL_";
-		public const string ArithmeticStart = NameStart + "ARITH_";
+		public const string ComplexSelectorStart = "$";
+		public const string FunctionStart = ComplexSelectorStart + "FN_";
+		public const string SpecifierStart = ComplexSelectorStart + "SPEC_";
+		public const string ValueStart = ComplexSelectorStart + "VAL_";
+		public const string ArithmeticStart = ComplexSelectorStart + "ARITH_";
 		public const string ValuePrefix = ":";
 
 
@@ -57,5 +57,6 @@ namespace ExpDataWorker.PropertySelectors
 		public const string BooleanValueSpecifier = ValueStart + "BOOL";
 
 		public const string ArithmeticOperation = ArithmeticStart + "OPERATION";
+		public const string ArithmeticOperationEncloser = "::";
 	}
 }

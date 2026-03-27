@@ -33,8 +33,12 @@ namespace ExpDataWorker.PropertySelectors
 
 		public static implicit operator PropertySelector(string selector)
 		{
-			var selectorParts = selector.SplitPropertySelectors();
-			//var selectorParts = selector.Split("|");
+			bool isArithmeticOperation = selector.IsArithmeticExpressionTopLevel();
+			if (isArithmeticOperation)
+			{ 
+				return CreateArithmeticOperationSelector(selector);
+			}
+				var selectorParts = selector.SplitPropertySelectors();
 			PropertySelector result = null!;
 
 			foreach (var selectorPart in selectorParts)
@@ -71,7 +75,7 @@ namespace ExpDataWorker.PropertySelectors
 						_ when selectorPart.StartsWith(SelectorDefaults.MathPower) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathPowSelector(parameters),
 						_ when selectorPart.StartsWith(SelectorDefaults.MathCeiling) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-	new MathCeilingSelector(parameters),
+							new MathCeilingSelector(parameters),
 						_ when selectorPart.StartsWith(SelectorDefaults.MathFloor) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathFloorSelector(parameters),
 						_ when selectorPart.StartsWith(SelectorDefaults.MathRound) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
@@ -149,6 +153,18 @@ namespace ExpDataWorker.PropertySelectors
 			}
 
 			return result;
+		}
+
+		private static PropertySelector CreateArithmeticOperationSelector(string selector)
+		{
+			var tokenizer = new ArithmeticOperationTokenizer(selector);
+			var tokens = tokenizer.Tokenize();
+			tokens = tokenizer.SanitizeNegations(tokens);
+
+			var parser = new ArithmeticOperationParser(tokens);
+			var arithmeticOperationSelector = parser.Parse();
+
+			return arithmeticOperationSelector;
 		}
 
 		private static bool TryGetParameters(string selector, out List<PropertySelector> parameters)

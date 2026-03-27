@@ -8,16 +8,13 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 {
 	public record ArithmeticOperationSelector : PropertySelector
 	{
-		internal List<PropertySelector> Operands { get; init; } = [];
-		public ArithmeticOperationSelector(string operation) : base()
+		public PropertySelector LeftExpression { get; set; }
+		public PropertySelector? RightExpression { get; set; }
+		public ArithmeticOperator Operator { get; set; }
+
+		public ArithmeticOperationSelector() : base(SelectorDefaults.ArithmeticOperation)
 		{
-			char[] separators = ['+', '-', '*', '/'];
-
-			var expression = operation.Replace(" ", "");
-
-			Operands = [.. expression.Split(separators).Select(x => (PropertySelector)x)];
-
-			PlainValue = SelectorDefaults.ArithmeticOperation + ":" + expression;
+			PropertyAccess = (target) => target.CreateArithmeticOperationExpression(this);
 		}
 	}
 }

@@ -12,8 +12,10 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 		internal static List<string> SplitPropertySelectors(this string expression)
 		{
 			var propertySelectors = new List<string>();
-			var parenthesesCount = 0;
+			var parenthesesDepth = 0;
 			var propertySelectorStartIndex = 0;
+			var selectorDelimiter = SelectorDefaults.PropertyDelimiter[0];
+
 			for (int i = 0; i < expression.Length; i++)
 			{
 				if (i == expression.Length - 1)
@@ -23,17 +25,17 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 				}
 				if (expression[i] == '(')
 				{
-					parenthesesCount++;
+					parenthesesDepth++;
 					continue;
 				}
 				else if (expression[i] == ')')
 				{
-					parenthesesCount--;
+					parenthesesDepth--;
 					continue;
 				}
-				else if (parenthesesCount > 0)
+				else if (parenthesesDepth > 0)
 					continue;
-				else if (expression[i] == SelectorDefaults.PropertyDelimiter[0])
+				else if (expression[i] == selectorDelimiter)
 				{
 					var propertySelector = expression[propertySelectorStartIndex..i].Trim();
 					propertySelectors.Add(propertySelector);
@@ -42,6 +44,38 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 			}
 
 			return propertySelectors;
+		}
+
+		internal static bool IsArithmeticExpressionTopLevel(this string expression)
+		{
+			if (string.IsNullOrWhiteSpace(expression))
+				return false;
+
+			int depth = 0;
+
+			for (int i = 0; i < expression.Length; i++)
+			{
+				var c = expression[i];
+
+				if (c == '(')
+				{
+					depth++;
+					continue;
+				}
+
+				if (c == ')')
+				{
+					depth--;
+					continue;
+				}
+
+				if (depth == 0 && (c == '+' || c == '-' || c == '*' || c == '/'))
+				{
+					return true;
+				}
+			}
+
+			return false;
 		}
 	}
 }
