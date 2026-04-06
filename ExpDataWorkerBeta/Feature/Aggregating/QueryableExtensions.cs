@@ -1,5 +1,4 @@
 ﻿using ExpDataWorker.PropertySelectors;
-using ExpDataWorkerBeta.Feature.Utils;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -45,19 +44,31 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 
 		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<IGrouping<GroupByKeys, T>> groupedQuery, List<PropertySelector> aggregateParameters)
 		{
-			var selectParam = Expression.Parameter(typeof(IGrouping<GroupByKeys, T>), "x");
+			var paramExp = Expression.Parameter(typeof(IGrouping<GroupByKeys, T>), "x");
+			var constructorInfo = typeof(SelectResult).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(List<SelectValue>)]);
+			var selectValueListExpression = Expression.New(typeof(List<SelectValue>));
+			Expression<Func<IGrouping<GroupByKeys, T>, SelectResult>> selectLambda = null!;
 
-			var aggregateValueListExpression = Expression.New(typeof(List<SelectValue>));
+			if (aggregateParameters.Count == 0)
+			{
+				var resultNewExp = Expression.New(constructorInfo!,
+					selectValueListExpression);
+
+				selectLambda = Expression.Lambda<Func<IGrouping<GroupByKeys, T>, SelectResult>>(
+					resultNewExp,
+					paramExp);
+				return groupedQuery.Select(selectLambda);
+			}
+
 			var aggregateValueInits = new List<ElementInit>();
-			var aggregateValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
-
 			var aggregateValueAddMethod = typeof(List<SelectValue>).GetMethod("Add")!;
+			var selectValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
 
 			foreach (var aggregateSelector in aggregateParameters)
 			{
-				var aggregateExp = ExpressionUtils.CreateMemberAccess(selectParam, aggregateSelector);//ExpressionUtils.CreateGroupingMemberAccess(selectParam, aggregateSelector);
+				var aggregateExp = ExpressionUtils.CreateMemberAccess(paramExp, aggregateSelector);//ExpressionUtils.CreateGroupingMemberAccess(selectParam, aggregateSelector);
 
-				var newAggregateValueExp = Expression.New(aggregateValueConstructor,
+				var newAggregateValueExp = Expression.New(selectValueConstructor,
 					Expression.Constant(aggregateSelector.PlainValue),
 					Expression.Convert(
 						aggregateExp,
@@ -68,54 +79,63 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 				aggregateValueInits.Add(elementInitExpression);
 			}
 
-			var aggregateValueListInitExpression = Expression.ListInit(aggregateValueListExpression, aggregateValueInits);
-
-			var aggregateResultConstructor = typeof(SelectResult).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(List<SelectValue>)]);
-			var newAggregateResultExp = Expression.New(aggregateResultConstructor!,
+			var aggregateValueListInitExpression = Expression.ListInit(selectValueListExpression, aggregateValueInits);
+			var newAggregateResultExp = Expression.New(constructorInfo!,
 				aggregateValueListInitExpression);
 
-			var selectLambda = Expression.Lambda<Func<IGrouping<GroupByKeys, T>, SelectResult>>(
+			selectLambda = Expression.Lambda<Func<IGrouping<GroupByKeys, T>, SelectResult>>(
 				newAggregateResultExp,
-				selectParam);
+				paramExp);
 
-			var selectedQuery = groupedQuery.Select(selectLambda);
-
-			return selectedQuery;
+			return groupedQuery.Select(selectLambda);
 		}
 
-		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<T> query, List<PropertySelector> aggregateParameters)
+		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<T> query, List<PropertySelector> selectors)
 		{
-			var selectParam = Expression.Parameter(typeof(T), "x");
-			var aggregateValueListExpression = Expression.New(typeof(List<SelectValue>));
-			var aggregateValueInits = new List<ElementInit>();
-			var aggregateValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
-			var aggregateValueAddMethod = typeof(List<SelectValue>).GetMethod("Add")!;
-			foreach (var aggregateSelector in aggregateParameters)
-			{
-				var aggregateExp = ExpressionUtils.CreateMemberAccess(selectParam, aggregateSelector);
-				var newAggregateValueExp = Expression.New(aggregateValueConstructor,
-					Expression.Constant(aggregateSelector.PlainValue),
-					Expression.Convert(
-						aggregateExp,
-						typeof(object)));
 
-				var elementInitExpression = Expression.ElementInit(aggregateValueAddMethod, newAggregateValueExp);
-				aggregateValueInits.Add(elementInitExpression);
+			var paramExp = Expression.Parameter(typeof(T), "x");
+			var constructorInfo = typeof(SelectResult).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(List<SelectValue>)]);
+			var selectValueListExpression = Expression.New(typeof(List<SelectValue>));
+			Expression<Func<T, SelectResult>> selectLambda = null!;
+
+			if (selectors.Count == 0)
+			{
+				var resultNewExp = Expression.New(constructorInfo!, 
+					selectValueListExpression);
+
+				selectLambda = Expression.Lambda<Func<T, SelectResult>>(
+					resultNewExp,
+					paramExp);
+				return query.Select(selectLambda);
 			}
 
-			var aggregateValueListInitExpression = Expression.ListInit(aggregateValueListExpression, aggregateValueInits);
+			var selectValueInits = new List<ElementInit>();
+			var selectValueAddMethod = typeof(List<SelectValue>).GetMethod("Add")!;
+			var selectValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
 
-			var aggregateResultConstructor = typeof(SelectResult).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(List<SelectValue>)]);
-			var newAggregateResultExp = Expression.New(aggregateResultConstructor!,
-				aggregateValueListInitExpression);
+			foreach (var selector in selectors)
+			{
+				var selectorExp = ExpressionUtils.CreateMemberAccess(paramExp, selector);
+				var selectValueNewExp = Expression.New(selectValueConstructor!,
+					Expression.Constant(selector.PlainValue),
+					Expression.Convert(
+						selectorExp,
+						typeof(object)));
 
-			var selectLambda = Expression.Lambda<Func<T, SelectResult>>(
-				newAggregateResultExp,
-				selectParam);
+				var elementInitExpression = Expression.ElementInit(selectValueAddMethod, selectValueNewExp);
+				selectValueInits.Add(elementInitExpression);
+			}
 
-			var selectedQuery = query.Select(selectLambda);
+			var selectValueListInitExpression = Expression.ListInit(selectValueListExpression, selectValueInits);
 
-			return selectedQuery;
+			var selectResultNewExp = Expression.New(constructorInfo!,
+				selectValueListInitExpression);
+
+			selectLambda = Expression.Lambda<Func<T, SelectResult>>(
+				selectResultNewExp,
+				paramExp);
+
+			return query.Select(selectLambda);
 		}
 	}
 }
