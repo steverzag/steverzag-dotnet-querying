@@ -1,4 +1,5 @@
 ﻿using ExpDataWorker.PropertySelectors;
+using ExpDataWorkerBeta.Feature.Mapping;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -136,6 +137,11 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 				paramExp);
 
 			return query.Select(selectLambda);
+		}
+
+		public static IQueryable<TOut> ApplySelect<TIn, TOut>(this IQueryable<TIn> query, Mapper mapper)
+		{
+			return mapper.Map<TIn, TOut>(query);
 		}
 	}
 }
