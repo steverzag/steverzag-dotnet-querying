@@ -26,6 +26,40 @@ namespace ExpDataWorker.PropertySelectors
 		{
 			return RootType.GetPropertyType(this);
 		}
+
+		public static implicit operator PropertySelector<T>(string selector)
+		{
+
+			var selectorParts = selector.SplitPropertySelectors();
+			PropertySelector<T> result = null!;
+			Type currentIterationType = typeof(T);
+
+			foreach (var selectorPart in selectorParts)
+			{
+
+				PropertySelector propertySelector;
+					propertySelector = new PropertySelector<T>(selectorPart);
+				if (result is null)
+					result = (PropertySelector<T>)propertySelector;
+				else
+				{
+					var current = (PropertySelector)result;
+					while (current.ChildSelector is not null)
+					{
+						current = current.ChildSelector;
+					}
+					current.ChildSelector = propertySelector;
+				}
+
+				currentIterationType = propertySelector.SelectorType!;
+			}
+
+			return result;
+		}
+	}
+
+
+
 	public abstract record SelectorBase
 	{
 		private const char PropertyDelimiter = '|';
