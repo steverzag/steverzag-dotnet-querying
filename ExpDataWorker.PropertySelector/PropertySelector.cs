@@ -7,13 +7,41 @@ using System.Linq.Expressions;
 
 namespace ExpDataWorker.PropertySelectors
 {
-	public record PropertySelector//: IPropertyAccesible
+	public record PropertySelector<T> : PropertySelector
+	{
+		public Type RootType { get; } = typeof(T);
+		public PropertySelector() : base()
+		{
+			SelectorType = InitSelectorTypeToApply();
+		}
+		public PropertySelector(string plainValue) : base(plainValue)
+		{
+			if(SelectorType is not null)
+				return;
+
+			SelectorType = InitSelectorTypeToApply();
+		}
+
+		public override Type? InitSelectorTypeToApply()
+		{
+			return RootType.GetPropertyType(this);
+		}
+	public abstract record SelectorBase
 	{
 		private const char PropertyDelimiter = '|';
 		public string PlainValue { get; init; }
-		public PropertySelector? ChildSelector { get; set; }
-
+		public virtual Type? SelectorType { get; init; }
+		public virtual PropertySelector? ChildSelector { get; set; }
 		public Func<Expression?, Expression> PropertyAccess { get; init; }
+		public abstract Type? InitSelectorTypeToApply();
+	}
+
+	public record PropertySelector : SelectorBase
+	{
+		public override Type? InitSelectorTypeToApply()
+		{
+			return SelectorType;
+		}
 
 		protected PropertySelector() {
 			PlainValue = string.Empty;
@@ -36,7 +64,7 @@ namespace ExpDataWorker.PropertySelectors
 			bool isArithmeticOperation = selector.IsArithmeticExpressionTopLevel();
 			if (isArithmeticOperation)
 			{ 
-				return CreateArithmeticOperationSelector(selector);
+				return PropertySelectorUtils.CreateArithmeticOperationSelector(selector);
 			}
 				var selectorParts = selector.SplitPropertySelectors();
 			PropertySelector result = null!;
@@ -60,55 +88,55 @@ namespace ExpDataWorker.PropertySelectors
 						SelectorDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
 
 						SelectorDefaults.OrderAscending => new OrderByAscendingSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && !TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && !PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new OrderByAscendingSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new OrderByAscendingSelector(parameters),
 
 						SelectorDefaults.ElementFirst => new FirstElementSelector(),
 						SelectorDefaults.ElementLast => new LastElementSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new LastElementSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new ElementAtSelector(parameters),
 
-						_ when selectorPart.StartsWith(SelectorDefaults.MathPower) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathPower) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathPowSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathCeiling) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathCeiling) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathCeilingSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathFloor) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathFloor) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathFloorSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathRound) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathRound) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathRoundSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathTruncate) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathTruncate) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathTruncateSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSign) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathSign) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathSignSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSqrt) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathSqrt) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathSqrtSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathExp) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathExp) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathExpSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathLog) && !selectorPart.StartsWith(SelectorDefaults.MathLog10) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathLog) && !selectorPart.StartsWith(SelectorDefaults.MathLog10) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathLogSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathLog10) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathLog10) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathLog10Selector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSin) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathSin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathSinSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathCos) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathCos) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathCosSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathTan) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathTan) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathTanSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAsin) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAsin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathAsinSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAcos) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAcos) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathAcosSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan2) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan2) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathAtan2Selector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathAtanSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathMax) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathMax) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathMaxSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathMin) && TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						_ when selectorPart.StartsWith(SelectorDefaults.MathMin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new MathMinSelector(parameters),
 
 						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")

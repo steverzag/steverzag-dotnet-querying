@@ -87,7 +87,7 @@ namespace ExpDataWorker.PropertySelectors
 				{
 					property = Expression.PropertyOrField(current, part);
 				}
-				catch (Exception ex)
+				catch
 				{
 					if (!TryGetGroupingTypes(target.Type, out var _, out var groupElementType) || groupElementType is null)
 						throw;
