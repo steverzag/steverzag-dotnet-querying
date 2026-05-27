@@ -107,7 +107,23 @@ namespace ExpDataWorker.PropertySelectors
 						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")
 					};
 				}
+				else if (int.TryParse(selectorPart, out int intValue))
+				{
+					propertySelector = new IntegerValueSelector<T>(intValue);
+				}
+				else if (double.TryParse(selectorPart, out double doubleValue))
+				{
+					propertySelector = new DoubleValueSelector<T>(doubleValue);
+				}
+				else if (bool.TryParse(selectorPart, out bool boolValue))
+				{
+					propertySelector = new BooleanValueSelector<T>(boolValue);
+				}
+				else
+				{
 					propertySelector = new PropertySelector<T>(selectorPart);
+				}
+
 				if (result is null)
 					result = (PropertySelector<T>)propertySelector;
 				else
