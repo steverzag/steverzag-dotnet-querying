@@ -52,11 +52,19 @@ namespace ExpDataWorker.PropertySelectors
 					//	SelectorDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),
 					//	SelectorDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
 
-					//	SelectorDefaults.OrderAscending => new OrderByAscendingSelector(),
-					//	_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && !PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-					//		new OrderByAscendingSelector(),
-					//	_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-					//		new OrderByAscendingSelector(parameters),
+						//Oodering selectors
+						SelectorDefaults.OrderAscending => GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByAscendingSelector<>), currentIterationType),
+						SelectorDefaults.OrderDescending => GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByDescendingSelector<>), currentIterationType),
+						SelectorDefaults.ThenOrderByAscending => GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByAscendingSelector<>), currentIterationType),
+						SelectorDefaults.ThenOrderByDescending => GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByDescendingSelector<>), currentIterationType),
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByAscendingSelector<>), currentIterationType, parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByDescendingSelector<>), currentIterationType, parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+						GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByAscendingSelector<>), currentIterationType, parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByDescendingSelector<>), currentIterationType, parameters),
 
 						SelectorDefaults.ElementFirst => GenericPropertySelectorFactory.CreateGeneric(typeof(FirstElementSelector<>), currentIterationType),
 						SelectorDefaults.ElementLast => GenericPropertySelectorFactory.CreateGeneric(typeof(LastElementSelector<>), currentIterationType),
@@ -210,6 +218,12 @@ namespace ExpDataWorker.PropertySelectors
 							new OrderByAscendingSelector(),
 						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new OrderByAscendingSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.OrderDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new OrderByDescendingSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new ThenOrderByAscendingSelector(parameters),
+						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
+							new ThenOrderByDescendingSelector(parameters),
 
 						SelectorDefaults.ElementFirst => new FirstElementSelector(),
 						SelectorDefaults.ElementLast => new LastElementSelector(),
