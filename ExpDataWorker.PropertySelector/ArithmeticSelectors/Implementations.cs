@@ -7,6 +7,38 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 	internal static class Implementations
 	{
 
+		public static Expression CreateArithmeticOperationExpression<T>(this Expression? target, ArithmeticOperationSelector<T> selector)
+		{
+			if (selector.Operator == ArithmeticOperator.Negation)
+			{
+				var operand = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
+				return Expression.Negate(operand);
+			}
+
+			var left = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
+			var right = ExpressionUtils.CreateMemberAccess(target, selector.RightExpression!);
+
+			var widerType = ArithmeticUtils.GetWiderNumericType(left.Type, right.Type);
+
+			if (left.Type != widerType)
+			{
+				left = Expression.Convert(left, widerType);
+			}
+			if (right.Type != widerType)
+			{
+				right = Expression.Convert(right, widerType);
+			}
+
+			return selector.Operator switch
+			{
+				ArithmeticOperator.Addition => Expression.Add(left, right),
+				ArithmeticOperator.Subtraction => Expression.Subtract(left, right),
+				ArithmeticOperator.Multiplication => Expression.Multiply(left, right),
+				ArithmeticOperator.Division => Expression.Divide(left, right),
+				_ => throw new NotSupportedException($"Operator {selector.Operator}")
+			};
+		}
+
 		public static Expression CreateArithmeticOperationExpression(this Expression? target, ArithmeticOperationSelector selector)
 		{
 			if (selector.Operator == ArithmeticOperator.Negation)

@@ -16,21 +16,21 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 			_tokens = tokens;
 		}
 
-		public PropertySelector Parse()
+		public PropertySelector<T> Parse<T>()
 		{
-			return ParseExpression();
+			return ParseExpression<T>();
 		}
 
-		private PropertySelector ParseExpression()
+		private PropertySelector<T> ParseExpression<T>()
 		{
-			var left = ParseTerm();
+			var left = ParseTerm<T>();
 
 			while (Match(ArithmeticOperationTokenType.Plus) || Match(ArithmeticOperationTokenType.Minus))
 			{
 				var op = Previous();
-				var right = ParseTerm();
+				var right = ParseTerm<T>();
 
-				left = new ArithmeticOperationSelector
+				left = new ArithmeticOperationSelector<T>
 				{
 					LeftExpression = left,
 					RightExpression = right,
@@ -43,16 +43,16 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 			return left;
 		}
 
-		private PropertySelector ParseTerm()
+		private PropertySelector<T> ParseTerm<T>()
 		{
-			var left = ParseFactor();
+			var left = ParseFactor<T>();
 
 			while (Match(ArithmeticOperationTokenType.Multiply) || Match(ArithmeticOperationTokenType.Divide))
 			{
 				var op = Previous();
-				var right = ParseFactor();
+				var right = ParseFactor<T>();
 
-				left = new ArithmeticOperationSelector
+				left = new ArithmeticOperationSelector<T>
 				{
 					LeftExpression = left,
 					RightExpression = right,
@@ -65,13 +65,13 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 			return left;
 		}
 
-		private PropertySelector ParseFactor()
+		private PropertySelector<T> ParseFactor<T>()
 		{
 			if (Match(ArithmeticOperationTokenType.Minus))
 			{
-				var operand = ParseFactor();
+				var operand = ParseFactor<T>();
 
-				return new ArithmeticOperationSelector
+				return new ArithmeticOperationSelector<T>
 				{
 					LeftExpression = operand,
 					Operator = ArithmeticOperator.Negation
@@ -80,12 +80,12 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 
 			if (Match(ArithmeticOperationTokenType.Selector))
 			{
-				return ParseSelector(Previous().Value);
+				return ParseSelector<T>(Previous().Value);
 			}
 
 			if (Match(ArithmeticOperationTokenType.LParen))
 			{
-				var expr = ParseExpression();
+				var expr = ParseExpression<T>();
 				Consume(ArithmeticOperationTokenType.RParen, "Missing ')'");
 				return expr;
 			}
@@ -93,7 +93,7 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 			throw new Exception("Invalid expression");
 		}
 
-		private static PropertySelector ParseSelector(string text)
+		private static PropertySelector<T> ParseSelector<T>(string text)
 		{
 			return text;
 		}

@@ -2,8 +2,26 @@ using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+internal record MathCosSelector<T> : FunctionPropertySelector<T>
+{
+	public override Type SelectorType => typeof(double);
+	public MathCosSelector() : base(SelectorDefaults.MathCos) { }
+	public MathCosSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathCos, parameters) { }
+	public override void InitializeOverloads()
+	{
+		if (Parameters.Count == 1)
+		{
+			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
+			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
+				target => target.CreateUnaryMathFunction(MethodInfos.MathCosMethodInfo, Parameters[0]));
+			Overloads.Add(selectorOverload);
+		}
+	}
+}
+
 internal record MathCosSelector : FunctionPropertySelector
 {
+	public override Type SelectorType => typeof(double);
 	public MathCosSelector() : base(SelectorDefaults.MathCos) { }
 	public MathCosSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathCos, parameters) { }
 
