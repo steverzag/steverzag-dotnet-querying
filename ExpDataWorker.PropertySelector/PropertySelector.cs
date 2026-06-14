@@ -235,9 +235,11 @@ namespace ExpDataWorker.PropertySelectors
 						SelectorDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),
 						SelectorDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
 
-						SelectorDefaults.OrderAscending => new OrderByAscendingSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && !PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new OrderByAscendingSelector(),
+						//Ordering selectors
+						SelectorDefaults.OrderAscending or SelectorDefaults.OrderAscending + "()" => new OrderByAscendingSelector(),
+						SelectorDefaults.OrderDescending or SelectorDefaults.OrderDescending + "()" => new OrderByDescendingSelector(),
+						SelectorDefaults.ThenOrderByAscending or SelectorDefaults.ThenOrderByAscending + "()" => new ThenOrderByAscendingSelector(),
+						SelectorDefaults.ThenOrderByDescending or SelectorDefaults.ThenOrderByDescending + "()" => new ThenOrderByDescendingSelector(),
 						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new OrderByAscendingSelector(parameters),
 						_ when selectorPart.StartsWith(SelectorDefaults.OrderDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
