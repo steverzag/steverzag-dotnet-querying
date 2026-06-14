@@ -1,4 +1,5 @@
-﻿using ExpDataWorker.PropertySelectors.ArithmeticSelectors;
+﻿using ExpDataWorker.PropertySelectors.AggregationSelectors;
+using ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 using ExpDataWorker.PropertySelectors.ElementSelectors;
 using ExpDataWorker.PropertySelectors.Extensions;
 using ExpDataWorker.PropertySelectors.OrderingSelectors;
@@ -9,7 +10,6 @@ namespace ExpDataWorker.PropertySelectors
 {
 	public record PropertySelector<T> : PropertySelector
 	{
-		public Type RootType { get; } = typeof(T);
 		public PropertySelector() : base()
 		{
 			SelectorType = InitSelectorTypeToApply();
@@ -50,12 +50,19 @@ namespace ExpDataWorker.PropertySelectors
 				{
 					propertySelector = selectorPart switch
 					{
-					//	SelectorDefaults.CountAggregateFunction => new AggregationSelectors.CountAggregationSelector(),
-					//	SelectorDefaults.LongCountAggregateFunction => new AggregationSelectors.LongCountAggregationSelector(),
-					//	SelectorDefaults.SumAggregateFunction => new AggregationSelectors.SumAggregationSelector(),
-					//	SelectorDefaults.AvgAggregateFunction => new AggregationSelectors.AvgAggregationSelector(),
-					//	SelectorDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),
-					//	SelectorDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
+						//Aggregation selectors
+						SelectorDefaults.CountAggregateFunction or SelectorDefaults.CountAggregateFunction + "()" =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(CountAggregationSelector<>), currentIterationType),
+						SelectorDefaults.LongCountAggregateFunction or SelectorDefaults.LongCountAggregateFunction + "()" =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(LongCountAggregationSelector<>), currentIterationType),
+						SelectorDefaults.SumAggregateFunction or SelectorDefaults.SumAggregateFunction + "()" =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(SumAggregationSelector<>), currentIterationType),
+						SelectorDefaults.AvgAggregateFunction or SelectorDefaults.AvgAggregateFunction + "()" =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(AvgAggregationSelector<>), currentIterationType),
+						SelectorDefaults.MinAggregateFunction or SelectorDefaults.MinAggregateFunction + "()" =>
+							GenericPropertySelectorFactory.CreateGeneric(typeof(MinAggregationSelector<>), currentIterationType),
+						SelectorDefaults.MaxAggregateFunction or SelectorDefaults.MaxAggregateFunction + "()" =>
+							 GenericPropertySelectorFactory.CreateGeneric(typeof(MaxAggregationSelector<>), currentIterationType),
 
 						//Oodering selectors
 						SelectorDefaults.OrderAscending => GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByAscendingSelector<>), currentIterationType),
@@ -228,12 +235,13 @@ namespace ExpDataWorker.PropertySelectors
 				{
 					propertySelector = selectorPart switch
 					{
-						SelectorDefaults.CountAggregateFunction => new AggregationSelectors.CountAggregationSelector(),
-						SelectorDefaults.LongCountAggregateFunction => new AggregationSelectors.LongCountAggregationSelector(),
-						SelectorDefaults.SumAggregateFunction => new AggregationSelectors.SumAggregationSelector(),
-						SelectorDefaults.AvgAggregateFunction => new AggregationSelectors.AvgAggregationSelector(),
-						SelectorDefaults.MinAggregateFunction => new AggregationSelectors.MinAggregationSelector(),
-						SelectorDefaults.MaxAggregateFunction => new AggregationSelectors.MaxAggregationSelector(),
+						//Aggregation selectors
+						SelectorDefaults.CountAggregateFunction or SelectorDefaults.CountAggregateFunction + "()" => new CountAggregationSelector(),
+						SelectorDefaults.LongCountAggregateFunction or SelectorDefaults.LongCountAggregateFunction + "()" => new LongCountAggregationSelector(),
+						SelectorDefaults.SumAggregateFunction or SelectorDefaults.SumAggregateFunction + "()" => new SumAggregationSelector(),
+						SelectorDefaults.AvgAggregateFunction or SelectorDefaults.AvgAggregateFunction + "()" => new AvgAggregationSelector(),
+						SelectorDefaults.MinAggregateFunction or SelectorDefaults.MinAggregateFunction + "()" => new MinAggregationSelector(),
+						SelectorDefaults.MaxAggregateFunction or SelectorDefaults.MaxAggregateFunction + "()" => new MaxAggregationSelector(),
 
 						//Ordering selectors
 						SelectorDefaults.OrderAscending or SelectorDefaults.OrderAscending + "()" => new OrderByAscendingSelector(),

@@ -6,6 +6,24 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
+	public record MinAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
+	{
+		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)
+		{
+			var t = SelectorType.ToString();
+		}
+		public override void InitializeOverloads()
+		{
+			// Overload with no parameters => Min()
+			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateMinFunction());
+			Overloads.Add(emptyFunctionParameters);
+		}
+		public override Type? InitSelectorTypeToApply()
+		{
+			return ((IEnumerableFunctionSelector<T>)this).ValidateAndGetEnumerableType(nameof(MaxAggregationSelector));
+		}
+	}
+
 	public record MinAggregationSelector : FunctionPropertySelector
 	{
 		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)

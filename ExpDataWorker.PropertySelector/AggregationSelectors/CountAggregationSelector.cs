@@ -6,8 +6,28 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
+
+	public record CountAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
+	{
+		public override Type? SelectorType => typeof(int);
+
+		public CountAggregationSelector() : base(SelectorDefaults.CountAggregateFunction)
+		{
+			((IEnumerableFunctionSelector<T>)this).ValidateEnumerable(nameof(CountAggregationSelector));
+		}
+
+		public override void InitializeOverloads()
+		{
+			// Overload with no parameters => Count()
+			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateCountFunction());
+			Overloads.Add(emptyFunctionParameters);
+		}
+	}
+
 	public record CountAggregationSelector : FunctionPropertySelector
 	{
+		public override Type? SelectorType => typeof(int);
+
 		public CountAggregationSelector() : base(SelectorDefaults.CountAggregateFunction)
 		{
 		}
