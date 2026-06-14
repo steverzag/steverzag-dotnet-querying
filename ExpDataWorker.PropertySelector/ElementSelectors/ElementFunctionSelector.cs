@@ -15,9 +15,9 @@ namespace ExpDataWorker.PropertySelectors.ElementSelectors
 
 		public override Type? InitSelectorTypeToApply()
 		{
-			var isEnumerable = ExpressionUtils.TryGetEnumerableElementType(RootType, out var elementType);
+			var isEnumerable = ExpressionUtils.TryGetEnumerableElementType(typeof(T), out var elementType);
 			if (!isEnumerable || elementType is null)
-				throw new InvalidOperationException($"ElementFunctionSelectors can only be applied to enumerable types. RootType: {RootType}");
+				throw new InvalidOperationException($"ElementFunctionSelectors can only be applied to enumerable types. RootType: {typeof(T)}");
 			return elementType;
 		}
 

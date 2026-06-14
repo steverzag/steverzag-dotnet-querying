@@ -16,7 +16,7 @@ namespace ExpDataWorker.PropertySelectors
 		}
 		public PropertySelector(string plainValue) : base(plainValue)
 		{
-			if(SelectorType is not null)
+			if (SelectorType is not null)
 				return;
 
 			SelectorType = InitSelectorTypeToApply();
@@ -24,7 +24,7 @@ namespace ExpDataWorker.PropertySelectors
 
 		public override Type? InitSelectorTypeToApply()
 		{
-			return RootType.GetPropertyType(this);
+			return typeof(T).GetPropertyType(this);
 		}
 
 		public static implicit operator PropertySelector<T>(string selector)
@@ -71,6 +71,7 @@ namespace ExpDataWorker.PropertySelectors
 						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByDescendingSelector<>), currentIterationType, parameters),
 
+						//Element selectors
 						SelectorDefaults.ElementFirst => GenericPropertySelectorFactory.CreateGeneric(typeof(FirstElementSelector<>), currentIterationType),
 						SelectorDefaults.ElementLast => GenericPropertySelectorFactory.CreateGeneric(typeof(LastElementSelector<>), currentIterationType),
 						//_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
@@ -163,6 +164,17 @@ namespace ExpDataWorker.PropertySelectors
 	{
 		public string PlainValue { get; init; }
 		public virtual Type? SelectorType { get; init; }
+		public Type? Type
+		{
+			get
+			{
+				var t = SelectorType;
+				var child = ChildSelector;
+				while (child != null)
+					t = child.SelectorType;
+				return t;
+			}
+		}
 		public PropertySelector? ChildSelector { get; set; }
 		public Func<Expression?, Expression> PropertyAccess { get; init; }
 		public abstract Type? InitSelectorTypeToApply();
@@ -175,7 +187,8 @@ namespace ExpDataWorker.PropertySelectors
 			return SelectorType;
 		}
 
-		protected PropertySelector() {
+		protected PropertySelector()
+		{
 			PlainValue = string.Empty;
 			PropertyAccess = (target) => target ?? Expression.Constant(null);
 		}
@@ -231,6 +244,7 @@ namespace ExpDataWorker.PropertySelectors
 						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
 							new ThenOrderByDescendingSelector(parameters),
 
+						//Element selectors
 						SelectorDefaults.ElementFirst => new FirstElementSelector(),
 						SelectorDefaults.ElementLast => new LastElementSelector(),
 						_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
