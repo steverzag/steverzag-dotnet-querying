@@ -171,7 +171,10 @@ namespace ExpDataWorker.PropertySelectors
 				var t = SelectorType;
 				var child = ChildSelector;
 				while (child != null)
+				{ 
 					t = child.SelectorType;
+					child = child.ChildSelector;
+				}
 				return t;
 			}
 		}
