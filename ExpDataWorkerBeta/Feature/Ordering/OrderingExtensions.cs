@@ -36,6 +36,11 @@ namespace ExpDataWorkerBeta.Feature.Ordering
 
 			var isFirstIteration = true;
 
+			orderParameters = orderParameters.Select(op =>
+			{
+				return OrderParameters<T>.Create(op);
+			}).ToList()!;
+
 			foreach (var orderParam in orderParameters)
 			{
 				var paramExp = Expression.Parameter(typeof(T), name: "p");
