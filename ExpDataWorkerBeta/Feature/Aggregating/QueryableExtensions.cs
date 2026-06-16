@@ -1,5 +1,6 @@
 ﻿using ExpDataWorker.PropertySelectors;
-using ExpDataWorkerBeta.Feature.Mapping;
+using ExpDataWorkerBeta.Feature.Configuration;
+using ExpDataWorkerBeta.Feature.Configuration.Mapping;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -10,7 +11,7 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 
 		private const string GroupByKeyPrefix = "GroupKey";
 
-		public static IQueryable<IGrouping<GroupByKeys, T>> ApplyGrouping<T>(this IQueryable<T> query, List<PropertySelector> groupByParameters)
+		public static IQueryable<IGrouping<GroupByKeys, T>> ApplyGrouping<T>(this IQueryable<T> query, List<PropertySelector<T>> groupByParameters)
 		{
 			ParameterExpression param = Expression.Parameter(typeof(T), "x");
 
@@ -43,14 +44,14 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 			return groupedQuery;
 		}
 
-		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<IGrouping<GroupByKeys, T>> groupedQuery, List<PropertySelector> aggregateParameters)
+		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<IGrouping<GroupByKeys, T>> groupedQuery, List<string> aggregateSelectors)
 		{
 			var paramExp = Expression.Parameter(typeof(IGrouping<GroupByKeys, T>), "x");
 			var constructorInfo = typeof(SelectResult).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(List<SelectValue>)]);
 			var selectValueListExpression = Expression.New(typeof(List<SelectValue>));
 			Expression<Func<IGrouping<GroupByKeys, T>, SelectResult>> selectLambda = null!;
 
-			if (aggregateParameters.Count == 0)
+			if (aggregateSelectors.Count == 0)
 			{
 				var resultNewExp = Expression.New(constructorInfo!,
 					selectValueListExpression);
@@ -65,12 +66,19 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 			var aggregateValueAddMethod = typeof(List<SelectValue>).GetMethod("Add")!;
 			var selectValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
 
-			foreach (var aggregateSelector in aggregateParameters)
+			List<PropertySelector<T>> propertySelectors = [];
+
+			foreach (var aggregateParameter in aggregateSelectors)
 			{
-				var aggregateExp = ExpressionUtils.CreateMemberAccess(paramExp, aggregateSelector);//ExpressionUtils.CreateGroupingMemberAccess(selectParam, aggregateSelector);
+				propertySelectors.Add(aggregateParameter);
+			}
+
+			foreach (var propertySelector in propertySelectors)
+			{
+				var aggregateExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);//ExpressionUtils.CreateGroupingMemberAccess(selectParam, aggregateSelector);
 
 				var newAggregateValueExp = Expression.New(selectValueConstructor,
-					Expression.Constant(aggregateSelector.PlainValue),
+					Expression.Constant(propertySelector.PlainValue),
 					Expression.Convert(
 						aggregateExp,
 						typeof(object)));
@@ -91,7 +99,7 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 			return groupedQuery.Select(selectLambda);
 		}
 
-		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<T> query, List<PropertySelector> selectors)
+		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<T> query, List<string> selectors)
 		{
 
 			var paramExp = Expression.Parameter(typeof(T), "x");
@@ -114,11 +122,18 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 			var selectValueAddMethod = typeof(List<SelectValue>).GetMethod("Add")!;
 			var selectValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
 
+			List<PropertySelector<T>> propertySelectors = [];
+
 			foreach (var selector in selectors)
 			{
-				var selectorExp = ExpressionUtils.CreateMemberAccess(paramExp, selector);
+				propertySelectors.Add(selector);
+			}
+
+			foreach (var propertySelector in propertySelectors)
+			{
+				var selectorExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);
 				var selectValueNewExp = Expression.New(selectValueConstructor!,
-					Expression.Constant(selector.PlainValue),
+					Expression.Constant(propertySelector.PlainValue),
 					Expression.Convert(
 						selectorExp,
 						typeof(object)));
@@ -139,8 +154,17 @@ namespace ExpDataWorkerBeta.Feature.Aggregating
 			return query.Select(selectLambda);
 		}
 
-		public static IQueryable<TOut> ApplySelect<TIn, TOut>(this IQueryable<TIn> query, Mapper mapper)
+		public static IQueryable<TOut> ApplySelect<TIn, TOut>(this IQueryable<TIn> query, IMapper? mapper = null)
 		{
+			mapper ??= DataWorkerServices.GetServiceOrNull<IMapper>();
+
+			if (mapper is null)
+			{
+				throw new InvalidOperationException(
+					$"No {nameof(IMapper)} was provided and none has been configured for types {typeof(TIn).Name} and {typeof(TOut).Name}" +
+					$"Pass one explicitly or register it via AddDataWorker.");
+			}
+
 			return mapper.Map<TIn, TOut>(query);
 		}
 	}

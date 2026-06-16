@@ -1,8 +1,8 @@
 using System.Linq.Expressions;
 
-namespace ExpDataWorkerBeta.Feature.Mapping;
+namespace ExpDataWorkerBeta.Feature.Configuration.Mapping;
 
-public class Mapper
+public class Mapper : IMapper
 {
 	private readonly Dictionary<(Type In, Type Out), Expression> _compiledMappers = [];
 

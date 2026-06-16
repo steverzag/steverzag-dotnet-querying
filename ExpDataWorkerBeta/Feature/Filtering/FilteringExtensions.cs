@@ -1,4 +1,6 @@
 ﻿using ExpDataWorker.PropertySelectors;
+using ExpDataWorkerBeta.Feature.Configuration;
+using ExpDataWorkerBeta.Feature.Configuration.Filtering;
 using ExpDataWorkerBeta.Feature.Exceptions;
 using ExpDataWorkerBeta.Feature.Utils;
 using System.Collections;
@@ -599,6 +601,25 @@ namespace ExpDataWorkerBeta.Feature.Filtering
 			return containsMethodCall;
 		}
 
+		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, string? searchValue, IBaseSearchConfiguration? configuration = default)
+		{
+			configuration ??= DataWorkerServices.GetServiceOrNull<IBaseSearchConfiguration>();
+
+			if (configuration is null)
+			{
+				throw new InvalidOperationException(
+					$"No {nameof(IBaseSearchConfiguration)} was provided and none has been configured for type {typeof(T).Name}. " +
+					$"Pass one explicitly or register it via AddDataWorker.");
+			}
+
+			if (string.IsNullOrWhiteSpace(searchValue) || !configuration.TryGetSearchPredicate<T>(searchValue, out var predicate))
+			{
+				return query;
+			}
+
+			return query.Where(predicate!);
+		}
+
 		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue)
 		{
 			if (searchLookups is null)
@@ -610,6 +631,13 @@ namespace ExpDataWorkerBeta.Feature.Filtering
 				return query;
 			}
 
+			var lambda = CreateBaseSearchLambdaExpression<T>(searchLookups, searchValue);
+
+			return query.Where(lambda);
+		}
+
+		public static Expression<Func<T, bool>> CreateBaseSearchLambdaExpression<T>(IEnumerable<string>? searchLookups, string? searchValue)
+		{
 			var parameterExpressio = Expression.Parameter(typeof(T), "x");
 			var searchValueConstantExpression = Expression.Constant(searchValue, typeof(string));
 
@@ -629,9 +657,7 @@ namespace ExpDataWorkerBeta.Feature.Filtering
 				}
 			}
 
-			var lambda = Expression.Lambda<Func<T, bool>>(combinedExpression!, parameterExpressio);
-
-			return query.Where(lambda);
+			return Expression.Lambda<Func<T, bool>>(combinedExpression!, parameterExpressio);
 		}
 
 
