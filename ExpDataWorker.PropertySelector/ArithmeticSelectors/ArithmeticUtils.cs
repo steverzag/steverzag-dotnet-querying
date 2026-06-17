@@ -41,6 +41,25 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 				{ typeof(decimal), 7 }
 			};
 
+		private static Type GetWiderNumericType(Type a, Type b)
+		{
+			if (a == null || b == null)
+				throw new ArgumentNullException();
+
+			var aUnderlying = Nullable.GetUnderlyingType(a) ?? a;
+			var bUnderlying = Nullable.GetUnderlyingType(b) ?? b;
+
+
+			if (!_order.ContainsKey(aUnderlying) || !_order.ContainsKey(bUnderlying))
+				throw new ArgumentException("Both types must be numeric");
+
+			var wider = _order[aUnderlying] >= _order[bUnderlying] ? aUnderlying : bUnderlying;
+
+			if (Nullable.GetUnderlyingType(a) != null || Nullable.GetUnderlyingType(b) != null)
+				return typeof(Nullable<>).MakeGenericType(wider);
+
+			return wider;
+		}
 
 		public static Type GetWiderNumericType(params List<Type?> types)
 		{

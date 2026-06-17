@@ -16,6 +16,7 @@ namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors
 			_tokens = tokens;
 		}
 
+		//TODO: Non generic implementaion 
 		public PropertySelector<T> Parse<T>()
 		{
 			return ParseExpression<T>();
