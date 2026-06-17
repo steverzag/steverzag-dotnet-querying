@@ -5,6 +5,7 @@ using ExpDataWorker.PropertySelectors.Extensions;
 using ExpDataWorker.PropertySelectors.OrderingSelectors;
 using ExpDataWorker.PropertySelectors.ValueSelectors;
 using System.Linq.Expressions;
+using System.Text;
 
 namespace ExpDataWorker.PropertySelectors
 {
@@ -214,14 +215,31 @@ namespace ExpDataWorker.PropertySelectors
 			};
 		}
 
+		public override string ToString()
+		{
+			StringBuilder sb = new StringBuilder();
+
+			sb.Append(PlainValue);
+			var child = ChildSelector;
+
+			while (child != null)
+			{
+				sb.Append(SelectorDefaults.PropertyDelimiter);
+				sb.Append(child.PlainValue);
+				child = child.ChildSelector;
+			}
+
+			return sb.ToString();
+		}
+
 		public static implicit operator PropertySelector(string selector)
 		{
 			bool isArithmeticOperation = selector.IsArithmeticExpressionTopLevel();
 			if (isArithmeticOperation)
-			{ 
+			{
 				return PropertySelectorUtils.CreateArithmeticOperationSelector(selector);
 			}
-				var selectorParts = selector.SplitPropertySelectors();
+			var selectorParts = selector.SplitPropertySelectors();
 			PropertySelector result = null!;
 
 			foreach (var selectorPart in selectorParts)
