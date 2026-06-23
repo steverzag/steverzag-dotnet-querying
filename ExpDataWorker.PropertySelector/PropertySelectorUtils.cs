@@ -28,6 +28,7 @@ namespace ExpDataWorker.PropertySelectors
 			tokens = tokenizer.SanitizeNegations(tokens);
 
 			var parser = new ArithmeticOperationParser(tokens);
+			//TODO: Parse<object> breaks when type properties is pressent in the selector (ex: Person.Age).
 			var arithmeticOperationSelector = parser.Parse<object>();
 
 			return arithmeticOperationSelector;

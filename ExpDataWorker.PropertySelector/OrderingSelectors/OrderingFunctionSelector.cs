@@ -17,7 +17,7 @@ namespace ExpDataWorker.PropertySelectors.OrderingSelectors
 		{
 			var isEnumerable = ExpressionUtils.TryGetEnumerableElementType(typeof(T), out var elementType);
 			if (!isEnumerable || elementType is null)
-				throw new InvalidOperationException($"ElementFunctionSelectors can only be applied to enumerable types. RootType: {typeof(T)}");
+				throw new InvalidOperationException($"{nameof(OrderingFunctionSelector<T>)} can only be applied to enumerable types. RootType: {typeof(T)}");
 			return typeof(IOrderedQueryable<>).MakeGenericType(elementType);
 		}
 
