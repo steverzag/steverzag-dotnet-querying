@@ -1,7 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq.Expressions;
 using System.Reflection;
-using System.Runtime.ExceptionServices;
 
 namespace ExpDataWorker.PropertySelectors.Registration
 {
@@ -18,16 +18,38 @@ namespace ExpDataWorker.PropertySelectors.Registration
 	/// <see cref="SelectorDefaults.FunctionStart"/> — prefer a vendor-scoped name (e.g. <c>$FN_ACME_DISTANCE</c>)
 	/// to avoid collisions; duplicate tokens are rejected with an exception.
 	/// </para>
+	/// <para>
+	/// Reflection is paid once per selector/element-type combination: instantiation goes through
+	/// compiled constructor delegates cached per closed type, so repeated conversions do not
+	/// touch reflection at all.
+	/// </para>
 	/// </summary>
 	public static class SelectorRegistry
 	{
 		private static readonly ConcurrentDictionary<string, SelectorRegistration> Entries = new(StringComparer.Ordinal);
+
+		private static readonly ConcurrentDictionary<(Type OpenGenericType, Type ElementType), SelectorFactories> GenericFactoryCache = new();
+		private static readonly ConcurrentDictionary<Type, SelectorFactories> NonGenericFactoryCache = new();
 
 		private static readonly Lazy<bool> OwnAssemblyScan = new(() =>
 		{
 			RegisterAssembly(typeof(SelectorRegistry).Assembly);
 			return true;
 		}, LazyThreadSafetyMode.ExecutionAndPublication);
+
+		private sealed record SelectorFactories(
+			Func<PropertySelector>? CreateParameterless,
+			Func<List<PropertySelector>, PropertySelector>? CreateWithParameters);
+
+		/// <summary>
+		/// Forces the one-time scan of this assembly's selectors. Calling it is optional — the first
+		/// string conversion triggers the scan lazily — but applications sensitive to first-request
+		/// latency can invoke it during startup to pay the cost eagerly. Idempotent and thread-safe.
+		/// </summary>
+		public static void Initialize()
+		{
+			_ = OwnAssemblyScan.Value;
+		}
 
 		/// <summary>
 		/// Registers the selector type(s) handling <paramref name="token"/>. Either type may be null;
@@ -80,9 +102,11 @@ namespace ExpDataWorker.PropertySelectors.Registration
 			if (!TryGetEntry(selectorPart, out var entry, out var parameters) || entry.OpenGenericSelectorType is null)
 				return false;
 
-			selector = CreateSelector(selectorPart, parameters, () => parameters.Count > 0
-				? GenericPropertySelectorFactory.CreateGeneric(entry.OpenGenericSelectorType, currentIterationType, parameters)
-				: GenericPropertySelectorFactory.CreateGeneric(entry.OpenGenericSelectorType, currentIterationType));
+			var factories = GenericFactoryCache.GetOrAdd(
+				(entry.OpenGenericSelectorType, currentIterationType),
+				static key => BuildFactories(key.OpenGenericType.MakeGenericType(key.ElementType)));
+
+			selector = CreateSelector(selectorPart, parameters, factories);
 			return true;
 		}
 
@@ -92,34 +116,54 @@ namespace ExpDataWorker.PropertySelectors.Registration
 			if (!TryGetEntry(selectorPart, out var entry, out var parameters) || entry.NonGenericSelectorType is null)
 				return false;
 
-			selector = CreateSelector(selectorPart, parameters, () => parameters.Count > 0
-				? (PropertySelector)Activator.CreateInstance(entry.NonGenericSelectorType, parameters)!
-				: (PropertySelector)Activator.CreateInstance(entry.NonGenericSelectorType)!);
+			var factories = NonGenericFactoryCache.GetOrAdd(entry.NonGenericSelectorType, static type => BuildFactories(type));
+
+			selector = CreateSelector(selectorPart, parameters, factories);
 			return true;
 		}
 
-		private static PropertySelector CreateSelector(string selectorPart, List<PropertySelector> parameters, Func<PropertySelector> create)
+		private static SelectorFactories BuildFactories(Type closedSelectorType)
 		{
-			try
+			if (!closedSelectorType.IsAssignableTo(typeof(PropertySelector)))
+				throw new ArgumentException($"The provided type {closedSelectorType.FullName} is not a PropertySelector.");
+
+			Func<PropertySelector>? createParameterless = null;
+			var parameterlessConstructor = closedSelectorType.GetConstructor(Type.EmptyTypes);
+			if (parameterlessConstructor is not null)
 			{
-				return create();
+				createParameterless = Expression.Lambda<Func<PropertySelector>>(
+					Expression.New(parameterlessConstructor)).Compile();
 			}
-			catch (MissingMethodException)
+
+			Func<List<PropertySelector>, PropertySelector>? createWithParameters = null;
+			var parametersConstructor = closedSelectorType.GetConstructor([typeof(List<PropertySelector>)]);
+			if (parametersConstructor is not null)
 			{
-				// The selector type has no constructor for this parameter count (e.g. "$FN_AGGR_SUM(x)").
-				throw new NotSupportedException($"The function '{selectorPart}' is not supported with {parameters.Count} parameter(s).");
+				var parametersArgument = Expression.Parameter(typeof(List<PropertySelector>), "parameters");
+				createWithParameters = Expression.Lambda<Func<List<PropertySelector>, PropertySelector>>(
+					Expression.New(parametersConstructor, parametersArgument), parametersArgument).Compile();
 			}
-			catch (TargetInvocationException e) when (e.InnerException is not null)
+
+			return new SelectorFactories(createParameterless, createWithParameters);
+		}
+
+		private static PropertySelector CreateSelector(string selectorPart, List<PropertySelector> parameters, SelectorFactories factories)
+		{
+			if (parameters.Count > 0)
 			{
-				// Surface the constructor's own exception (e.g. overload-mismatch ArgumentException) instead of the reflection wrapper.
-				ExceptionDispatchInfo.Capture(e.InnerException).Throw();
-				throw;
+				return factories.CreateWithParameters is not null
+					? factories.CreateWithParameters(parameters)
+					: throw new NotSupportedException($"The function '{selectorPart}' is not supported with {parameters.Count} parameter(s).");
 			}
+
+			return factories.CreateParameterless is not null
+				? factories.CreateParameterless()
+				: throw new NotSupportedException($"The function '{selectorPart}' is not supported without parameters.");
 		}
 
 		private static bool TryGetEntry(string selectorPart, [NotNullWhen(true)] out SelectorRegistration? entry, out List<PropertySelector> parameters)
 		{
-			_ = OwnAssemblyScan.Value;
+			Initialize();
 
 			var parenthesesIndex = selectorPart.IndexOf('(');
 			var name = parenthesesIndex < 0 ? selectorPart : selectorPart[..parenthesesIndex];

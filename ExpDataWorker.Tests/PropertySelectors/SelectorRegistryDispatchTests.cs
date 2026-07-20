@@ -1,4 +1,6 @@
+using ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 using ExpDataWorker.PropertySelectors.OrderingSelectors;
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors;
 
 namespace ExpDataWorker.Tests.PropertySelectors;
@@ -145,5 +147,51 @@ public class SelectorRegistryDispatchTests
 
         // Act & Assert
         Assert.Throws<NotSupportedException>(() => (PropertySelector)(SelectorDefaults.SumAggregateFunction + "(Id)"));
+    }
+
+    [Fact]
+    public void Initialize_IsIdempotent_AndResolutionWorksAfterwards()
+    {
+        // Act
+        SelectorRegistry.Initialize();
+        SelectorRegistry.Initialize();
+        PropertySelector selector = SelectorDefaults.OrderAscending;
+
+        // Assert
+        Assert.IsType<OrderByAscendingSelector>(selector);
+    }
+
+    [Fact]
+    public void ImplicitOperator_RepeatedConversions_ProduceIndependentInstances()
+    {
+        // Two conversions of the same string must not share state (factories are cached, instances are not).
+
+        // Act
+        PropertySelector first = SelectorDefaults.OrderAscending + "(Id)";
+        PropertySelector second = SelectorDefaults.OrderAscending + "(Id)";
+
+        // Assert
+        Assert.NotSame(first, second);
+    }
+
+    [Fact]
+    public void GenericImplicitOperator_TopLevelArithmeticExpression_CreatesArithmeticOperationSelector()
+    {
+        // Act
+        PropertySelector<TestItem> selector = "Id * 2";
+
+        // Assert
+        Assert.IsType<ArithmeticOperationSelector<TestItem>>(selector);
+    }
+
+    [Fact]
+    public void ImplicitOperator_OperatorInsideParentheses_IsNotTreatedAsTopLevelArithmetic()
+    {
+        // Act
+        PropertySelector selector = SelectorDefaults.MathPower + "(2+1, 3)";
+
+        // Assert
+        Assert.StartsWith(SelectorDefaults.MathPower, selector.PlainValue);
+        Assert.Equal(typeof(double), selector.SelectorType);
     }
 }

@@ -1,57 +1,35 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Buffers;
 
 namespace ExpDataWorker.PropertySelectors.Extensions
 {
+	/// <summary>
+	/// Result of a single scan over a selector string: whether it is a top-level arithmetic
+	/// expression and, when it is not, its parts split on the top-level property delimiter.
+	/// </summary>
+	internal readonly record struct SelectorExpressionAnalysis(bool IsTopLevelArithmetic, List<string> Parts);
+
 	internal static class PropertySelectorExtensionsInternal
 	{
+		private static readonly SearchValues<char> ArithmeticOperatorChars = SearchValues.Create("+-*/");
 
-		internal static List<string> SplitPropertySelectors(this string expression)
+		/// <summary>
+		/// Classifies <paramref name="expression"/> in a single pass: detects an arithmetic
+		/// operator outside parentheses and, when none is found, splits the expression on
+		/// top-level <see cref="SelectorDefaults.PropertyDelimiter"/> occurrences.
+		/// </summary>
+		internal static SelectorExpressionAnalysis AnalyzePropertySelector(this string expression)
 		{
-			var propertySelectors = new List<string>();
+			if (expression.Length == 0)
+				return new SelectorExpressionAnalysis(false, []);
+
+			// Vectorized pre-check: without any operator character the expression cannot be
+			// arithmetic, so the per-character operator test below is skipped entirely.
+			var mayBeArithmetic = expression.AsSpan().ContainsAny(ArithmeticOperatorChars);
+
+			var parts = new List<string>();
 			var parenthesesDepth = 0;
-			var propertySelectorStartIndex = 0;
+			var partStartIndex = 0;
 			var selectorDelimiter = SelectorDefaults.PropertyDelimiter[0];
-
-			for (int i = 0; i < expression.Length; i++)
-			{
-				if (i == expression.Length - 1)
-				{
-					var propertySelector = expression[propertySelectorStartIndex..].Trim();
-					propertySelectors.Add(propertySelector);
-				}
-				if (expression[i] == '(')
-				{
-					parenthesesDepth++;
-					continue;
-				}
-				else if (expression[i] == ')')
-				{
-					parenthesesDepth--;
-					continue;
-				}
-				else if (parenthesesDepth > 0)
-					continue;
-				else if (expression[i] == selectorDelimiter)
-				{
-					var propertySelector = expression[propertySelectorStartIndex..i].Trim();
-					propertySelectors.Add(propertySelector);
-					propertySelectorStartIndex = i + 1;
-				}
-			}
-
-			return propertySelectors;
-		}
-
-		internal static bool IsArithmeticExpressionTopLevel(this string expression)
-		{
-			if (string.IsNullOrWhiteSpace(expression))
-				return false;
-
-			int depth = 0;
 
 			for (int i = 0; i < expression.Length; i++)
 			{
@@ -59,23 +37,30 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 
 				if (c == '(')
 				{
-					depth++;
+					parenthesesDepth++;
 					continue;
 				}
-
 				if (c == ')')
 				{
-					depth--;
+					parenthesesDepth--;
 					continue;
 				}
+				if (parenthesesDepth > 0)
+					continue;
 
-				if (depth == 0 && (c == '+' || c == '-' || c == '*' || c == '/'))
+				if (mayBeArithmetic && parenthesesDepth == 0 && (c is '+' or '-' or '*' or '/'))
+					return new SelectorExpressionAnalysis(true, []);
+
+				if (c == selectorDelimiter)
 				{
-					return true;
+					parts.Add(expression[partStartIndex..i].Trim());
+					partStartIndex = i + 1;
 				}
 			}
 
-			return false;
+			parts.Add(expression[partStartIndex..].Trim());
+
+			return new SelectorExpressionAnalysis(false, parts);
 		}
 	}
 }

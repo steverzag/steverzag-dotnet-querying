@@ -27,13 +27,13 @@ namespace ExpDataWorker.PropertySelectors
 
 		public static implicit operator PropertySelector<T>(string selector)
 		{
-			bool isArithmeticOperation = selector.IsArithmeticExpressionTopLevel();
-			if (isArithmeticOperation)
+			var analysis = selector.AnalyzePropertySelector();
+			if (analysis.IsTopLevelArithmetic)
 			{
 				return PropertySelectorUtils.CreateArithmeticOperationSelector<T>(selector);
 			}
 
-			var selectorParts = selector.SplitPropertySelectors();
+			var selectorParts = analysis.Parts;
 			PropertySelector<T> result = null!;
 			Type currentIterationType = typeof(T);
 
@@ -154,12 +154,12 @@ namespace ExpDataWorker.PropertySelectors
 
 		public static implicit operator PropertySelector(string selector)
 		{
-			bool isArithmeticOperation = selector.IsArithmeticExpressionTopLevel();
-			if (isArithmeticOperation)
+			var analysis = selector.AnalyzePropertySelector();
+			if (analysis.IsTopLevelArithmetic)
 			{
 				return PropertySelectorUtils.CreateArithmeticOperationSelector(selector);
 			}
-			var selectorParts = selector.SplitPropertySelectors();
+			var selectorParts = analysis.Parts;
 			PropertySelector result = null!;
 
 			foreach (var selectorPart in selectorParts)
