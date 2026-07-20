@@ -1,4 +1,5 @@
-﻿using System;
+using ExpDataWorker.PropertySelectors.Registration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
+	[SelectorToken(SelectorDefaults.SumAggregateFunction)]
 	public record SumAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
 	{
 		public SumAggregationSelector() : base(SelectorDefaults.SumAggregateFunction)
@@ -23,6 +25,7 @@ namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 		}
 	}
 
+	[SelectorToken(SelectorDefaults.SumAggregateFunction)]
 	public record SumAggregationSelector : FunctionPropertySelector
 	{
 		public SumAggregationSelector() : base(SelectorDefaults.SumAggregateFunction)

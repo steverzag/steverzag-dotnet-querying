@@ -1,7 +1,9 @@
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+[SelectorToken(SelectorDefaults.MathRound)]
 internal record MathRoundSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;
@@ -26,6 +28,7 @@ internal record MathRoundSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
+[SelectorToken(SelectorDefaults.MathRound)]
 internal record MathRoundSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;

@@ -1,7 +1,9 @@
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+[SelectorToken(SelectorDefaults.MathLog10)]
 internal record MathLog10Selector<T> : FunctionPropertySelector<T>
 {
 	public override Type SelectorType => typeof(double);
@@ -20,6 +22,7 @@ internal record MathLog10Selector<T> : FunctionPropertySelector<T>
 }
 
 
+[SelectorToken(SelectorDefaults.MathLog10)]
 internal record MathLog10Selector : FunctionPropertySelector
 {
 	public override Type SelectorType => typeof(double);

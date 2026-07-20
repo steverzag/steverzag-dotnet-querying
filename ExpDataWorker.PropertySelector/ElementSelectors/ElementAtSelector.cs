@@ -1,6 +1,8 @@
-﻿
+using ExpDataWorker.PropertySelectors.Registration;
+
 namespace ExpDataWorker.PropertySelectors.ElementSelectors
 {
+	[SelectorToken(SelectorDefaults.ElementAtIndex)]
 	public record ElementAtSelector<T> : FunctionPropertySelector<T>
 	{
 
@@ -29,6 +31,7 @@ namespace ExpDataWorker.PropertySelectors.ElementSelectors
 		}
 	}
 
+	[SelectorToken(SelectorDefaults.ElementAtIndex)]
 	public record ElementAtSelector : FunctionPropertySelector
 	{
 		public ElementAtSelector() : base(SelectorDefaults.ElementAtIndex)

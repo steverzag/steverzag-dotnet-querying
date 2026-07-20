@@ -1,4 +1,5 @@
-﻿using System;
+using ExpDataWorker.PropertySelectors.Registration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
+	[SelectorToken(SelectorDefaults.MaxAggregateFunction)]
 	internal record MaxAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
 	{
 		public MaxAggregationSelector() : base(SelectorDefaults.MaxAggregateFunction)
@@ -23,6 +25,7 @@ namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 			return ((IEnumerableFunctionSelector<T>)this).ValidateAndGetEnumerableType(nameof(MaxAggregationSelector));
 		}
 	}
+	[SelectorToken(SelectorDefaults.MaxAggregateFunction)]
 	public record MaxAggregationSelector : FunctionPropertySelector
 	{
 		public MaxAggregationSelector() : base(SelectorDefaults.MaxAggregateFunction)

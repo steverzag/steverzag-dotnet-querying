@@ -1,4 +1,5 @@
-﻿using System;
+using ExpDataWorker.PropertySelectors.Registration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,6 +8,7 @@ using System.Threading.Tasks;
 namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
 
+	[SelectorToken(SelectorDefaults.CountAggregateFunction)]
 	public record CountAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
 	{
 		public override Type? SelectorType => typeof(int);
@@ -24,6 +26,7 @@ namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 		}
 	}
 
+	[SelectorToken(SelectorDefaults.CountAggregateFunction)]
 	public record CountAggregationSelector : FunctionPropertySelector
 	{
 		public override Type? SelectorType => typeof(int);

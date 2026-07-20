@@ -1,7 +1,9 @@
 ﻿using ExpDataWorker.PropertySelectors.OrderingSelectors;
+using ExpDataWorker.PropertySelectors.Registration;
 
 namespace ExpDataWorker.PropertySelectors.OrderingSelectors
 {
+	[SelectorToken(SelectorDefaults.OrderDescending)]
 	public record OrderByDescendingSelector<T> : OrderingFunctionSelector<T>
 	{
 		public OrderByDescendingSelector() : base(SelectorDefaults.OrderDescending)
@@ -31,6 +33,7 @@ namespace ExpDataWorker.PropertySelectors.OrderingSelectors
 			}
 		}
 	}
+	[SelectorToken(SelectorDefaults.OrderDescending)]
 	public record OrderByDescendingSelector : FunctionPropertySelector
 	{
 		public OrderByDescendingSelector() : base(SelectorDefaults.OrderDescending)

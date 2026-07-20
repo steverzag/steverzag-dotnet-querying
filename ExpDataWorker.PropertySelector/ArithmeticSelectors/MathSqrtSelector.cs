@@ -1,7 +1,9 @@
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+[SelectorToken(SelectorDefaults.MathSqrt)]
 internal record MathSqrtSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type SelectorType => typeof(double);
@@ -19,6 +21,7 @@ internal record MathSqrtSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
+[SelectorToken(SelectorDefaults.MathSqrt)]
 internal record MathSqrtSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(double);
@@ -30,7 +33,7 @@ internal record MathSqrtSelector : FunctionPropertySelector
 		if (Parameters.Count == 1)
 		{
 			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
+			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
 				target => target.CreateUnaryMathFunction(MethodInfos.MathSqrtMethodInfo, Parameters[0]));
 			Overloads.Add(selectorOverload);
 		}

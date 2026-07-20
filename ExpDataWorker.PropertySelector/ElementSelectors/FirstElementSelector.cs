@@ -1,4 +1,5 @@
-﻿using System;
+using ExpDataWorker.PropertySelectors.Registration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelectors.ElementSelectors
 {
+	[SelectorToken(SelectorDefaults.ElementFirst)]
 	public record FirstElementSelector <T>: ElementFunctionSelector<T>
 	{
 		public FirstElementSelector() : base(SelectorDefaults.ElementFirst)
@@ -19,6 +21,7 @@ namespace ExpDataWorker.PropertySelectors.ElementSelectors
 			Overloads.Add(emptyFunctionParameters);
 		}
 	}
+	[SelectorToken(SelectorDefaults.ElementFirst)]
 	public record FirstElementSelector : FunctionPropertySelector
 	{
 		public FirstElementSelector() : base(SelectorDefaults.ElementFirst)

@@ -1,8 +1,10 @@
+using ExpDataWorker.PropertySelectors.Registration;
 
 using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+[SelectorToken(SelectorDefaults.MathMax)]
 internal record MathMaxSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => ArithmeticUtils.GetWiderNumericType([.. Parameters.Select(p => p.SelectorType)]);
@@ -20,6 +22,7 @@ internal record MathMaxSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
+[SelectorToken(SelectorDefaults.MathMax)]
 internal record MathMaxSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => ArithmeticUtils.GetWiderNumericType([.. Parameters.Select(p => p.SelectorType)]);

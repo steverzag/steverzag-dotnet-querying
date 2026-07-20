@@ -1,7 +1,9 @@
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+[SelectorToken(SelectorDefaults.MathTruncate)]
 internal record MathTruncateSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;
@@ -19,6 +21,7 @@ internal record MathTruncateSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
+[SelectorToken(SelectorDefaults.MathTruncate)]
 internal record MathTruncateSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;

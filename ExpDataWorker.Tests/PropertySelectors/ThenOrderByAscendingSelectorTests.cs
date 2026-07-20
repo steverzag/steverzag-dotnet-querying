@@ -25,7 +25,7 @@ public class ThenOrderByAscendingSelectorTests
         var selector = new ThenOrderByAscendingSelector();
 
         // Assert
-        Assert.StartsWith(SelectorDefaults.OrderAscending, selector.PlainValue);
+        Assert.StartsWith(SelectorDefaults.ThenOrderByAscending, selector.PlainValue);
         Assert.Contains("()", selector.PlainValue);
     }
 
@@ -57,7 +57,7 @@ public class ThenOrderByAscendingSelectorTests
         var selector = new ThenOrderByAscendingSelector(parameters);
 
         // Assert
-        Assert.StartsWith(SelectorDefaults.OrderAscending, selector.PlainValue);
+        Assert.StartsWith(SelectorDefaults.ThenOrderByAscending, selector.PlainValue);
         Assert.Contains("(Name)", selector.PlainValue);
     }
 

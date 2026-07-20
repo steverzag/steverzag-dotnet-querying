@@ -1,13 +1,15 @@
-﻿using ExpDataWorker.PropertySelectors.OrderingSelectors;
+using ExpDataWorker.PropertySelectors.Registration;
+using ExpDataWorker.PropertySelectors.OrderingSelectors;
 
 namespace ExpDataWorker.PropertySelectors.OrderingSelectors
 {
+	[SelectorToken(SelectorDefaults.ThenOrderByDescending)]
 	public record ThenOrderByDescendingSelector<T> : OrderingFunctionSelector<T>
 	{
-		public ThenOrderByDescendingSelector() : base(SelectorDefaults.OrderDescending)
+		public ThenOrderByDescendingSelector() : base(SelectorDefaults.ThenOrderByDescending)
 		{
 		}
-		public ThenOrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderDescending, parameters)
+		public ThenOrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ThenOrderByDescending, parameters)
 		{
 		}
 		public override void InitializeOverloads()
@@ -31,13 +33,14 @@ namespace ExpDataWorker.PropertySelectors.OrderingSelectors
 			}
 		}
 	}
+	[SelectorToken(SelectorDefaults.ThenOrderByDescending)]
 	public record ThenOrderByDescendingSelector : FunctionPropertySelector
 	{
-		public ThenOrderByDescendingSelector() : base(SelectorDefaults.OrderDescending)
+		public ThenOrderByDescendingSelector() : base(SelectorDefaults.ThenOrderByDescending)
 		{
 		}
 
-		public ThenOrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderDescending, parameters)
+		public ThenOrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ThenOrderByDescending, parameters)
 		{
 		}
 

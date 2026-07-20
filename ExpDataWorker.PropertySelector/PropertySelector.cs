@@ -1,8 +1,5 @@
-﻿using ExpDataWorker.PropertySelectors.AggregationSelectors;
-using ExpDataWorker.PropertySelectors.ArithmeticSelectors;
-using ExpDataWorker.PropertySelectors.ElementSelectors;
 using ExpDataWorker.PropertySelectors.Extensions;
-using ExpDataWorker.PropertySelectors.OrderingSelectors;
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors.ValueSelectors;
 using System.Linq.Expressions;
 using System.Text;
@@ -49,86 +46,9 @@ namespace ExpDataWorker.PropertySelectors
 
 				if (isFunctionPart)
 				{
-					propertySelector = selectorPart switch
-					{
-						//Aggregation selectors
-						SelectorDefaults.CountAggregateFunction or SelectorDefaults.CountAggregateFunction + "()" =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(CountAggregationSelector<>), currentIterationType),
-						SelectorDefaults.LongCountAggregateFunction or SelectorDefaults.LongCountAggregateFunction + "()" =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(LongCountAggregationSelector<>), currentIterationType),
-						SelectorDefaults.SumAggregateFunction or SelectorDefaults.SumAggregateFunction + "()" =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(SumAggregationSelector<>), currentIterationType),
-						SelectorDefaults.AvgAggregateFunction or SelectorDefaults.AvgAggregateFunction + "()" =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(AvgAggregationSelector<>), currentIterationType),
-						SelectorDefaults.MinAggregateFunction or SelectorDefaults.MinAggregateFunction + "()" =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MinAggregationSelector<>), currentIterationType),
-						SelectorDefaults.MaxAggregateFunction or SelectorDefaults.MaxAggregateFunction + "()" =>
-							 GenericPropertySelectorFactory.CreateGeneric(typeof(MaxAggregationSelector<>), currentIterationType),
-
-						//Oodering selectors
-						SelectorDefaults.OrderAscending => GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByAscendingSelector<>), currentIterationType),
-						SelectorDefaults.OrderDescending => GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByDescendingSelector<>), currentIterationType),
-						SelectorDefaults.ThenOrderByAscending => GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByAscendingSelector<>), currentIterationType),
-						SelectorDefaults.ThenOrderByDescending => GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByDescendingSelector<>), currentIterationType),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByAscendingSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(OrderByDescendingSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-						GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByAscendingSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(ThenOrderByDescendingSelector<>), currentIterationType, parameters),
-
-						//Element selectors
-						SelectorDefaults.ElementFirst => GenericPropertySelectorFactory.CreateGeneric(typeof(FirstElementSelector<>), currentIterationType),
-						SelectorDefaults.ElementLast => GenericPropertySelectorFactory.CreateGeneric(typeof(LastElementSelector<>), currentIterationType),
-						//_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-						//	new LastElementSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(ElementAtSelector<>), currentIterationType, parameters),
-
-						//Arithmetic selectors
-						_ when selectorPart.StartsWith(SelectorDefaults.MathPower) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathPowSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathCeiling) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathCeilingSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathFloor) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathFloorSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathRound) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathRoundSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathTruncate) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathTruncateSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSign) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathSignSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSqrt) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathSqrtSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathExp) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathExpSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathLog) && !selectorPart.StartsWith(SelectorDefaults.MathLog10) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathLogSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathLog10) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathLog10Selector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathSinSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathCos) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathCosSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathTan) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathTanSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAsin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathAsinSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAcos) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathAcosSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan2) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathAtan2Selector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathAtanSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathMax) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathMaxSelector<>), currentIterationType, parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathMin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							GenericPropertySelectorFactory.CreateGeneric(typeof(MathMinSelector<>), currentIterationType, parameters),
-
-						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")
-					};
+					propertySelector = SelectorRegistry.TryResolveGeneric(selectorPart, currentIterationType, out var registeredSelector)
+						? registeredSelector
+						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
 				}
 				else if (int.TryParse(selectorPart, out int intValue))
 				{
@@ -251,79 +171,9 @@ namespace ExpDataWorker.PropertySelectors
 
 				if (isFunctionPart)
 				{
-					propertySelector = selectorPart switch
-					{
-						//Aggregation selectors
-						SelectorDefaults.CountAggregateFunction or SelectorDefaults.CountAggregateFunction + "()" => new CountAggregationSelector(),
-						SelectorDefaults.LongCountAggregateFunction or SelectorDefaults.LongCountAggregateFunction + "()" => new LongCountAggregationSelector(),
-						SelectorDefaults.SumAggregateFunction or SelectorDefaults.SumAggregateFunction + "()" => new SumAggregationSelector(),
-						SelectorDefaults.AvgAggregateFunction or SelectorDefaults.AvgAggregateFunction + "()" => new AvgAggregationSelector(),
-						SelectorDefaults.MinAggregateFunction or SelectorDefaults.MinAggregateFunction + "()" => new MinAggregationSelector(),
-						SelectorDefaults.MaxAggregateFunction or SelectorDefaults.MaxAggregateFunction + "()" => new MaxAggregationSelector(),
-
-						//Ordering selectors
-						SelectorDefaults.OrderAscending or SelectorDefaults.OrderAscending + "()" => new OrderByAscendingSelector(),
-						SelectorDefaults.OrderDescending or SelectorDefaults.OrderDescending + "()" => new OrderByDescendingSelector(),
-						SelectorDefaults.ThenOrderByAscending or SelectorDefaults.ThenOrderByAscending + "()" => new ThenOrderByAscendingSelector(),
-						SelectorDefaults.ThenOrderByDescending or SelectorDefaults.ThenOrderByDescending + "()" => new ThenOrderByDescendingSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new OrderByAscendingSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.OrderDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new OrderByDescendingSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByAscending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new ThenOrderByAscendingSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ThenOrderByDescending) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new ThenOrderByDescendingSelector(parameters),
-
-						//Element selectors
-						SelectorDefaults.ElementFirst => new FirstElementSelector(),
-						SelectorDefaults.ElementLast => new LastElementSelector(),
-						_ when selectorPart.StartsWith(SelectorDefaults.ElementLast) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new LastElementSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.ElementAtIndex) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new ElementAtSelector(parameters),
-
-						_ when selectorPart.StartsWith(SelectorDefaults.MathPower) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathPowSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathCeiling) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathCeilingSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathFloor) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathFloorSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathRound) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathRoundSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathTruncate) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathTruncateSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSign) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathSignSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSqrt) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathSqrtSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathExp) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathExpSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathLog) && !selectorPart.StartsWith(SelectorDefaults.MathLog10) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathLogSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathLog10) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathLog10Selector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathSin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathSinSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathCos) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathCosSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathTan) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathTanSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAsin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathAsinSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAcos) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathAcosSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan2) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathAtan2Selector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathAtan) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathAtanSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathMax) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathMaxSelector(parameters),
-						_ when selectorPart.StartsWith(SelectorDefaults.MathMin) && PropertySelectorUtils.TryGetParameters(selectorPart, out List<PropertySelector> parameters) =>
-							new MathMinSelector(parameters),
-
-						_ => throw new NotSupportedException($"The function '{selectorPart}' is not supported.")
-					};
+					propertySelector = SelectorRegistry.TryResolveNonGeneric(selectorPart, out var registeredSelector)
+						? registeredSelector
+						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
 				}
 				else if (isSpecifierPart)
 				{

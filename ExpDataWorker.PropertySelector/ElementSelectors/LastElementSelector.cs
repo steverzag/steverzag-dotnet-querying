@@ -1,6 +1,9 @@
-﻿namespace ExpDataWorker.PropertySelectors.ElementSelectors
+using ExpDataWorker.PropertySelectors.Registration;
+
+namespace ExpDataWorker.PropertySelectors.ElementSelectors
 {
 
+	[SelectorToken(SelectorDefaults.ElementLast)]
 	public record LastElementSelector<T> : ElementFunctionSelector<T>
 	{
 		public LastElementSelector() : base(SelectorDefaults.ElementLast)
@@ -19,6 +22,7 @@
 		}
 	}
 
+	[SelectorToken(SelectorDefaults.ElementLast)]
 	public record LastElementSelector : FunctionPropertySelector
 	{
 		public LastElementSelector() : base(SelectorDefaults.ElementLast)

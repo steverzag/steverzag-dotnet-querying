@@ -1,5 +1,8 @@
-﻿namespace ExpDataWorker.PropertySelectors.AggregationSelectors
+using ExpDataWorker.PropertySelectors.Registration;
+
+namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
+	[SelectorToken(SelectorDefaults.AvgAggregateFunction)]
 	public record AvgAggregationSelector<T> : FunctionPropertySelector<T>
 	{
 		public override Type? SelectorType => typeof(double);//TODO: when enumerable is of decimal/float type. should be retrned decimal/float?
@@ -14,6 +17,7 @@
 			Overloads.Add(emptyFunctionParameters);
 		}
 	}
+	[SelectorToken(SelectorDefaults.AvgAggregateFunction)]
 	public record AvgAggregationSelector : FunctionPropertySelector
 	{
 		public override Type? SelectorType => typeof(double);

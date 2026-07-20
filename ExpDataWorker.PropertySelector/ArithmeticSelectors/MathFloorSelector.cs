@@ -1,7 +1,9 @@
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+[SelectorToken(SelectorDefaults.MathFloor)]
 internal record MathFloorSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;
@@ -19,6 +21,7 @@ internal record MathFloorSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
+[SelectorToken(SelectorDefaults.MathFloor)]
 internal record MathFloorSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;

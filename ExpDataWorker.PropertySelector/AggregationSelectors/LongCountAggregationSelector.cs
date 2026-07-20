@@ -1,4 +1,5 @@
-﻿using System;
+using ExpDataWorker.PropertySelectors.Registration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,10 +8,11 @@ using System.Threading.Tasks;
 namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
 
+	[SelectorToken(SelectorDefaults.LongCountAggregateFunction)]
 	public record LongCountAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
 	{
 		public override Type? SelectorType => typeof(long);
-		public LongCountAggregationSelector() : base(SelectorDefaults.CountAggregateFunction)
+		public LongCountAggregationSelector() : base(SelectorDefaults.LongCountAggregateFunction)
 		{
 			((IEnumerableFunctionSelector<T>)this).ValidateEnumerable(nameof(LongCountAggregationSelector));
 		}
@@ -22,10 +24,11 @@ namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 		}
 	}
 
+	[SelectorToken(SelectorDefaults.LongCountAggregateFunction)]
 	public record LongCountAggregationSelector : FunctionPropertySelector
 	{
 		public override Type? SelectorType => typeof(long);
-		public LongCountAggregationSelector() : base(SelectorDefaults.CountAggregateFunction)
+		public LongCountAggregationSelector() : base(SelectorDefaults.LongCountAggregateFunction)
 		{
 		}
 

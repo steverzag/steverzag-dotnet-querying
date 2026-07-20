@@ -1,4 +1,5 @@
-﻿using System;
+using ExpDataWorker.PropertySelectors.Registration;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +7,7 @@ using System.Threading.Tasks;
 
 namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 {
+	[SelectorToken(SelectorDefaults.MinAggregateFunction)]
 	public record MinAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
 	{
 		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)
@@ -24,6 +26,7 @@ namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 		}
 	}
 
+	[SelectorToken(SelectorDefaults.MinAggregateFunction)]
 	public record MinAggregationSelector : FunctionPropertySelector
 	{
 		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)

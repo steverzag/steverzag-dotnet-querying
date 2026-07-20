@@ -1,7 +1,9 @@
+using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors.SelectorImplementations;
 
 namespace ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 
+[SelectorToken(SelectorDefaults.MathSign)]
 internal record MathSignSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(int);
@@ -19,6 +21,7 @@ internal record MathSignSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
+[SelectorToken(SelectorDefaults.MathSign)]
 internal record MathSignSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(int);
