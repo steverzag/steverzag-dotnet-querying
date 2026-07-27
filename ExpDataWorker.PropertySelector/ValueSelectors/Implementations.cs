@@ -22,5 +22,29 @@ namespace ExpDataWorker.PropertySelectors.ValueSelectors
 			var constantExpression = Expression.Constant(value);
 			return constantExpression;
 		}
+
+		internal static Expression CreateStringConstantAccesor(string value)
+		{
+			var constantExpression = Expression.Constant(value, typeof(string));
+			return constantExpression;
+		}
+
+		internal static Expression CreateDateTimeConstantAccesor(DateTime value)
+		{
+			var constantExpression = Expression.Constant(value);
+			return constantExpression;
+		}
+
+		internal static Expression CreateDateOnlyConstantAccesor(DateOnly value)
+		{
+			var constantExpression = Expression.Constant(value);
+			return constantExpression;
+		}
+
+		internal static Expression CreateTimeOnlyConstantAccesor(TimeOnly value)
+		{
+			var constantExpression = Expression.Constant(value);
+			return constantExpression;
+		}
 	}
 }

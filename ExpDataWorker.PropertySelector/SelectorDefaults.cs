@@ -69,9 +69,25 @@ namespace ExpDataWorker.PropertySelectors
 		public const string StringCompare = FunctionStart + "STR_COMPARE";
 		public const string StringIsNullOrEmpty = FunctionStart + "STR_ISNULLOREMPTY";
 		public const string StringIsNullOrWhiteSpace = FunctionStart + "STR_ISNULLORWHITESPACE";
+
+		public const string DateAddYears = FunctionStart + "DT_ADDYEARS";
+		public const string DateAddMonths = FunctionStart + "DT_ADDMONTHS";
+		public const string DateAddDays = FunctionStart + "DT_ADDDAYS";
+		public const string DateAddHours = FunctionStart + "DT_ADDHOURS";
+		public const string DateAddMinutes = FunctionStart + "DT_ADDMINUTES";
+		public const string DateAddSeconds = FunctionStart + "DT_ADDSECONDS";
+		public const string DateAddMilliseconds = FunctionStart + "DT_ADDMILLISECONDS";
+		public const string DateNow = FunctionStart + "DT_NOW";
+		public const string DateUtcNow = FunctionStart + "DT_UTCNOW";
+		public const string DateToday = FunctionStart + "DT_TODAY";
+
 		public const string IntegerValueSpecifier = ValueStart + "INT";
 		public const string DoubleValueSpecifier = ValueStart + "DOUBLE";
 		public const string BooleanValueSpecifier = ValueStart + "BOOL";
+		public const string StringValueSpecifier = ValueStart + "STR";
+		public const string DateTimeValueSpecifier = ValueStart + "DATETIME";
+		public const string DateOnlyValueSpecifier = ValueStart + "DATE";
+		public const string TimeOnlyValueSpecifier = ValueStart + "TIME";
 
 		public const string ArithmeticOperation = ArithmeticStart + "OPERATION";
 		public const string ArithmeticOperationEncloser = "::";
