@@ -22,6 +22,11 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 			if (expression.Length == 0)
 				return new SelectorExpressionAnalysis(false, []);
 
+			// Value literals ($VAL_*) are opaque: their payload may contain arithmetic or
+			// delimiter characters (e.g. dates like 2024-01-15), so they are never analyzed.
+			if (expression.StartsWith(SelectorDefaults.ValueStart, StringComparison.Ordinal))
+				return new SelectorExpressionAnalysis(false, [expression.Trim()]);
+
 			// Vectorized pre-check: without any operator character the expression cannot be
 			// arithmetic, so the per-character operator test below is skipped entirely.
 			var mayBeArithmetic = expression.AsSpan().ContainsAny(ArithmeticOperatorChars);

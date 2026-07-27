@@ -50,17 +50,9 @@ namespace ExpDataWorker.PropertySelectors
 						? registeredSelector
 						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
 				}
-				else if (int.TryParse(selectorPart, out int intValue))
+				else if (ValueSelectorFactory.TryCreate<T>(selectorPart, out var valueSelector))
 				{
-					propertySelector = new IntegerValueSelector<T>(intValue);
-				}
-				else if (double.TryParse(selectorPart, out double doubleValue))
-				{
-					propertySelector = new DoubleValueSelector<T>(doubleValue);
-				}
-				else if (bool.TryParse(selectorPart, out bool boolValue))
-				{
-					propertySelector = new BooleanValueSelector<T>(boolValue);
+					propertySelector = valueSelector;
 				}
 				else
 				{
@@ -183,17 +175,9 @@ namespace ExpDataWorker.PropertySelectors
 						_ => throw new NotSupportedException($"The specifier '{selectorPart}' is not supported.")
 					};
 				}
-				else if (int.TryParse(selectorPart, out int intValue))
+				else if (ValueSelectorFactory.TryCreate(selectorPart, out var valueSelector))
 				{
-					propertySelector = new IntegerValueSelector(intValue);
-				}
-				else if (double.TryParse(selectorPart, out double doubleValue))
-				{
-					propertySelector = new DoubleValueSelector(doubleValue);
-				}
-				else if (bool.TryParse(selectorPart, out bool boolValue))
-				{
-					propertySelector = new BooleanValueSelector(boolValue);
+					propertySelector = valueSelector;
 				}
 				else
 				{

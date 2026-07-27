@@ -50,43 +50,35 @@ namespace ExpDataWorker.PropertySelectors
 				endingParenthesesIndex - startingParenthesesIndex - 1);
 
 			var nestedParenthesesCount = 0;
-			var lastParameterEndIndex = 0;
+			var parameterStartIndex = 0;
 			for (var i = 0; i < innerParameters.Length; i++)
 			{
 				var ch = innerParameters[i];
 				if (ch == '(')
 				{
 					nestedParenthesesCount++;
-					continue;
 				}
 				else if (ch == ')')
 				{
 					nestedParenthesesCount--;
-					continue;
 				}
 				else if (nestedParenthesesCount == 0 && ch == ',')
 				{
-					var startIndex = lastParameterEndIndex is 0
-						? 0
-						: lastParameterEndIndex + 1;
+					var parameter = innerParameters[parameterStartIndex..i].Trim();
+					if (!string.IsNullOrEmpty(parameter))
+					{
+						var propertySelector = (PropertySelector)parameter;
+						result.Add(propertySelector);
+					}
+					parameterStartIndex = i + 1;
+				}
+			}
 
-					var parameter = innerParameters.Substring(startIndex, i - startIndex).Trim();
-					if (!string.IsNullOrEmpty(parameter))
-					{
-						var propertySelector = (PropertySelector)parameter;
-						result.Add(propertySelector);
-						lastParameterEndIndex = i + 1;
-					}
-				}
-				else if (nestedParenthesesCount == 0 && i == innerParameters.Length - 1)
-				{
-					var parameter = innerParameters.Substring(lastParameterEndIndex).Trim();
-					if (!string.IsNullOrEmpty(parameter))
-					{
-						var propertySelector = (PropertySelector)parameter;
-						result.Add(propertySelector);
-					}
-				}
+			var lastParameter = innerParameters[parameterStartIndex..].Trim();
+			if (!string.IsNullOrEmpty(lastParameter))
+			{
+				var propertySelector = (PropertySelector)lastParameter;
+				result.Add(propertySelector);
 			}
 
 			parameters = result;

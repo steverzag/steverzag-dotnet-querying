@@ -74,6 +74,42 @@ namespace ExpDataWorker.PropertySelectors
 			return memberAccess;
 		}
 
+		/// <summary>
+		/// Walks the access spine of <paramref name="expression"/> (member accesses, calls and
+		/// conversions) down to the parameter it was built from. Selectors that take their subject
+		/// from an already resolved chained target use it to recover the scope root their own
+		/// parameters must be resolved against. Returns null when the expression does not
+		/// originate from a parameter, e.g. a constant or a static member access.
+		/// </summary>
+		public static ParameterExpression? FindRootParameter(Expression? expression)
+		{
+			var current = expression;
+
+			while (current is not null)
+			{
+				switch (current)
+				{
+					case ParameterExpression parameter:
+						return parameter;
+					case MemberExpression member:
+						current = member.Expression;
+						break;
+					// Extension method calls (Select, FirstOrDefault, …) carry the source as the
+					// first argument, instance calls carry it as the object.
+					case MethodCallExpression call:
+						current = call.Object ?? (call.Arguments.Count > 0 ? call.Arguments[0] : null);
+						break;
+					case UnaryExpression unary:
+						current = unary.Operand;
+						break;
+					default:
+						return null;
+				}
+			}
+
+			return null;
+		}
+
 		public static Expression CreateMemberAccessRec(Expression target, string[] parts, int index)
 		{
 			Expression current = target;
