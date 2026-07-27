@@ -52,6 +52,23 @@ namespace ExpDataWorker.PropertySelectors
 		public const string MathMax = FunctionStart + "MATH_MAX";
 		public const string MathMin = FunctionStart + "MATH_MIN";
 
+		public const string StringLength = FunctionStart + "STR_LENGTH";
+		public const string StringToUpper = FunctionStart + "STR_TOUPPER";
+		public const string StringToLower = FunctionStart + "STR_TOLOWER";
+		public const string StringTrim = FunctionStart + "STR_TRIM";
+		public const string StringTrimStart = FunctionStart + "STR_TRIMSTART";
+		public const string StringTrimEnd = FunctionStart + "STR_TRIMEND";
+		public const string StringSubstring = FunctionStart + "STR_SUBSTRING";
+		public const string StringIndexOf = FunctionStart + "STR_INDEXOF";
+		public const string StringReplace = FunctionStart + "STR_REPLACE";
+		public const string StringContains = FunctionStart + "STR_CONTAINS";
+		public const string StringStartsWith = FunctionStart + "STR_STARTSWITH";
+		public const string StringEndsWith = FunctionStart + "STR_ENDSWITH";
+		public const string StringConcat = FunctionStart + "STR_CONCAT";
+		public const string StringJoin = FunctionStart + "STR_JOIN";
+		public const string StringCompare = FunctionStart + "STR_COMPARE";
+		public const string StringIsNullOrEmpty = FunctionStart + "STR_ISNULLOREMPTY";
+		public const string StringIsNullOrWhiteSpace = FunctionStart + "STR_ISNULLORWHITESPACE";
 		public const string IntegerValueSpecifier = ValueStart + "INT";
 		public const string DoubleValueSpecifier = ValueStart + "DOUBLE";
 		public const string BooleanValueSpecifier = ValueStart + "BOOL";

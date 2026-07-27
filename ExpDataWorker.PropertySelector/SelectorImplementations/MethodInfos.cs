@@ -74,5 +74,49 @@ namespace ExpDataWorker.PropertySelectors.SelectorImplementations
 				.First(m => m.Name == "Max" && m.GetParameters()[0].ParameterType == typeof(double));
 		internal readonly static MethodInfo MathMinMethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Min" && m.GetParameters()[0].ParameterType == typeof(double));
+		internal readonly static MethodInfo StringToUpperMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "ToUpper" && m.GetParameters().Length == 0);
+		internal readonly static MethodInfo StringToLowerMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "ToLower" && m.GetParameters().Length == 0);
+		internal readonly static MethodInfo StringTrimMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Trim" && m.GetParameters().Length == 0);
+		internal readonly static MethodInfo StringTrimStartMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "TrimStart" && m.GetParameters().Length == 0);
+		internal readonly static MethodInfo StringTrimEndMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "TrimEnd" && m.GetParameters().Length == 0);
+		internal readonly static MethodInfo StringSubstringMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Substring" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo StringSubstring_2_MethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Substring" && m.GetParameters().Length == 2);
+		internal readonly static MethodInfo StringIndexOfMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "IndexOf" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringReplaceMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Replace" && m.GetParameters().Length == 2 && m.GetParameters()[0].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringContainsMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Contains" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringStartsWithMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "StartsWith" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringEndsWithMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "EndsWith" && m.GetParameters().Length == 1 && m.GetParameters()[0].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringConcat_2_MethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Concat" && m.GetParameters().Length == 2 && m.GetParameters()[0].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringConcat_3_MethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Concat" && m.GetParameters().Length == 3 && m.GetParameters()[0].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringConcat_4_MethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Concat" && m.GetParameters().Length == 4 && m.GetParameters()[0].ParameterType == typeof(string));
+		// string.Join(string separator, params string[] value): the array overload is the shape
+		// relational providers translate (CONCAT_WS on SQL Server, EF Core 7 and later).
+		internal readonly static MethodInfo StringJoinMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Join" && m.GetParameters().Length == 2
+					&& m.GetParameters()[0].ParameterType == typeof(string)
+					&& m.GetParameters()[1].ParameterType == typeof(string[]));
+		internal readonly static MethodInfo StringCompareMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "Compare" && m.GetParameters().Length == 2
+					&& m.GetParameters()[0].ParameterType == typeof(string)
+					&& m.GetParameters()[1].ParameterType == typeof(string));
+		internal readonly static MethodInfo StringIsNullOrEmptyMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "IsNullOrEmpty" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo StringIsNullOrWhiteSpaceMethodInfo = typeof(string).GetMethods()
+				.First(m => m.Name == "IsNullOrWhiteSpace" && m.GetParameters().Length == 1);
 	}
 }
