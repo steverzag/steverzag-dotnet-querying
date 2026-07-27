@@ -75,7 +75,8 @@ public class SelectorDefaultsTests
     [InlineData(nameof(SelectorDefaults.IntegerValueSpecifier))]
     [InlineData(nameof(SelectorDefaults.DoubleValueSpecifier))]
     [InlineData(nameof(SelectorDefaults.BooleanValueSpecifier))]
-    public void ValueSpecifiers_ShouldStartWithSpecifierPrefix(string propertyName)
+    [InlineData(nameof(SelectorDefaults.StringValueSpecifier))]
+    public void ValueSpecifiers_ShouldStartWithValuePrefix(string propertyName)
     {
         // Arrange
         var property = typeof(SelectorDefaults).GetField(propertyName);
@@ -83,7 +84,7 @@ public class SelectorDefaultsTests
 
         // Assert
         Assert.NotNull(value);
-        Assert.StartsWith(SelectorDefaults.SpecifierStart, value);
+        Assert.StartsWith(SelectorDefaults.ValueStart, value);
     }
 
     [Fact]
