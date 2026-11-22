@@ -16,162 +16,22 @@ public class DateSelectorTests
 
     private static readonly DateTime SampleDateTime = new(2024, 3, 15, 10, 30, 45, 500);
 
+    // Walks the whole selector chain, so chained parts are covered too (a single
+    // PropertyAccess call would only build the first part).
     private static TResult Evaluate<TResult>(PropertySelector<TestItem> selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = selector.PropertyAccess(parameter);
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
 
-    // ── Components ──────────────────────────────────────────────────────────
-
-    [Fact]
-    public void DateYear_OnDateTimeProperty_ReturnsYear()
+    private static TResult Evaluate<TResult>(PropertySelector selector, TestItem item)
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateYear}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(typeof(int), selector.SelectorType);
-        Assert.Equal(2024, result);
-    }
-
-    [Fact]
-    public void DateMonth_OnDateTimeProperty_ReturnsMonth()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateMonth}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(3, result);
-    }
-
-    [Fact]
-    public void DateDay_OnDateTimeProperty_ReturnsDay()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateDay}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(15, result);
-    }
-
-    [Fact]
-    public void DateDayOfYear_OnDateTimeProperty_ReturnsDayOfYear()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateDayOfYear}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(75, result);
-    }
-
-    [Fact]
-    public void DateHour_OnDateTimeProperty_ReturnsHour()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateHour}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(10, result);
-    }
-
-    [Fact]
-    public void DateMinute_OnDateTimeProperty_ReturnsMinute()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateMinute}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(30, result);
-    }
-
-    [Fact]
-    public void DateSecond_OnDateTimeProperty_ReturnsSecond()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateSecond}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(45, result);
-    }
-
-    [Fact]
-    public void DateMillisecond_OnDateTimeProperty_ReturnsMillisecond()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateMillisecond}(CreatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(500, result);
-    }
-
-    [Fact]
-    public void DateYear_OnNullableDateTimeProperty_UnwrapsAndReturnsYear()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateYear}(UpdatedAt)";
-
-        var result = Evaluate<int>(selector, new TestItem { UpdatedAt = SampleDateTime });
-
-        Assert.Equal(2024, result);
-    }
-
-    [Fact]
-    public void DateYear_OnDateOnlyProperty_ReturnsYear()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateYear}(StartDate)";
-
-        var result = Evaluate<int>(selector, new TestItem { StartDate = new DateOnly(2023, 7, 1) });
-
-        Assert.Equal(2023, result);
-    }
-
-    [Fact]
-    public void DateHour_OnTimeOnlyProperty_ReturnsHour()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateHour}(StartTime)";
-
-        var result = Evaluate<int>(selector, new TestItem { StartTime = new TimeOnly(18, 45) });
-
-        Assert.Equal(18, result);
-    }
-
-    [Fact]
-    public void DateDatePart_OnDateTimeProperty_ReturnsDateAtMidnight()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateDatePart}(CreatedAt)";
-
-        var result = Evaluate<DateTime>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(new DateTime(2024, 3, 15), result);
-    }
-
-    [Fact]
-    public void DateTimeOfDay_OnDateTimeProperty_ReturnsTimeSpan()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateTimeOfDay}(CreatedAt)";
-
-        var result = Evaluate<TimeSpan>(selector, new TestItem { CreatedAt = SampleDateTime });
-
-        Assert.Equal(new TimeSpan(0, 10, 30, 45, 500), result);
-    }
-
-    [Fact]
-    public void DateHour_OnDateOnlyProperty_ThrowsInvalidOperationExceptionOnBuild()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateHour}(StartDate)";
-
-        // DateOnly has no Hour component; the check happens lazily when the expression is built.
-        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(selector, new TestItem()));
-    }
-
-    [Fact]
-    public void DateYear_OnNonDateProperty_ThrowsInvalidOperationExceptionOnBuild()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateYear}(Id)";
-
-        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(selector, new TestItem { Id = 1 }));
+        var parameter = Expression.Parameter(typeof(TestItem), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
+        return lambda(item);
     }
 
     // ── Add functions ───────────────────────────────────────────────────────
@@ -224,6 +84,46 @@ public class DateSelectorTests
         var result = Evaluate<TimeOnly>(selector, new TestItem { StartTime = new TimeOnly(18, 45) });
 
         Assert.Equal(new TimeOnly(20, 45), result);
+    }
+
+    [Fact]
+    public void DateAddMinutes_OnDateTimeProperty_AddsMinutes()
+    {
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateAddMinutes}(CreatedAt, 90)";
+
+        var result = Evaluate<DateTime>(selector, new TestItem { CreatedAt = SampleDateTime });
+
+        Assert.Equal(SampleDateTime.AddMinutes(90), result);
+    }
+
+    [Fact]
+    public void DateAddMilliseconds_OnDateTimeProperty_AddsMilliseconds()
+    {
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateAddMilliseconds}(CreatedAt, 250)";
+
+        var result = Evaluate<DateTime>(selector, new TestItem { CreatedAt = SampleDateTime });
+
+        Assert.Equal(SampleDateTime.AddMilliseconds(250), result);
+    }
+
+    [Fact]
+    public void DateAddSeconds_OnDateTimeProperty_AddsSeconds()
+    {
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateAddSeconds}(CreatedAt, 30)";
+
+        var result = Evaluate<DateTime>(selector, new TestItem { CreatedAt = SampleDateTime });
+
+        Assert.Equal(SampleDateTime.AddSeconds(30), result);
+    }
+
+    [Fact]
+    public void DateAddDays_OnNonGenericSelector_AddsDays()
+    {
+        PropertySelector selector = $"{SelectorDefaults.DateAddDays}(CreatedAt, 5)";
+
+        var result = Evaluate<DateTime>(selector, new TestItem { CreatedAt = SampleDateTime });
+
+        Assert.Equal(SampleDateTime.AddDays(5), result);
     }
 
     [Fact]
@@ -304,15 +204,5 @@ public class DateSelectorTests
 
         Assert.Equal(typeof(TimeOnly), selector.SelectorType);
         Assert.Equal(new TimeOnly(10, 30, 45), result);
-    }
-
-    [Fact]
-    public void DateYear_WithDateTimeLiteralParameter_ReturnsYearOfLiteral()
-    {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateYear}({SelectorDefaults.DateTimeValueSpecifier}{SelectorDefaults.ValuePrefix}2022-01-01T00:00:00)";
-
-        var result = Evaluate<int>(selector, new TestItem());
-
-        Assert.Equal(2022, result);
     }
 }

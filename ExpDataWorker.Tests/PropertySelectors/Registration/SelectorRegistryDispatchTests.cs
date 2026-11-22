@@ -2,8 +2,9 @@ using ExpDataWorker.PropertySelectors.ArithmeticSelectors;
 using ExpDataWorker.PropertySelectors.OrderingSelectors;
 using ExpDataWorker.PropertySelectors.Registration;
 using ExpDataWorker.PropertySelectors;
+using System.Linq.Expressions;
 
-namespace ExpDataWorker.Tests.PropertySelectors;
+namespace ExpDataWorker.Tests.PropertySelectors.Registration;
 
 public class SelectorRegistryDispatchTests
 {
@@ -12,6 +13,25 @@ public class SelectorRegistryDispatchTests
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
     }
+
+    /// <summary>
+    /// Registry-resolved selectors apply straight to the source they are handed, so the source
+    /// itself is the target expression here (no property path in front of it).
+    /// </summary>
+    private static TResult Evaluate<TSource, TResult>(PropertySelector selector, TSource source)
+    {
+        var parameter = Expression.Parameter(typeof(TSource), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var lambda = Expression.Lambda<Func<TSource, TResult>>(body, parameter).Compile();
+        return lambda(source);
+    }
+
+    private static List<TestItem> SampleItems() =>
+    [
+        new TestItem { Id = 3, Name = "c" },
+        new TestItem { Id = 1, Name = "a" },
+        new TestItem { Id = 2, Name = "b" },
+    ];
 
     [Fact]
     public void ImplicitOperator_OrderAscendingBareToken_ResolvesFromRegistry()
@@ -193,5 +213,83 @@ public class SelectorRegistryDispatchTests
         // Assert
         Assert.StartsWith(SelectorDefaults.MathPower, selector.PlainValue);
         Assert.Equal(typeof(double), selector.SelectorType);
+    }
+
+    // ── Evaluation of the resolved selectors ────────────────────────────────
+    // Resolution is only half the contract: the instance the registry builds also has to
+    // produce a working expression.
+
+    [Fact]
+    public void Evaluate_MathPowResolvedFromRegistry_ComputesThePower()
+    {
+        PropertySelector selector = SelectorDefaults.MathPower + "(2, 3)";
+
+        var result = Evaluate<TestItem, double>(selector, new TestItem());
+
+        Assert.Equal(8d, result);
+    }
+
+    [Fact]
+    public void Evaluate_MathSqrtResolvedFromRegistry_ComputesTheSquareRoot()
+    {
+        PropertySelector selector = SelectorDefaults.MathSqrt + "(4)";
+
+        var result = Evaluate<TestItem, double>(selector, new TestItem());
+
+        Assert.Equal(2d, result);
+    }
+
+    [Fact]
+    public void Evaluate_MathPowWithInnerArithmetic_ComputesTheArgumentFirst()
+    {
+        PropertySelector selector = SelectorDefaults.MathPower + "(2+1, 3)";
+
+        var result = Evaluate<TestItem, double>(selector, new TestItem());
+
+        Assert.Equal(27d, result);
+    }
+
+    [Fact]
+    public void Evaluate_OrderAscendingResolvedFromRegistry_OrdersTheSource()
+    {
+        PropertySelector selector = SelectorDefaults.OrderAscending + "(Id)";
+
+        var result = Evaluate<List<TestItem>, IEnumerable<TestItem>>(selector, SampleItems());
+
+        Assert.Equal([1, 2, 3], result.Select(i => i.Id));
+    }
+
+    [Fact]
+    public void Evaluate_GenericOrderDescendingResolvedFromRegistry_OrdersTheSource()
+    {
+        PropertySelector<List<TestItem>> selector = SelectorDefaults.OrderDescending + "(Id)";
+
+        var result = Evaluate<List<TestItem>, IEnumerable<TestItem>>(selector, SampleItems());
+
+        Assert.Equal([3, 2, 1], result.Select(i => i.Id));
+    }
+
+    [Fact]
+    public void Evaluate_AggregationResolvedFromRegistry_CountsTheSource()
+    {
+        PropertySelector selector = SelectorDefaults.CountAggregateFunction;
+
+        var result = Evaluate<List<TestItem>, int>(selector, SampleItems());
+
+        Assert.Equal(3, result);
+    }
+
+    [Fact]
+    public void Evaluate_RepeatedConversions_ProduceEquivalentExpressions()
+    {
+        // Factories are cached per closed type; the instances they hand out must stay
+        // independent but behave identically.
+        PropertySelector first = SelectorDefaults.OrderAscending + "(Id)";
+        PropertySelector second = SelectorDefaults.OrderAscending + "(Id)";
+
+        Assert.NotSame(first, second);
+        Assert.Equal(
+            Evaluate<List<TestItem>, IEnumerable<TestItem>>(first, SampleItems()).Select(i => i.Id),
+            Evaluate<List<TestItem>, IEnumerable<TestItem>>(second, SampleItems()).Select(i => i.Id));
     }
 }

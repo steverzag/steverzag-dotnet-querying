@@ -17,6 +17,13 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 		/// operator outside parentheses and, when none is found, splits the expression on
 		/// top-level <see cref="SelectorDefaults.PropertyDelimiter"/> occurrences.
 		/// </summary>
+		/// <exception cref="ArgumentException">
+		/// The parentheses of <paramref name="expression"/> do not balance. Both checks exist so
+		/// that malformed input fails as a syntax error here instead of being reclassified as a
+		/// property path: an unbalanced depth makes the scan skip the very operators and
+		/// delimiters it is looking for, and the whole string would then be looked up as a
+		/// single property name.
+		/// </exception>
 		internal static SelectorExpressionAnalysis AnalyzePropertySelector(this string expression)
 		{
 			if (expression.Length == 0)
@@ -47,13 +54,22 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 				}
 				if (c == ')')
 				{
+					// A stray ')' would drive the depth negative, which passes the "> 0" guard
+					// below but fails the "depth is zero" premise the operator test relies on,
+					// silently disabling detection for the rest of the scan.
+					if (parenthesesDepth == 0)
+						throw new ArgumentException(
+							$"Unbalanced parentheses in selector '{expression}': unexpected ')' at index {i}.",
+							nameof(expression));
+
 					parenthesesDepth--;
 					continue;
 				}
 				if (parenthesesDepth > 0)
 					continue;
 
-				if (mayBeArithmetic && parenthesesDepth == 0 && (c is '+' or '-' or '*' or '/'))
+				// Past the guards the depth is always exactly zero.
+				if (mayBeArithmetic && (c is '+' or '-' or '*' or '/'))
 					return new SelectorExpressionAnalysis(true, []);
 
 				if (c == selectorDelimiter)
@@ -62,6 +78,12 @@ namespace ExpDataWorker.PropertySelectors.Extensions
 					partStartIndex = i + 1;
 				}
 			}
+
+			// An unclosed '(' swallows every operator and delimiter after it.
+			if (parenthesesDepth != 0)
+				throw new ArgumentException(
+					$"Unbalanced parentheses in selector '{expression}': {parenthesesDepth} unclosed '('.",
+					nameof(expression));
 
 			parts.Add(expression[partStartIndex..].Trim());
 
