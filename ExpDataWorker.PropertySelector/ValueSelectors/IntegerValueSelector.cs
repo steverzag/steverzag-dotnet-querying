@@ -10,7 +10,7 @@ namespace ExpDataWorker.PropertySelectors.ValueSelectors
 	internal record IntegerValueSelector<T> : PropertySelector<T>
 	{
 		public int Value { get; set; }
-		public override Type SelectorType { get; init; } = typeof(int);
+		public override Type? SelectorType { get; init; } = typeof(int);
 
 		public IntegerValueSelector(int value) : base(SelectorDefaults.IntegerValueSpecifier + SelectorDefaults.ValuePrefix + value.ToString(CultureInfo.InvariantCulture))
 		{

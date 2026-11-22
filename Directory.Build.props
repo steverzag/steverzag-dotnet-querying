@@ -1,0 +1,12 @@
+<Project>
+  <!-- Shared settings for every project in the lab. Projects override locally only when needed. -->
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Deterministic>true</Deterministic>
+    <!-- Opt in per project with <TreatWarningsAsErrors>true</TreatWarningsAsErrors> once its warnings are cleared. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+  </PropertyGroup>
+</Project>

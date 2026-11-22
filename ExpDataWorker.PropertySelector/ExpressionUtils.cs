@@ -58,9 +58,9 @@ namespace ExpDataWorker.PropertySelectors
 			return false;
 		}
 
-		public static Expression CreateMemberAccess(Expression target, PropertySelector selector)
+		public static Expression CreateMemberAccess(Expression? target, PropertySelector selector)
 		{
-			if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target;
+			if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target!;
 
 			var temp = selector;
 
@@ -117,7 +117,7 @@ namespace ExpDataWorker.PropertySelectors
 			for (int i = index; i < parts.Length; i++)
 			{
 				var part = parts[i];
-				MemberExpression property = null;
+				MemberExpression property = null!; // assigned in try; the catch path always breaks
 
 				try
 				{

@@ -1,5 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 using ExpDataWorker.Data.Models;
+using ExpDataWorker.PropertySelectors;
 using ExpDataWorkerBeta.Feature.Utils;
 using System;
 using System.Collections.Generic;

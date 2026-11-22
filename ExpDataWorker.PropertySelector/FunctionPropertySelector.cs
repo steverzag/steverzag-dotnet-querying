@@ -15,7 +15,7 @@
 			var matchingOverload = Overloads.FirstOrDefault(ov => ov.Parameters.Count == Parameters.Count)
 				?? throw new ArgumentException($"Invalid number of parameters. Any overload for {PlainValue} expects {Overloads.Select(ov => ov.Parameters.Count)} parameters."); ;
 
-			PropertyAccess = matchingOverload.Behavior;
+			PropertyAccess = matchingOverload.Behavior!; // subject-less overloads receive a null target and ignore it
 		}
 	}
 	public abstract record FunctionPropertySelector : PropertySelector
@@ -32,7 +32,7 @@
 		//	var matchingOverload = Overloads.FirstOrDefault(ov => ov.Parameters.Count == Parameters.Count)
 		//		?? throw new ArgumentException($"Invalid number of parameters. Any overload for {PlainValue} expects {Overloads.Select(ov => ov.Parameters.Count)} parameters."); ;
 
-		//	PropertyAccess = matchingOverload.Behavior;
+		//	PropertyAccess = matchingOverload.Behavior!; // subject-less overloads receive a null target and ignore it
 		//}
 
 		protected FunctionPropertySelector(string PlainValue, List<PropertySelector>? parameters = null) : base()
@@ -44,7 +44,7 @@
 			var matchingOverload = Overloads.FirstOrDefault(ov => ov.Parameters.Count == Parameters.Count)
 				?? throw new ArgumentException($"Invalid number of parameters. Any overload for {PlainValue} expects {Overloads.Select(ov => ov.Parameters.Count)} parameters."); ;
 
-			PropertyAccess = matchingOverload.Behavior;
+			PropertyAccess = matchingOverload.Behavior!; // subject-less overloads receive a null target and ignore it
 		}
 	}
 }
