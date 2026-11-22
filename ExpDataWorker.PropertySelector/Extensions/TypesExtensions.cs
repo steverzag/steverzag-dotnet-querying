@@ -1,4 +1,5 @@
-﻿using ExpDataWorker.PropertySelectors.MetaData;
+using System.Diagnostics.CodeAnalysis;
+using ExpDataWorker.PropertySelectors.MetaData;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -30,7 +31,7 @@ public static class TypesExtensions
 
 		foreach (var propertyName in propertyPath.Split('.'))
 		{
-			if (TryGetCollectionInfo(currentType, out Type itemType, out Type collectionType))
+			if (TryGetCollectionInfo(currentType, out var itemType, out var collectionType))
 			{
 				// Preserve only the first collection encountered
 				if (outerCollectionType is null)
@@ -56,12 +57,12 @@ public static class TypesExtensions
 		}
 
 		// Final unwrap if result itself is still a collection
-		if (outerCollectionType is not null && TryGetCollectionInfo(currentType, out Type finalItemType, out _))
+		if (outerCollectionType is not null && TryGetCollectionInfo(currentType, out var finalItemType, out _))
 		{
 			currentType = finalItemType;
 		}
 		// Final unwrap if result itself is still a collection
-		//if (TryGetCollectionInfo(currentType, out Type finalItemType, out _))
+		//if (TryGetCollectionInfo(currentType, out var finalItemType, out _))
 		//{
 		//	currentType = finalItemType;
 		//}
@@ -77,8 +78,8 @@ public static class TypesExtensions
 
 	private static bool TryGetCollectionInfo(
 		Type type,
-		out Type itemType,
-		out Type collectionType)
+		[NotNullWhen(true)] out Type? itemType,
+		[NotNullWhen(true)] out Type? collectionType)
 	{
 		itemType = null;
 		collectionType = null;

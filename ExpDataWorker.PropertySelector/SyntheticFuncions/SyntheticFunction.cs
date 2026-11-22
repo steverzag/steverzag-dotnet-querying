@@ -9,6 +9,6 @@ namespace ExpDataWorker.PropertySelectors.SyntheticFuncions
 	internal record SyntheticFunction : PropertySelector
 	{
 
-		public string MyProperty { get; set; }
+		public string MyProperty { get; set; } = string.Empty;
 	}
 }

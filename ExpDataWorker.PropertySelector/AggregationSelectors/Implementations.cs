@@ -27,7 +27,7 @@ namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
-			var countMethod = MethodInfos.CountMethodInfo
+			var countMethod = MethodInfos.LongCountMethodInfo
 				.MakeGenericMethod(elementTypeFromEnumerable!);
 
 			var result = Expression.Call(countMethod, target);

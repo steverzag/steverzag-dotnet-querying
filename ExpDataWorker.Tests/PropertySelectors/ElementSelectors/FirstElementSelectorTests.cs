@@ -1,10 +1,23 @@
 using ExpDataWorker.PropertySelectors;
 using ExpDataWorker.PropertySelectors.ElementSelectors;
+using System.Linq.Expressions;
 
 namespace ExpDataWorker.Tests.PropertySelectors.ElementSelectors;
 
 public class FirstElementSelectorTests
 {
+    /// <summary>
+    /// Element selectors apply straight to the sequence they are handed, so the source itself
+    /// is the target expression here (no property path in front of it).
+    /// </summary>
+    private static TResult Evaluate<TSource, TResult>(PropertySelector selector, TSource source)
+    {
+        var parameter = Expression.Parameter(typeof(TSource), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var lambda = Expression.Lambda<Func<TSource, TResult>>(body, parameter).Compile();
+        return lambda(source);
+    }
+
     // ── Non-generic FirstElementSelector ──────────────────────────────────────
 
     [Fact]
@@ -145,5 +158,58 @@ public class FirstElementSelectorTests
         // Assert
         Assert.Single(selector.Overloads);
         Assert.Empty(selector.Overloads[0].Parameters);
+    }
+
+    // ── Evaluation ──────────────────────────────────────────────────────────
+
+    [Fact]
+    public void Generic_Evaluate_OnFilledSequence_ReturnsFirstElement()
+    {
+        var selector = new FirstElementSelector<List<int>>();
+
+        var result = Evaluate<List<int>, int>(selector, [3, 1, 2]);
+
+        Assert.Equal(3, result);
+    }
+
+    [Fact]
+    public void Generic_Evaluate_OnEmptySequence_ReturnsDefault()
+    {
+        // The implementation calls FirstOrDefault, so an empty source is not an error.
+        var selector = new FirstElementSelector<List<int>>();
+
+        var result = Evaluate<List<int>, int>(selector, []);
+
+        Assert.Equal(0, result);
+    }
+
+    [Fact]
+    public void Generic_Evaluate_OnReferenceElementSequence_ReturnsNullWhenEmpty()
+    {
+        var selector = new FirstElementSelector<List<string>>();
+
+        var result = Evaluate<List<string>, string?>(selector, []);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void NonGeneric_Evaluate_OnFilledSequence_ReturnsFirstElement()
+    {
+        var selector = new FirstElementSelector();
+
+        var result = Evaluate<List<string>, string>(selector, ["a", "b"]);
+
+        Assert.Equal("a", result);
+    }
+
+    [Fact]
+    public void NonGeneric_Evaluate_OnNonEnumerableTarget_ThrowsInvalidOperationException()
+    {
+        // The non-generic selector has no type to validate at construction time, so the
+        // enumerability check only happens when the expression is built.
+        var selector = new FirstElementSelector();
+
+        Assert.Throws<InvalidOperationException>(() => Evaluate<int, int>(selector, 1));
     }
 }

@@ -130,6 +130,18 @@ public class ExpressionUtilsTests
 
     #region CreateMemberAccess Tests
 
+    /// <summary>
+    /// Walks the whole selector chain into an expression and runs it, which is the contract
+    /// CreateMemberAccess exists for: one target in, one compiled accessor out.
+    /// </summary>
+    private static TResult Evaluate<TResult>(PropertySelector selector, TestPerson item)
+    {
+        var parameter = Expression.Parameter(typeof(TestPerson), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var lambda = Expression.Lambda<Func<TestPerson, TResult>>(body, parameter).Compile();
+        return lambda(item);
+    }
+
     [Fact]
     public void CreateMemberAccess_WithNullSelector_ReturnsTarget()
     {
@@ -138,6 +150,67 @@ public class ExpressionUtilsTests
 
         // Act
         var result = ExpressionUtils.CreateMemberAccess(param, null!);
+
+        // Assert
+        Assert.Same(param, result);
+    }
+
+    [Fact]
+    public void CreateMemberAccess_WithSimplePropertySelector_ReadsTheProperty()
+    {
+        // Arrange
+        PropertySelector selector = "Name";
+
+        // Act
+        var result = Evaluate<string>(selector, new TestPerson { Name = "Ada" });
+
+        // Assert
+        Assert.Equal("Ada", result);
+    }
+
+    [Fact]
+    public void CreateMemberAccess_WithDottedPath_WalksThePath()
+    {
+        // Arrange - a dotted path over a collection projects it with Select
+        PropertySelector selector = "Phones.Number";
+
+        // Act
+        var result = Evaluate<IEnumerable<string>>(selector, new TestPerson
+        {
+            Phones = [new TestPhone { Number = "1" }, new TestPhone { Number = "2" }],
+        });
+
+        // Assert
+        Assert.Equal(["1", "2"], result);
+    }
+
+    [Fact]
+    public void CreateMemberAccess_WalksEveryLinkOfTheChain()
+    {
+        // Arrange - three parts: property, function, function
+        PropertySelector selector =
+            $"Phones{SelectorDefaults.PropertyDelimiter}{SelectorDefaults.ElementFirst}"
+            + $"{SelectorDefaults.PropertyDelimiter}Number";
+
+        // Act
+        var result = Evaluate<string>(selector, new TestPerson
+        {
+            Phones = [new TestPhone { Number = "1" }, new TestPhone { Number = "2" }],
+        });
+
+        // Assert
+        Assert.Equal("1", result);
+    }
+
+    [Fact]
+    public void CreateMemberAccess_WithEmptyPlainValue_ReturnsTarget()
+    {
+        // Arrange
+        var param = Expression.Parameter(typeof(TestPerson), "x");
+        PropertySelector selector = string.Empty;
+
+        // Act
+        var result = ExpressionUtils.CreateMemberAccess(param, selector);
 
         // Assert
         Assert.Same(param, result);

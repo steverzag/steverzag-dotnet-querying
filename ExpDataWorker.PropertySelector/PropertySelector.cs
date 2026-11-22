@@ -50,17 +50,9 @@ namespace ExpDataWorker.PropertySelectors
 						? registeredSelector
 						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
 				}
-				else if (int.TryParse(selectorPart, out int intValue))
+				else if (ValueSelectorFactory.TryCreate<T>(selectorPart, out var valueSelector))
 				{
-					propertySelector = new IntegerValueSelector<T>(intValue);
-				}
-				else if (double.TryParse(selectorPart, out double doubleValue))
-				{
-					propertySelector = new DoubleValueSelector<T>(doubleValue);
-				}
-				else if (bool.TryParse(selectorPart, out bool boolValue))
-				{
-					propertySelector = new BooleanValueSelector<T>(boolValue);
+					propertySelector = valueSelector;
 				}
 				else
 				{
@@ -90,7 +82,7 @@ namespace ExpDataWorker.PropertySelectors
 
 	public abstract record SelectorBase
 	{
-		public string PlainValue { get; init; }
+		public string PlainValue { get; init; } = string.Empty;
 		public virtual Type? SelectorType { get; init; }
 		public Type? Type
 		{
@@ -107,7 +99,7 @@ namespace ExpDataWorker.PropertySelectors
 			}
 		}
 		public PropertySelector? ChildSelector { get; set; }
-		public Func<Expression?, Expression> PropertyAccess { get; init; }
+		public Func<Expression?, Expression> PropertyAccess { get; init; } = null!; // assigned by every PropertySelector constructor
 		public abstract Type? InitSelectorTypeToApply();
 	}
 
@@ -131,7 +123,7 @@ namespace ExpDataWorker.PropertySelectors
 			{
 				var propertyNames = PlainValue.Split('.');
 
-				return ExpressionUtils.CreateMemberAccessRec(target, propertyNames, 0);
+				return ExpressionUtils.CreateMemberAccessRec(target ?? throw new ArgumentNullException(nameof(target), $"Property path '{PlainValue}' needs a target expression."), propertyNames, 0);
 			};
 		}
 
@@ -183,17 +175,9 @@ namespace ExpDataWorker.PropertySelectors
 						_ => throw new NotSupportedException($"The specifier '{selectorPart}' is not supported.")
 					};
 				}
-				else if (int.TryParse(selectorPart, out int intValue))
+				else if (ValueSelectorFactory.TryCreate(selectorPart, out var valueSelector))
 				{
-					propertySelector = new IntegerValueSelector(intValue);
-				}
-				else if (double.TryParse(selectorPart, out double doubleValue))
-				{
-					propertySelector = new DoubleValueSelector(doubleValue);
-				}
-				else if (bool.TryParse(selectorPart, out bool boolValue))
-				{
-					propertySelector = new BooleanValueSelector(boolValue);
+					propertySelector = valueSelector;
 				}
 				else
 				{

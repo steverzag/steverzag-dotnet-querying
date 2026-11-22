@@ -5,14 +5,30 @@ using ExpDataWorker.Data;
 using ExpDataWorker.Data.Enums;
 using ExpDataWorker.Data.Models;
 using ExpDataWorker.PropertySelectors;
+using ExpDataWorker.PropertySelectors.MetaData;
 using ExpDataWorkerBeta.Feature.Aggregating;
 using ExpDataWorkerBeta.Feature.Filtering;
 using ExpDataWorkerBeta.Feature.Ordering;
 using ExpDataWorkerBeta.Feature.Pagination;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 
 var context = new AppDbContext();
+
+PropertySelector<AppPerson> ps = SelectorDefaults.MathPower + "(2, 2)";
+PropertySelector<AppPerson> ps2 = "2 + 2 * 2";
+PropertySelector<AppPerson> ps3 = "\"Hi there\"";
+PropertySelector<AppPerson> ps4 = "55";
+
+var propertyExplorer = new PropertiesExplorer<AppPerson>();
+var metadataTree = propertyExplorer.ExplorePropertiesTree();
+//ps.PlainValue
+
+var s1 = ps.ToString();
+var s2 = ps2.ToString();
+var s3 = ps3.ToString();
+var s4 = ps4.ToString();
 
 var logicFilters = new List<FilterNode>
 {
@@ -85,9 +101,10 @@ var logicFilters = new List<FilterNode>
 };
 
 var persons = await context.Persons
-	.ApplyOrder([
-		new OrderParameters(nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.SumAggregateFunction, OrderDirection.Descending),
-	])
+	.OrderBy(p => p.Id)
+	//.ApplyOrder([
+	//	new OrderParameters(nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.SumAggregateFunction, OrderDirection.Descending),
+	//])
 	//.ApplyBaseFilter(
 	//	[nameof(AppPerson.DateOfBirth), nameof(AppPerson.Email), nameof(AppPerson.Name), string.Join(".", [nameof(AppPerson.Address), nameof(Address.State)])],
 	//	"abel"
@@ -103,47 +120,46 @@ var persons2 = await context.Persons
 	.Skip(0).Take(50)
 	.ToListAsync();
 
-var aggregate3 = await context.Persons
-	.GroupBy(p => new GroupByKeys
-	{
-		GroupKey0 = p.Phones.Count()
-	})
-	.Select(g => new
-	{
-		g.Key,
-		Count = g.Select(y => y.Id).Count()
-	}
-	)
-	.ToListAsync();
+//var aggregate3 = await context.Persons
+//	.GroupBy(p => new GroupByKeys
+//	{
+//		GroupKey0 = p.Phones.Count()
+//	})
+//	.Select(g => new
+//	{
+//		g.Key,
+//		Count = g.Select(y => y.Id).Count()
+//	}
+//	)
+//	.ToListAsync();
 
-var aggregate2 = await context.Persons
-	.GroupBy(p => new GroupByKeys
-	{
-		GroupKey0 = p.Phones.Count()
-	})
-	.Select(g => new AggregateResult
-	(
-		new List<GroupedByProperty>
-		{
-			new (nameof(AppPerson.Phones) + "|" + SelectorDefaults.CountAggregateFunction, g.Key.GroupKey0)
-		},
-		new List<AggregateValue>
-		{
-			new (SelectorDefaults.CountAggregateFunction, g.Select(y => y.Id).Count()),
-			new (SelectorDefaults.ElementLast, g.OrderBy(y => y.Id).Select(y => y.Id).Skip(1).FirstOrDefault())
-		}
-	))
-	.ToListAsync();
+//var aggregate2 = await context.Persons
+//	.GroupBy(p => new GroupByKeys
+//	{
+//		GroupKey0 = p.Phones.Count()
+//	})
+//	.Select(g => new SelectResult
+//	(
+//		new List<GroupedByProperty>
+//		{
+//			new (nameof(AppPerson.Phones) + "|" + SelectorDefaults.CountAggregateFunction, g.Key.GroupKey0)
+//		},
+//		new List<SelectResult>
+//		{
+//			new (SelectorDefaults.CountAggregateFunction, g.Select(y => y.Id).Count()),
+//			new (SelectorDefaults.ElementLast, g.OrderBy(y => y.Id).Select(y => y.Id).Skip(1).FirstOrDefault())
+//		}
+//	))
+//	.ToListAsync();
+
 
 var aggregate = await context.Persons.Skip(5)
-	.ApplyAggregate(new AggregateParameters
-	{
-		GroupBySelectors = [nameof(AppPerson.Phones) + "|" + SelectorDefaults.CountAggregateFunction],
-		//AggregateSelectors = [nameof(AppPerson.Id) + "|" + SelectorDefaults.CountAggregateFunction, nameof(AppPerson.Id) + "|" + SelectorDefaults.OrderAscending + "|" + SelectorDefaults.ElementLast]
-		AggregateSelectors = [nameof(AppPerson.Id) + "|" + SelectorDefaults.CountAggregateFunction, SelectorDefaults.OrderAscending + $"({nameof(AppPerson.Id)})" + "|" + SelectorDefaults.ElementAtIndex + "(1)"]
-
-	})
-	.ToListAsync();
+	.ApplySelect([
+		nameof(AppPerson.Id), 
+		nameof(AppPerson.Name), 
+		nameof(AppPerson.Name) + SelectorDefaults.PropertyDelimiter
+			+ SelectorDefaults.StringContains + "(" + SelectorDefaults.StringValueSpecifier + SelectorDefaults.ValuePrefix + "Merl" + ")"])
+	.PaginateAsync(1, 10);
 
 foreach (var person in persons)
 {

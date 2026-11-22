@@ -1,5 +1,4 @@
 ﻿using ExpDataWorker.PropertySelectors;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace ExpDataWorkerBeta.Feature.Ordering
 {

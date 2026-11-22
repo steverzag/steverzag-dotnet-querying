@@ -12,7 +12,6 @@ namespace ExpDataWorker.PropertySelectors.AggregationSelectors
 	{
 		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)
 		{
-			var t = SelectorType.ToString();
 		}
 		public override void InitializeOverloads()
 		{
