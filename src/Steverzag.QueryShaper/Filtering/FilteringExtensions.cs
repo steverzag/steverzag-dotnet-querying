@@ -428,8 +428,8 @@ namespace Steverzag.QueryShaper.Filtering
 
 				return filter.FilterCondition switch
 				{
-					FilterCondition.In => CreateInExpression(propertyExpression, propertyType, valuesList),
-					FilterCondition.NotIn => Expression.Not(CreateInExpression(propertyExpression, propertyType, valuesList)),
+					FilterCondition.In => CreateInExpression(propertyExpression, valuesList, filter.FilterCondition),
+					FilterCondition.NotIn => Expression.Not(CreateInExpression(propertyExpression, valuesList, filter.FilterCondition)),
 					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
 				};
 			}
@@ -439,10 +439,10 @@ namespace Steverzag.QueryShaper.Filtering
 				{
 					FilterCondition.Contains when elementType == typeof(string) => CreateEnumerableContainsExpression(propertyExpression, (string)filter.SearchValue!),
 					FilterCondition.DoesNotContain when elementType == typeof(string) => Expression.Not(CreateEnumerableContainsExpression(propertyExpression, (string)filter.SearchValue!)),
-					FilterCondition.ContainsAny => CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!),
-					FilterCondition.DoesNotContainAny => Expression.Not(CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!)),
-					FilterCondition.ContainsAll => CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!),
-					FilterCondition.DoesNotContainAll => Expression.Not(CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!)),
+					FilterCondition.ContainsAny => CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!, filter.FilterCondition),
+					FilterCondition.DoesNotContainAny => Expression.Not(CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!, filter.FilterCondition)),
+					FilterCondition.ContainsAll => CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!, filter.FilterCondition),
+					FilterCondition.DoesNotContainAll => Expression.Not(CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.SearchValue!, filter.FilterCondition)),
 					FilterCondition.IsEmpty => Expression.Equal(Expression.Call(typeof(Enumerable), METHOD_NAME_ANY, [elementType!], propertyExpression), Expression.Constant(false)),
 					FilterCondition.IsNotEmpty => Expression.Equal(Expression.Call(typeof(Enumerable), METHOD_NAME_ANY, [elementType!], propertyExpression), Expression.Constant(true)),
 					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyType)
@@ -454,7 +454,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 		}
 
-		private static MethodCallExpression CreateContainsAnyExpression(Expression propertyExpression, Type? elementType, List<object> valuesList)
+		private static MethodCallExpression CreateContainsAnyExpression(Expression propertyExpression, Type? elementType, List<object> valuesList, FilterCondition condition)
 		{
 			ArgumentNullException.ThrowIfNull(elementType, nameof(elementType));
 			ArgumentNullException.ThrowIfNull(valuesList, nameof(valuesList));
@@ -467,7 +467,7 @@ namespace Steverzag.QueryShaper.Filtering
 			BinaryExpression? combinedExpression = null;
 			ParameterExpression parameter = Expression.Parameter(elementType, "y");
 
-			foreach (var value in valuesList)
+			foreach (var value in CreateTypedValueList(elementType, valuesList, condition))
 			{
 				var equalsValue = Expression.Equal(parameter, Expression.Constant(value, elementType));
 				combinedExpression = combinedExpression is null
@@ -480,7 +480,7 @@ namespace Steverzag.QueryShaper.Filtering
 			return Expression.Call(anyMethod, propertyExpression, lambda);
 		}
 
-		private static MethodCallExpression CreateContainsAllExpression(Expression propertyExpression, Type? elementType, List<object> valuesList)
+		private static MethodCallExpression CreateContainsAllExpression(Expression propertyExpression, Type? elementType, List<object> valuesList, FilterCondition condition)
 		{
 			ArgumentNullException.ThrowIfNull(elementType, nameof(elementType));
 			ArgumentNullException.ThrowIfNull(valuesList, nameof(valuesList));
@@ -492,41 +492,7 @@ namespace Steverzag.QueryShaper.Filtering
 			ParameterExpression parameter = Expression.Parameter(elementType, "y");
 			ParameterExpression parameter2 = Expression.Parameter(elementType, "z");
 
-			IList list = elementType switch
-			{
-				Type t when t == typeof(bool) => valuesList.Cast<bool>().ToList(),
-				Type t when t == typeof(byte) => valuesList.Cast<byte>().ToList(),
-				Type t when t == typeof(short) => valuesList.Cast<short>().ToList(),
-				Type t when t == typeof(int) => valuesList.Cast<int>().ToList(),
-				Type t when t == typeof(long) => valuesList.Cast<long>().ToList(),
-				Type t when t == typeof(float) => valuesList.Cast<float>().ToList(),
-				Type t when t == typeof(double) => valuesList.Cast<double>().ToList(),
-				Type t when t == typeof(decimal) => valuesList.Cast<decimal>().ToList(),
-				Type t when t == typeof(string) => valuesList.Cast<string>().ToList(),
-				Type t when t == typeof(Guid) => valuesList.Cast<Guid>().ToList(),
-				Type t when t == typeof(DateTime) => valuesList.Cast<DateTime>().ToList(),
-				Type t when t == typeof(DateOnly) => valuesList.Cast<DateOnly>().ToList(),
-				Type t when t == typeof(TimeOnly) => valuesList.Cast<TimeOnly>().ToList(),
-				Type t when t == typeof(TimeSpan) => valuesList.Cast<TimeSpan>().ToList(),
-				Type t when t == typeof(DateTimeOffset) => valuesList.Cast<DateTimeOffset>().ToList(),
-				Type t when t.IsEnum => (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(t))!,
-				_ => throw new NotImplementedException(),
-			};
-
-			if (elementType.IsEnum)
-			{
-				foreach (var value in valuesList)
-				{
-					if (Enum.TryParse(elementType, value?.ToString()!, out var enumValue))
-					{
-						list.Add(enumValue);
-					}
-					else
-					{
-						throw new Exception($"Invalid value ({value ?? "null"}) provided for type {elementType.Name}");
-					}
-				}
-			}
+			var list = CreateTypedValueList(elementType, valuesList, condition);
 
 			var allMethod = AllMethodInfo.MakeGenericMethod(elementType);
 			var anyMethod = AnyMethodInfo.MakeGenericMethod(elementType);
@@ -540,61 +506,18 @@ namespace Steverzag.QueryShaper.Filtering
 			return allMethodCall;
 		}
 
-		private static MethodCallExpression CreateInExpression(Expression propertyExpression, Type elementType, List<object> valuesList)
+		private static MethodCallExpression CreateInExpression(Expression propertyExpression, List<object> valuesList, FilterCondition condition)
 		{
-			ArgumentNullException.ThrowIfNull(elementType, nameof(elementType));
 			ArgumentNullException.ThrowIfNull(valuesList, nameof(valuesList));
 			if (valuesList.Count == 0)
 			{
 				throw new ArgumentException("Values List must contain at least one value", nameof(valuesList));
 			}
 
-			IList list = elementType switch
-			{
-				Type t when t == typeof(bool) => valuesList.Cast<bool>().ToList(),
-				Type t when t == typeof(byte) => valuesList.Cast<byte>().ToList(),
-				Type t when t == typeof(short) => valuesList.Cast<short>().ToList(),
-				Type t when t == typeof(int) => valuesList.Cast<int>().ToList(),
-				Type t when t == typeof(long) => valuesList.Cast<long>().ToList(),
-				Type t when t == typeof(float) => valuesList.Cast<float>().ToList(),
-				Type t when t == typeof(double) => valuesList.Cast<double>().ToList(),
-				Type t when t == typeof(decimal) => valuesList.Cast<decimal>().ToList(),
-				Type t when t == typeof(string) => valuesList.Cast<string>().ToList(),
-				Type t when t == typeof(Guid) => valuesList.Cast<Guid>().ToList(),
-				Type t when t == typeof(DateTime) => valuesList.Cast<DateTime>().ToList(),
-				Type t when t == typeof(DateOnly) => valuesList.Cast<DateOnly>().ToList(),
-				Type t when t == typeof(TimeOnly) => valuesList.Cast<TimeOnly>().ToList(),
-				Type t when t == typeof(TimeSpan) => valuesList.Cast<TimeSpan>().ToList(),
-				Type t when t == typeof(DateTimeOffset) => valuesList.Cast<DateTimeOffset>().ToList(),
-				Type t when t.IsEnum => (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(t))!,
-				_ => throw new NotImplementedException(),
-			};
-
-			if (elementType.IsEnum)
-			{
-				foreach (var value in valuesList)
-				{
-					if (Enum.TryParse(elementType, value?.ToString()!, out var enumValue))
-					{
-						list.Add(enumValue);
-					}
-					else
-					{
-						throw new Exception($"Invalid value ({value ?? "null"}) provided for type {elementType.Name}");
-					}
-				}
-			}
-
+			// The list's item type must match the property exactly (int? for an int? property),
+			// or Enumerable.Contains can't be called with it.
 			var itemType = propertyExpression.Type;
-			if (itemType != elementType)
-			{
-				var nullableList = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
-				foreach (var item in list)
-				{
-					nullableList.Add(item);
-				}
-				list = nullableList;
-			}
+			var list = CreateTypedValueList(itemType, valuesList, condition);
 
 			var containsMethod = typeof(Enumerable).GetMethods()
 				.Where(m => m.Name == METHOD_NAME_CONTAINS && m.GetParameters().Length == 2)
@@ -604,6 +527,70 @@ namespace Steverzag.QueryShaper.Filtering
 
 			return containsMethodCall;
 		}
+
+		/// <summary>
+		/// Turns the request's untyped values into a <c>List&lt;itemType&gt;</c>, which can be used as a
+		/// query constant. Shared by In/NotIn, ContainsAny and ContainsAll.
+		/// <list type="bullet">
+		/// <item>Only scalar item types (and their nullable forms) are supported. Anything else, such as an
+		/// entity or a nested collection, throws <see cref="FilterNotSupportedException"/>.</item>
+		/// <item>Enum values are parsed with <see cref="Enum.TryParse(Type, string?, out object?)"/>, so both
+		/// underlying numbers and names are accepted.</item>
+		/// <item>Other values must already be boxed as the exact type: no numeric widening or narrowing.</item>
+		/// <item>null is accepted only when the item type can hold it.</item>
+		/// </list>
+		/// </summary>
+		private static IList CreateTypedValueList(Type itemType, List<object> values, FilterCondition condition)
+		{
+			var underlyingType = Nullable.GetUnderlyingType(itemType) ?? itemType;
+			if (!IsScalarType(underlyingType))
+			{
+				throw new FilterNotSupportedException(condition, itemType);
+			}
+
+			var acceptsNull = !itemType.IsValueType || underlyingType != itemType;
+			var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
+
+			foreach (var value in values)
+			{
+				if (value is null)
+				{
+					list.Add(acceptsNull
+						? null
+						: throw new FilterConditionAndValueNotSupportedException(
+							$"A null value in the list is not supported for non-nullable type {itemType.Name}."));
+				}
+				else if (underlyingType.IsEnum)
+				{
+					list.Add(Enum.TryParse(underlyingType, value.ToString(), out var enumValue)
+						? enumValue
+						: throw new Exception($"Invalid value ({value}) provided for type {underlyingType.Name}"));
+				}
+				else if (underlyingType.IsInstanceOfType(value))
+				{
+					list.Add(value);
+				}
+				else
+				{
+					throw new InvalidCastException(
+						$"The value '{value}' of type {value.GetType().Name} cannot be used for type {itemType.Name}.");
+				}
+			}
+
+			return list;
+		}
+
+		private static bool IsScalarType(Type type) =>
+			type.IsPrimitive
+			|| type.IsEnum
+			|| type == typeof(string)
+			|| type == typeof(decimal)
+			|| type == typeof(Guid)
+			|| type == typeof(DateTime)
+			|| type == typeof(DateOnly)
+			|| type == typeof(TimeOnly)
+			|| type == typeof(TimeSpan)
+			|| type == typeof(DateTimeOffset);
 
 		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, string? searchValue, IBaseSearchConfiguration? configuration = default)
 		{

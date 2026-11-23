@@ -46,8 +46,13 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 		public ProductStatus Status { get; set; }
 		public ProductStatus? OptionalStatus { get; set; }
 
-		// primitive collection (stored as JSON by EF Core)
+		// a scalar with no dedicated filter branch (only In/NotIn apply)
+		public char Grade { get; set; }
+
+		// primitive collections (stored as JSON by EF Core)
 		public List<string> Tags { get; set; } = [];
+		public List<ProductStatus> StatusHistory { get; set; } = [];
+		public List<int?> Measurements { get; set; } = [];
 
 		// navigations
 		public int CategoryId { get; set; }

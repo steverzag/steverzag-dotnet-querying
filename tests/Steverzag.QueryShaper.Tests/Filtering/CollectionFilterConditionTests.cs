@@ -102,6 +102,67 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([3], FilterIds("Reviews.Stars", FilterCondition.IsEmpty));
 		}
 
+		// Enum collection. StatusHistory: 1 [Draft, Active], 2 [Draft], 3 [Draft, Active, Discontinued], 4 [Active]
+
+		[Fact]
+		public void EnumElements_ContainsAll()
+		{
+			Assert.Equal([1, 3], FilterIds(nameof(Product.StatusHistory), FilterCondition.ContainsAll,
+				new List<object> { (int)ProductStatus.Draft, (int)ProductStatus.Active }));
+		}
+
+		[Fact]
+		public void EnumElements_ContainsAny()
+		{
+			Assert.Equal([3], FilterIds(nameof(Product.StatusHistory), FilterCondition.ContainsAny,
+				new List<object> { (int)ProductStatus.Discontinued }));
+		}
+
+		[Fact]
+		public void EnumElements_ContainsAny_ByName()
+		{
+			Assert.Equal([1, 3, 4], FilterIds(nameof(Product.StatusHistory), FilterCondition.ContainsAny,
+				new List<object> { "Active", "Discontinued" }));
+		}
+
+		// Nullable elements. Measurements: 1 [1, null], 2 [2], 3 [], 4 [1, 2]
+
+		[Fact]
+		public void NullableElements_ContainsAll()
+		{
+			Assert.Equal([4], FilterIds(nameof(Product.Measurements), FilterCondition.ContainsAll, new List<object> { 1, 2 }));
+		}
+
+		[Fact]
+		public void NullableElements_ContainsAny_Null()
+		{
+			Assert.Equal([1], FilterIds(nameof(Product.Measurements), FilterCondition.ContainsAny, new List<object?> { null }!));
+		}
+
+		[Fact]
+		public void NullableElements_ContainsAny()
+		{
+			Assert.Equal([2, 4], FilterIds(nameof(Product.Measurements), FilterCondition.ContainsAny, new List<object> { 2 }));
+		}
+
+		// Collections of entities have no scalar to compare a value with.
+
+		[Theory]
+		[InlineData(FilterCondition.ContainsAll)]
+		[InlineData(FilterCondition.DoesNotContainAll)]
+		[InlineData(FilterCondition.ContainsAny)]
+		[InlineData(FilterCondition.DoesNotContainAny)]
+		public void EntityCollection_ValueListCondition_IsNotSupported(FilterCondition condition)
+		{
+			Assert.Throws<FilterNotSupportedException>(() => FilterIds(nameof(Product.Reviews), condition, new List<object> { 1 }));
+		}
+
+		[Fact]
+		public void EntityCollection_IsEmpty_StillWorks()
+		{
+			Assert.Equal([3], FilterIds(nameof(Product.Reviews), FilterCondition.IsEmpty));
+		}
+
 		[Fact]
 		public void Contains_OnNonStringElements_Throws()
 		{

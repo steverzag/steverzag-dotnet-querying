@@ -3,12 +3,12 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 	/// <summary>
 	/// The fixed data every test runs against. Expected ids in the tests are derived from this table:
 	///
-	/// | Id | Name   | Description  | OptionalCode | IsActive | IsFeatured | NullableQty | DeletedAt  | Status       | OptionalStatus | Tags           | Category | Review stars |
-	/// |----|--------|--------------|--------------|----------|------------|-------------|------------|--------------|----------------|----------------|----------|--------------|
-	/// | 1  | Hammer | "Steel head" | Code1        | true     | true       | 100         | null       | Active       | Active         | tools, steel   | Tools    | 5, 4         |
-	/// | 2  | Shovel | null         | null         | true     | null       | null        | null       | Draft        | null           | garden         | Garden   | 3            |
-	/// | 3  | Wrench | ""           | Code3        | false    | false      | 0           | 2024-07-01 | Discontinued | Discontinued   | (none)         | Tools    | (none)       |
-	/// | 4  | Rake   | "Garden rake"| Code4        | true     | true       | 200         | null       | Active       | Draft          | garden, tools  | Garden   | 4, 4, 2      |
+	/// | Id | Name   | Description  | OptionalCode | IsActive | IsFeatured | NullableQty | DeletedAt  | Status       | OptionalStatus | Tags           | Category | Review stars | Grade | StatusHistory                  | Measurements |
+	/// |----|--------|--------------|--------------|----------|------------|-------------|------------|--------------|----------------|----------------|----------|--------------|-------|--------------------------------|--------------|
+	/// | 1  | Hammer | "Steel head" | Code1        | true     | true       | 100         | null       | Active       | Active         | tools, steel   | Tools    | 5, 4         | A     | Draft, Active                  | 1, null      |
+	/// | 2  | Shovel | null         | null         | true     | null       | null        | null       | Draft        | null           | garden         | Garden   | 3            | B     | Draft                          | 2            |
+	/// | 3  | Wrench | ""           | Code3        | false    | false      | 0           | 2024-07-01 | Discontinued | Discontinued   | (none)         | Tools    | (none)       | C     | Draft, Active, Discontinued    | (none)       |
+	/// | 4  | Rake   | "Garden rake"| Code4        | true     | true       | 200         | null       | Active       | Draft          | garden, tools  | Garden   | 4, 4, 2      | A     | Active                         | 1, 2         |
 	///
 	/// Non-nullable numerics: row 1 high, row 2 zero, row 3 mid (<see cref="Mid"/>), row 4 highest.
 	/// Dates: ascending by id, row 2 is the mid value.
@@ -67,7 +67,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				ReleaseDate = new(2024, 1, 1), OpensAt = new(8, 0),
 				Warranty = TimeSpan.FromDays(365),
 				Status = ProductStatus.Active, OptionalStatus = ProductStatus.Active,
-				Tags = ["tools", "steel"], CategoryId = 1,
+				Tags = ["tools", "steel"], Grade = 'A', StatusHistory = [ProductStatus.Draft, ProductStatus.Active], Measurements = [1, null], CategoryId = 1,
 				Reviews = [new() { Id = 1, Stars = 5 }, new() { Id = 2, Stars = 4 }],
 			},
 			new()
@@ -80,7 +80,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				ReleaseDate = MidDate.ReleaseDate, OpensAt = MidDate.OpensAt,
 				Warranty = TimeSpan.FromDays(180),
 				Status = ProductStatus.Draft, OptionalStatus = null,
-				Tags = ["garden"], CategoryId = 2,
+				Tags = ["garden"], Grade = 'B', StatusHistory = [ProductStatus.Draft], Measurements = [2], CategoryId = 2,
 				Reviews = [new() { Id = 3, Stars = 3 }],
 			},
 			new()
@@ -94,7 +94,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				DiscontinuedOn = Row3NullableDate.DiscontinuedOn, LastServicedAt = Row3NullableDate.LastServicedAt,
 				Warranty = TimeSpan.Zero,
 				Status = ProductStatus.Discontinued, OptionalStatus = ProductStatus.Discontinued,
-				Tags = [], CategoryId = 1,
+				Tags = [], Grade = 'C', StatusHistory = [ProductStatus.Draft, ProductStatus.Active, ProductStatus.Discontinued], Measurements = [], CategoryId = 1,
 				Reviews = [],
 			},
 			new()
@@ -107,7 +107,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				ReleaseDate = new(2024, 9, 1), OpensAt = new(18, 45),
 				Warranty = TimeSpan.FromDays(730),
 				Status = ProductStatus.Active, OptionalStatus = ProductStatus.Draft,
-				Tags = ["garden", "tools"], CategoryId = 2,
+				Tags = ["garden", "tools"], Grade = 'A', StatusHistory = [ProductStatus.Active], Measurements = [1, 2], CategoryId = 2,
 				Reviews = [new() { Id = 4, Stars = 4 }, new() { Id = 5, Stars = 4 }, new() { Id = 6, Stars = 2 }],
 			},
 		];
