@@ -27,6 +27,22 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 `StartsWith`, `DoesNotStartWith`, `EndsWith`, `DoesNotEndWith`, `IsEmpty`, `IsNotEmpty`, `In`, `NotIn`,
 `Contains`, `DoesNotContain`, `ContainsAny`, `DoesNotContainAny`, `ContainsAll`, `DoesNotContainAll`.
 
+## Combining filters
+
+Each `FilterNode` carries a `FilterLogicOption` (`And` / `Or`) that says how it joins **everything
+before it**:
+
+- **Strictly left to right, with no precedence.** `A`, `Or B`, `And C` means `(A or B) and C`, not
+  `A or (B and C)` as in SQL or C#. The first node's connector is ignored.
+- **Groups are parentheses.** A node with child `Filters` is a group. Its children combine with the
+  same rules, and its own connector joins the whole group to what came before. Groups nest to any depth.
+  To get `A or (B and C)`, write `A`, `Or [group: B, And C]`.
+- **A group's own condition is ignored.** If a node has children, its `FieldSelector`,
+  `FilterCondition` and `SearchValue` are not used. A node whose `Filters` is empty acts as a plain filter.
+- An empty list leaves the query unchanged; a `null` list throws `ArgumentNullException`.
+
+These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNodeLogicTests.cs`.
+
 ## Example
 
 ```csharp
@@ -57,5 +73,6 @@ services.AddQueryShaper<AppQueryShaperConfig>();   // multiple configurations me
 
 ## Status
 
-This is a prototype. It has no tests yet, and the public API is not final. See
+This is a prototype. Filtering is covered by tests (conditions and And/Or logic); ordering, paging,
+grouping, mapping and base search are not yet. The public API is not final. See
 [ROADMAP.md](ROADMAP.md) Phases 1, 2 and 4 for the path to a library.

@@ -54,3 +54,18 @@ point it to the new one).
 `Steverzag.QueryShaper.EntityFrameworkCore`, which today holds only `PaginateAsync`. Add-on extension methods share
 the core's namespaces (e.g. `Steverzag.QueryShaper.Pagination`), so consumers need no extra `using`.
 **Why:** this keeps the core usable with any LINQ provider, and keeps EF Core version churn out of the core package.
+
+### 007: Filter nodes combine strictly left to right, with no precedence (2026-11-22)
+**Status:** accepted
+**Context:** each `FilterNode` carries its own `And`/`Or` connector. `A`, `Or B`, `And C` can be read
+left to right as `(A or B) and C`, or with SQL/C# precedence (AND before OR) as `A or (B and C)`.
+**Decision:** keep left to right, which is how the code was built. Each node's connector joins it to everything
+before it, and the first node's connector is ignored. A node with child `Filters` is a group (parentheses), and
+groups are how a client overrides the order. The rules are documented in `query-shaper.md` → "Combining filters" and
+pinned by `FilterNodeLogicTests`.
+**Considered:** AND-before-OR precedence, which matches what readers of the JSON expect from SQL/C#. It was rejected
+in favour of the as-built "running total" model, which maps directly onto a row-by-row filter-builder UI.
+**Consequence:** the docs must state the rule clearly, because it differs from SQL.
+**Follow-up (2026-11-22):** when QueryShaper gets its configuration approach, add a switch between this behaviour and
+AND-before-OR precedence. Proposed name: `FilterEvaluationOrder { LeftToRight, AndBeforeOr }`, defaulting to `LeftToRight`.
+Tracked in ROADMAP Phase 4.

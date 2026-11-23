@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (204 FilterCondition tests, all passing) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (224 filtering tests, all passing) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -48,7 +48,7 @@ More detail is in [property-selectors.md](property-selectors.md) and [query-shap
 - ✅ Grouping and aggregation (`ApplyGrouping` / `ApplySelect` → `SelectResult`).
 - ✅ Configuration: `QueryShaperConfiguration` + `AddQueryShaper<T>()`, a selector-based `Mapper`, and `BaseSearchConfiguration`.
 - ⚠️ Known gaps:
-  - **Tests cover filtering conditions only** so far (Phase 2). They found 3 bugs, now fixed.
+  - **Tests cover filtering only (conditions and And/Or logic)** so far (Phase 2). They found 3 bugs, now fixed.
   - Stray auto-imported usings showed up twice (Roslyn, `Microsoft.Diagnostics.Symbols`). They are gone now that the library no longer sees the lab packages transitively.
   - Two `NotImplementedException` branches in `FilteringExtensions.cs` (~L520, ~L577) and a TODO about Contains semantics (~L466).
   - `ValueResult2` / `SearchValue.cs` naming is temporary.
@@ -101,13 +101,15 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 
 ### Phase 2: QueryShaper test baseline
 - [x] Create `tests/Steverzag.QueryShaper.Tests` on **SQLite in-memory** (not EF InMemory, which doesn't translate to SQL). It uses its own test model (`Infrastructure/`), and the seed table is documented in `SeedData.cs`.
-- [ ] Cover each `FilterCondition` ✅ (204 tests), nested `FilterNode` logic, ordering, pagination edges, grouping/aggregation, the mapper, and the base search.
+- [ ] Cover each `FilterCondition` ✅ (204 tests), nested `FilterNode` logic ✅ (20 tests), ordering, pagination edges, grouping/aggregation, the mapper, and the base search.
 - [ ] Resolve the `NotImplementedException` branches and the Contains-semantics TODO.
 - [x] Fix the bugs the FilterCondition tests found (2026-11-22). Each fix is covered by tests that fail on the old code:
   - `ContainsAny`/`DoesNotContainAny` always threw: the guard in `CreateContainsAnyExpression` was inverted (`Count > 0`).
   - Comparisons on nullable `DateTime`/`DateOnly`/`TimeOnly` threw, because the constant was not typed nullable.
   - `In`/`NotIn` on a nullable property threw (`List<int>` vs `int?`). Null rows now count as "not in" for `NotIn`.
 - [ ] Decide on the semantics the tests pinned down: `IsEmpty` on a nullable number means null **or** 0. Undefined enum values (e.g. `99`) are accepted silently. Invalid enum/null input throws a bare `System.Exception`. `In` values must be boxed as the exact property type (a JSON `long` for an `int` property throws). `ApplyLogicsFilter` writes every expression to `Console`.
+- [x] And/Or evaluation order: strictly left to right, no AND-before-OR precedence (decision 007, documented in [query-shaper.md](query-shaper.md#combining-filters)).
+- [ ] Decide whether a group node that also has its own condition should be rejected. Today the condition is silently ignored; recommendation: a validation error.
 - [ ] Clear the remaining nullable warnings in QueryShaper and Data (33 left after the date fix), then enable `TreatWarningsAsErrors` there.
 
 ### Phase 3: Close the PropertySelectors gaps
@@ -125,6 +127,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [ ] Freeze the selector **grammar** and write it down as a spec (`docs/property-selectors.md` → "Grammar").
 - [ ] Add a QueryShaper request contract: a single `QueryRequest { Filters, Order, Page, Search }` that binds from JSON, plus an `Apply(request)` entry point.
 - [ ] Add a security note and guard rails: a property allow-list, max depth, and a page-size cap, because selectors arrive from untrusted clients.
+- [ ] Make the And/Or evaluation order configurable (decision 007 follow-up), once QueryShaper has a settled configuration approach (see D4). Proposed: `FilterEvaluationOrder { LeftToRight, AndBeforeOr }`, settable globally in `QueryShaperConfiguration` and overridable per call. Default `LeftToRight` (today's behaviour). Run `FilterNodeLogicTests` under both modes; only the ordering tests should differ.
 
 ### Phase 5: Package and release `0.1.0-preview`
 - [ ] Package metadata (`PackageId`, description, license, README in the package, SourceLink, deterministic builds).
