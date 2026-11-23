@@ -43,6 +43,20 @@ before it**:
 
 These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNodeLogicTests.cs`.
 
+## What "empty" means
+
+`IsEmpty` / `IsNotEmpty` test for "no meaningful value", not just for null (decision 008):
+
+| Property type | `IsEmpty` matches |
+|---|---|
+| `string` | null or `""` |
+| number (`int`, `decimal`, …) | 0 |
+| nullable number (`int?`, …) | null or 0 |
+| other nullable types (`Guid?`, `bool?`, dates, enums) | null |
+| collection | no elements |
+
+For non-nullable `Guid`, `bool`, date and enum properties, `IsEmpty` is not supported and throws.
+
 ## Grouping and aggregates
 
 `ApplyGrouping(keys)` groups by up to 21 selectors. `ApplySelect(selectors)` on the grouped query then returns
@@ -91,6 +105,11 @@ public class AppQueryShaperConfig : QueryShaperConfiguration
 
 services.AddQueryShaper<AppQueryShaperConfig>();   // multiple configurations merge into one registry
 ```
+
+**How a map fills the destination.** Each public property of the destination is filled from its `ForMember`
+selector if one is registered. Otherwise it's filled from the source property with the **same name** (case-sensitive,
+decision 010), or left at its default. Values are converted when the types differ (e.g. `int` → `long`). Only
+properties directly on the destination can be mapped (`d => d.X`, not `d => d.Inner.X`).
 
 ## Status
 

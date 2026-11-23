@@ -69,3 +69,49 @@ in favour of the as-built "running total" model, which maps directly onto a row-
 **Follow-up (2026-11-22):** when QueryShaper gets its configuration approach, add a switch between this behaviour and
 AND-before-OR precedence. Proposed name: `FilterEvaluationOrder { LeftToRight, AndBeforeOr }`, defaulting to `LeftToRight`.
 Tracked in ROADMAP Phase 4.
+
+### 008: How filter values are interpreted (2026-11-22)
+**Status:** accepted; implementation pending (ROADMAP Phase 2)
+**Context:** the Phase 2 tests pinned several rules that were never chosen on purpose, and some disagree
+with each other: single values accept any integer size but lists don't, and enum names work in lists but not
+in `Equals`.
+**Decision:**
+1. **`IsEmpty` on a nullable number matches null or 0. Kept as is.** It follows the same rule as strings
+   (null or `""`) and non-nullable numbers (0): "empty" means "no meaningful value", not just "null".
+2. **Undefined enum values are rejected** with `FilterConditionAndValueNotSupportedException`
+   (e.g. `Status = 99`). Exception: enums marked `[Flags]`, where combinations of defined values are valid.
+3. **List values are converted safely to the target type.** `In`, `ContainsAny` and `ContainsAll` accept any
+   numeric value that fits (e.g. a `long` for an `int` property), with overflow checks. Values that don't fit, or
+   aren't numeric, still throw. This matches single values, which already accept any integer size. Converting
+   JSON-bound values (`JsonElement`) belongs to the Phase 4 request contract.
+4. **Enum names are accepted everywhere** (`Equals`/`NotEquals` as well as lists), in addition to underlying numbers.
+**Cleanups that come with it:**
+- Bad enum or null input throws `FilterConditionAndValueNotSupportedException`, not a plain `System.Exception`.
+- `ApplyLogicsFilter` no longer writes every expression to `Console`.
+
+### 009: Invalid requests are rejected up front, not silently reinterpreted (2026-11-22)
+**Status:** accepted; implementation pending (ROADMAP Phase 2)
+**Context:** the tests found inputs that are silently ignored, produce nonsense, or crash deep inside EF Core.
+Requests come from untrusted clients (see the Phase 4 guard rails), so a clear error is safer than a guess.
+**Decision:**
+5. **A group node with its own condition is rejected.** If a `FilterNode` has child `Filters`, its
+   `FieldSelector`/`FilterCondition`/`SearchValue` must be unset. Today they are silently ignored (see 007).
+6. **Grouping with no keys is rejected** with `ArgumentException`. Today EF Core crashes while translating it.
+   "Aggregate the whole table" may be added later as an explicit feature.
+7. **Pagination arguments are validated.** Page < 1 or size < 1 throws `ArgumentOutOfRangeException`. Today
+   page 0, size 0 and size −1 return nonsense, and size −1 returns every row on SQLite. `PaginatedList`
+   also gains `TotalCount` and `PageSize`; adding them breaks nothing.
+**Cleanup that comes with it:** more than 21 grouping keys throws a descriptive `ArgumentException`, not a bare
+`ArgumentNullException` from `Expression.Bind`.
+
+### 010: Mapper and base search fail at configuration time, not silently at query time (2026-11-22)
+**Status:** accepted; implementation pending for 8 and 9 (ROADMAP Phase 2)
+**Decision:**
+8. **A non-blank base search on a type with no configuration throws** `InvalidOperationException`, the same as
+   `GetSearchPredicate` already does. Today the query is returned unfiltered, which hides a misconfiguration.
+   A blank search still leaves the query unchanged.
+9. **Mapping a nullable source into a non-nullable destination is rejected when the map is registered**
+   (e.g. `int?` → `int`). The error suggests making the destination nullable. Today the map registers fine and
+   then fails on the first row with a null.
+10. **The same-name rule stays case-sensitive. Kept as is.** These are C# property names, and ignoring case could
+    match two properties.
