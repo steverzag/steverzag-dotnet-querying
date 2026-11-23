@@ -66,19 +66,18 @@ namespace Steverzag.QueryShaper.Aggregating
 			var aggregateValueAddMethod = typeof(List<SelectValue>).GetMethod("Add")!;
 			var selectValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
 
-			List<PropertySelector<T>> propertySelectors = [];
-
-			foreach (var aggregateParameter in aggregateSelectors)
+			foreach (var selectorText in aggregateSelectors)
 			{
-				propertySelectors.Add(aggregateParameter);
-			}
-
-			foreach (var propertySelector in propertySelectors)
-			{
-				var aggregateExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);//ExpressionUtils.CreateGroupingMemberAccess(selectParam, aggregateSelector);
+				// Selectors resolve against the group, not the element: "Key.GroupKey0" reads a key,
+				// "Quantity|$FN_AGGR_SUM" aggregates the group's elements. The non-generic selector is used on
+				// purpose: PropertySelector<T> resolves types up front and unwraps IGrouping<K, T> to T, so it
+				// can't see Key. The non-generic one resolves while building the expression, where
+				// ExpressionUtils maps grouping member access onto the elements.
+				PropertySelector propertySelector = selectorText;
+				var aggregateExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);
 
 				var newAggregateValueExp = Expression.New(selectValueConstructor,
-					Expression.Constant(propertySelector.PlainValue),
+					Expression.Constant(selectorText),
 					Expression.Convert(
 						aggregateExp,
 						typeof(object)));
@@ -122,18 +121,13 @@ namespace Steverzag.QueryShaper.Aggregating
 			var selectValueAddMethod = typeof(List<SelectValue>).GetMethod("Add")!;
 			var selectValueConstructor = typeof(SelectValue).GetConstructor(BindingFlags.Instance | BindingFlags.Public, [typeof(string), typeof(object)])!;
 
-			List<PropertySelector<T>> propertySelectors = [];
-
-			foreach (var selector in selectors)
+			foreach (var selectorText in selectors)
 			{
-				propertySelectors.Add(selector);
-			}
-
-			foreach (var propertySelector in propertySelectors)
-			{
+				PropertySelector<T> propertySelector = selectorText;
 				var selectorExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);
+
 				var selectValueNewExp = Expression.New(selectValueConstructor!,
-					Expression.Constant(propertySelector.PlainValue),
+					Expression.Constant(selectorText),
 					Expression.Convert(
 						selectorExp,
 						typeof(object)));

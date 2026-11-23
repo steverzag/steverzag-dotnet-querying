@@ -43,6 +43,27 @@ before it**:
 
 These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNodeLogicTests.cs`.
 
+## Grouping and aggregates
+
+`ApplyGrouping(keys)` groups by up to 21 selectors. `ApplySelect(selectors)` on the grouped query then returns
+one `SelectResult` per group, and its selectors resolve against the **group**:
+
+| Selector | Means |
+|---|---|
+| `Key.GroupKey0`, `Key.GroupKey1`, … | the value of the 1st, 2nd, … grouping key (keys are not returned unless selected) |
+| `$FN_AGGR_COUNT` | number of rows in the group |
+| `Quantity\|$FN_AGGR_SUM` (also `MIN`, `MAX`, `AVG`) | aggregate of a property over the group's rows |
+| `Reviews.Stars\|$FN_AGGR_AVG` | aggregate over a nested collection, flattened across the group |
+
+Each `SelectValue.Selector` is the selector text exactly as passed in.
+
+```csharp
+var totals = db.Products
+    .ApplyGrouping(["Category.Name"])
+    .ApplySelect(["Key.GroupKey0", "$FN_AGGR_COUNT", "Quantity|$FN_AGGR_SUM"])
+    .ToList();
+```
+
 ## Example
 
 ```csharp
@@ -73,6 +94,6 @@ services.AddQueryShaper<AppQueryShaperConfig>();   // multiple configurations me
 
 ## Status
 
-This is a prototype. Filtering is covered by tests (conditions and And/Or logic); ordering, paging,
-grouping, mapping and base search are not yet. The public API is not final. See
+This is a prototype. Filtering, ordering, paging, grouping and select are covered by tests; mapping
+and base search are not yet. The public API is not final. See
 [ROADMAP.md](ROADMAP.md) Phases 1, 2 and 4 for the path to a library.
