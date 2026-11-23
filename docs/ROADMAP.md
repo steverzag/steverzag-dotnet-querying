@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | **None yet** |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (178 FilterCondition tests: 172 pass, 6 skipped as known bugs) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -48,7 +48,7 @@ More detail is in [property-selectors.md](property-selectors.md) and [query-shap
 - ✅ Grouping and aggregation (`ApplyGrouping` / `ApplySelect` → `SelectResult`).
 - ✅ Configuration: `QueryShaperConfiguration` + `AddQueryShaper<T>()`, a selector-based `Mapper`, and `BaseSearchConfiguration`.
 - ⚠️ Known gaps:
-  - **No tests.**
+  - **Tests cover filtering conditions only** so far (Phase 2). They found 3 bugs, listed there.
   - Stray auto-imported usings showed up twice (Roslyn, `Microsoft.Diagnostics.Symbols`). They are gone now that the library no longer sees the lab packages transitively.
   - Two `NotImplementedException` branches in `FilteringExtensions.cs` (~L520, ~L577) and a TODO about Contains semantics (~L466).
   - `ValueResult2` / `SearchValue.cs` naming is temporary.
@@ -100,9 +100,14 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [x] Decide on EF Core coupling (006). `PaginateAsync` moved to `Steverzag.QueryShaper.EntityFrameworkCore` and gained a `CancellationToken`. The core gained a sync `Paginate`.
 
 ### Phase 2: QueryShaper test baseline
-- [ ] Create `tests/Steverzag.QueryShaper.Tests` that runs against **EF Core InMemory or SQLite**, so SQL translation is exercised rather than just LINQ-to-objects.
-- [ ] Cover each `FilterCondition`, nested `FilterNode` logic, ordering, pagination edges, grouping/aggregation, the mapper, and the base search.
+- [x] Create `tests/Steverzag.QueryShaper.Tests` on **SQLite in-memory** (not EF InMemory, which doesn't translate to SQL). It uses its own test model (`Infrastructure/`), and the seed table is documented in `SeedData.cs`.
+- [ ] Cover each `FilterCondition` ✅ (178 tests), nested `FilterNode` logic, ordering, pagination edges, grouping/aggregation, the mapper, and the base search.
 - [ ] Resolve the `NotImplementedException` branches and the Contains-semantics TODO.
+- [ ] Fix the bugs the FilterCondition tests found. Each one has a skipped test (`Skip = "Known bug: …"`) to unskip once it's fixed:
+  - `ContainsAny`/`DoesNotContainAny` always throw: the guard in `CreateContainsAnyExpression` is inverted (`Count > 0`).
+  - Comparisons on nullable `DateTime`/`DateOnly`/`TimeOnly` throw, because the constant isn't typed nullable.
+  - `In`/`NotIn` on a nullable property throws (`List<int>` vs `int?`).
+- [ ] Decide on the semantics the tests pinned down: `IsEmpty` on a nullable number means null **or** 0. Undefined enum values (e.g. `99`) are accepted silently. Invalid enum/null input throws a bare `System.Exception`. `In` values must be boxed as the exact property type (a JSON `long` for an `int` property throws). `ApplyLogicsFilter` writes every expression to `Console`.
 - [ ] Clear the remaining nullable warnings in QueryShaper and Data, then enable `TreatWarningsAsErrors` there.
 
 ### Phase 3: Close the PropertySelectors gaps
