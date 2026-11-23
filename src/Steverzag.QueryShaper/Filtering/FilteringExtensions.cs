@@ -331,14 +331,15 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(DateTime) && !isInOrNotInCondition)
 			{
+				ConstantExpression Value() => Expression.Constant((DateTime)filter.SearchValue!.Value, propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant((DateTime)filter.SearchValue)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant((DateTime)filter.SearchValue)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant((DateTime)filter.SearchValue)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant((DateTime)filter.SearchValue)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant((DateTime)filter.SearchValue)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant((DateTime)filter.SearchValue))),
+					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
+					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
+					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Value()),
+					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Value()),
+					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
+					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
 					FilterCondition.IsEmpty when isNullableType => Expression.Equal(propertyExpression, Expression.Constant(null, typeof(DateTime?))),
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(DateTime?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable DateTime filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
@@ -348,14 +349,15 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(DateOnly) && !isInOrNotInCondition)
 			{
+				ConstantExpression Value() => Expression.Constant((DateOnly)filter.SearchValue!.Value, propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant((DateOnly)filter.SearchValue)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant((DateOnly)filter.SearchValue)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant((DateOnly)filter.SearchValue)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant((DateOnly)filter.SearchValue)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant((DateOnly)filter.SearchValue)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant((DateOnly)filter.SearchValue))),
+					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
+					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
+					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Value()),
+					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Value()),
+					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
+					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
 					FilterCondition.IsEmpty when isNullableType => Expression.Equal(propertyExpression, Expression.Constant(null, typeof(DateOnly?))),
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(DateOnly?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable DateOnly filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
@@ -365,14 +367,15 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(TimeOnly) && !isInOrNotInCondition)
 			{
+				ConstantExpression Value() => Expression.Constant((TimeOnly)filter.SearchValue!.Value, propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant((TimeOnly)filter.SearchValue)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant((TimeOnly)filter.SearchValue)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant((TimeOnly)filter.SearchValue)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant((TimeOnly)filter.SearchValue)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant((TimeOnly)filter.SearchValue)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant((TimeOnly)filter.SearchValue))),
+					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
+					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
+					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Value()),
+					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Value()),
+					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
+					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
 					FilterCondition.IsEmpty when isNullableType => Expression.Equal(propertyExpression, Expression.Constant(null, typeof(TimeOnly?))),
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(TimeOnly?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable TimeOnly filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
@@ -455,31 +458,21 @@ namespace Steverzag.QueryShaper.Filtering
 		{
 			ArgumentNullException.ThrowIfNull(elementType, nameof(elementType));
 			ArgumentNullException.ThrowIfNull(valuesList, nameof(valuesList));
-			if (valuesList.Count > 0)
+			if (valuesList.Count == 0)
 			{
 				throw new ArgumentException("Values List must contain at least one value", nameof(valuesList));
 			}
 
+			// x.Collection.Any(y => y == v1 || y == v2 || ...)
 			BinaryExpression? combinedExpression = null;
 			ParameterExpression parameter = Expression.Parameter(elementType, "y");
 
-			//TODO: Is this the right implementation? look at the CreateContainsAllExpression for reference
 			foreach (var value in valuesList)
 			{
-				var constantValue = value;
-
-				if (combinedExpression == null)
-				{
-					combinedExpression = Expression.Equal(
-						Expression.Equal(parameter, Expression.Constant(constantValue, elementType)),
-						Expression.Constant(true));
-				}
-				else
-				{
-					combinedExpression = Expression.OrElse(
-						combinedExpression,
-						Expression.Equal(parameter, Expression.Constant(constantValue, elementType)));
-				}
+				var equalsValue = Expression.Equal(parameter, Expression.Constant(value, elementType));
+				combinedExpression = combinedExpression is null
+					? equalsValue
+					: Expression.OrElse(combinedExpression, equalsValue);
 			}
 
 			var anyMethod = AnyMethodInfo.MakeGenericMethod(elementType);
@@ -592,10 +585,21 @@ namespace Steverzag.QueryShaper.Filtering
 				}
 			}
 
+			var itemType = propertyExpression.Type;
+			if (itemType != elementType)
+			{
+				var nullableList = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType))!;
+				foreach (var item in list)
+				{
+					nullableList.Add(item);
+				}
+				list = nullableList;
+			}
+
 			var containsMethod = typeof(Enumerable).GetMethods()
 				.Where(m => m.Name == METHOD_NAME_CONTAINS && m.GetParameters().Length == 2)
 				.First()
-				.MakeGenericMethod(elementType);
+				.MakeGenericMethod(itemType);
 			var containsMethodCall = Expression.Call(containsMethod, Expression.Constant(list), propertyExpression);
 
 			return containsMethodCall;

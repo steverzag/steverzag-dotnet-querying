@@ -21,16 +21,32 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([1, 3], FilterIds(nameof(Product.Tags), FilterCondition.DoesNotContain, "gar"));
 		}
 
-		private const string ContainsAnyBug =
-			"Known bug: CreateContainsAnyExpression guard is inverted (throws when the list is NOT empty). FilteringExtensions.cs ~L458";
-
-		[Fact(Skip = ContainsAnyBug)]
+		[Fact]
 		public void ContainsAny()
 		{
 			Assert.Equal([1, 2, 4], FilterIds(nameof(Product.Tags), FilterCondition.ContainsAny, new List<object> { "steel", "garden" }));
 		}
 
-		[Fact(Skip = ContainsAnyBug)]
+		[Fact]
+		public void ContainsAny_SingleValue()
+		{
+			Assert.Equal([1], FilterIds(nameof(Product.Tags), FilterCondition.ContainsAny, new List<object> { "steel" }));
+		}
+
+		[Fact]
+		public void ContainsAny_ExactMatchOnly()
+		{
+			// Unlike Contains (substring of any element), ContainsAny compares whole elements.
+			Assert.Empty(FilterIds(nameof(Product.Tags), FilterCondition.ContainsAny, new List<object> { "gar" }));
+		}
+
+		[Fact]
+		public void ContainsAny_EmptyList_Throws()
+		{
+			Assert.Throws<ArgumentException>(() => FilterIds(nameof(Product.Tags), FilterCondition.ContainsAny, new List<object>()));
+		}
+
+		[Fact]
 		public void DoesNotContainAny()
 		{
 			Assert.Equal([3], FilterIds(nameof(Product.Tags), FilterCondition.DoesNotContainAny, new List<object> { "steel", "garden" }));
@@ -74,7 +90,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([1, 4], FilterIds("Reviews.Stars", FilterCondition.ContainsAll, new List<object> { 4 }));
 		}
 
-		[Fact(Skip = ContainsAnyBug)]
+		[Fact]
 		public void Projected_ContainsAny()
 		{
 			Assert.Equal([2, 4], FilterIds("Reviews.Stars", FilterCondition.ContainsAny, new List<object> { 2, 3 }));

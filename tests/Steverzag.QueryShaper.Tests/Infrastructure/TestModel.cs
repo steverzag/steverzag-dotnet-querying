@@ -35,6 +35,10 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 		public DateOnly ReleaseDate { get; set; }
 		public TimeOnly OpensAt { get; set; }
 
+		// nullable dates: only row 3 has a value, like DeletedAt
+		public DateOnly? DiscontinuedOn { get; set; }
+		public TimeOnly? LastServicedAt { get; set; }
+
 		// a type the filter has no branch for
 		public TimeSpan Warranty { get; set; }
 

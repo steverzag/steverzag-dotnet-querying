@@ -12,6 +12,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 	///
 	/// Non-nullable numerics: row 1 high, row 2 zero, row 3 mid (<see cref="Mid"/>), row 4 highest.
 	/// Dates: ascending by id, row 2 is the mid value.
+	/// Nullable dates (DeletedAt, DiscontinuedOn, LastServicedAt): only row 3 has a value, see <see cref="Row3NullableDate"/>.
 	/// </summary>
 	public static class SeedData
 	{
@@ -38,6 +39,14 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 			public static readonly DateTime CreatedAt = new(2024, 3, 15, 10, 0, 0);
 			public static readonly DateOnly ReleaseDate = new(2024, 3, 1);
 			public static readonly TimeOnly OpensAt = new(9, 30);
+		}
+
+		/// <summary>The only non-null value of each nullable date property (row 3).</summary>
+		public static class Row3NullableDate
+		{
+			public static readonly DateTime DeletedAt = new(2024, 7, 1);
+			public static readonly DateOnly DiscontinuedOn = new(2024, 7, 1);
+			public static readonly TimeOnly LastServicedAt = new(14, 15);
 		}
 
 		public static Category[] Categories() =>
@@ -80,8 +89,9 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				Code = Code3, OptionalCode = Code3, IsActive = false, IsFeatured = false,
 				Rating = Mid.Rating, Stock = Mid.Stock, Quantity = Mid.Quantity, NullableQuantity = 0, Views = Mid.Views,
 				Weight = Mid.Weight, Score = Mid.Score, Price = Mid.Price,
-				CreatedAt = new(2024, 6, 20, 12, 0, 0), DeletedAt = new(2024, 7, 1),
+				CreatedAt = new(2024, 6, 20, 12, 0, 0), DeletedAt = Row3NullableDate.DeletedAt,
 				ReleaseDate = new(2024, 6, 1), OpensAt = new(12, 0),
+				DiscontinuedOn = Row3NullableDate.DiscontinuedOn, LastServicedAt = Row3NullableDate.LastServicedAt,
 				Warranty = TimeSpan.Zero,
 				Status = ProductStatus.Discontinued, OptionalStatus = ProductStatus.Discontinued,
 				Tags = [], CategoryId = 1,

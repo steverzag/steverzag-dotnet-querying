@@ -42,10 +42,34 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([2], FilterIds(nameof(Product.ReleaseDate), FilterCondition.In, new List<object> { SeedData.MidDate.ReleaseDate }));
 		}
 
-		[Fact(Skip = "Known bug: CreateInExpression builds List<int> but passes the int? property to Contains.")]
+		// NullableQuantity: 1 → 100, 2 → null, 3 → 0, 4 → 200
+
+		[Fact]
 		public void In_NullableInt()
 		{
 			Assert.Equal([1, 3], FilterIds(nameof(Product.NullableQuantity), FilterCondition.In, new List<object> { 100, 0 }));
+		}
+
+		[Fact]
+		public void NotIn_NullableInt_IncludesNullRows()
+		{
+			// C# semantics: null is not in the list.
+			Assert.Equal([2, 4], FilterIds(nameof(Product.NullableQuantity), FilterCondition.NotIn, new List<object> { 100, 0 }));
+		}
+
+		[Fact]
+		public void In_NullableEnum()
+		{
+			// OptionalStatus: 1 Active, 2 null, 3 Discontinued, 4 Draft
+			Assert.Equal([1, 4], FilterIds(nameof(Product.OptionalStatus), FilterCondition.In,
+				new List<object> { (int)ProductStatus.Active, (int)ProductStatus.Draft }));
+		}
+
+		[Fact]
+		public void In_NullableGuid()
+		{
+			// OptionalCode: 1 Code1, 2 null, 3 Code3, 4 Code4
+			Assert.Equal([3], FilterIds(nameof(Product.OptionalCode), FilterCondition.In, new List<object> { SeedData.Code3, SeedData.Code2 }));
 		}
 
 		[Fact]

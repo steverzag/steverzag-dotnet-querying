@@ -65,33 +65,62 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 				() => FilterIds(nameof(Product.CreatedAt), FilterCondition.StartsWith, SeedData.MidDate.CreatedAt));
 		}
 
-		// DeletedAt (DateTime?): only row 3 has a value (2024-07-01)
+		// Nullable dates (DateTime?, DateOnly?, TimeOnly?): only row 3 has a value.
 
-		[Fact]
-		public void NullableDateTime_IsEmpty_MatchesNull()
+		private static readonly (string Field, object Row3)[] NullableDateFields =
+		[
+			(nameof(Product.DeletedAt), SeedData.Row3NullableDate.DeletedAt),
+			(nameof(Product.DiscontinuedOn), SeedData.Row3NullableDate.DiscontinuedOn),
+			(nameof(Product.LastServicedAt), SeedData.Row3NullableDate.LastServicedAt),
+		];
+
+		/// <summary>Compared with row 3's own value, null rows never match, except for NotEquals (C# semantics).</summary>
+		private static readonly (FilterCondition Condition, int[] Expected)[] NullableComparisonsAgainstRow3 =
+		[
+			(FilterCondition.GreaterThan, []),
+			(FilterCondition.GreaterThanOrEqual, [3]),
+			(FilterCondition.LessThan, []),
+			(FilterCondition.LessThanOrEqual, [3]),
+			(FilterCondition.Equals, [3]),
+			(FilterCondition.NotEquals, [1, 2, 4]),
+		];
+
+		public static TheoryData<string, object, FilterCondition, int[]> NullableComparisonCases()
 		{
-			Assert.Equal([1, 2, 4], FilterIds(nameof(Product.DeletedAt), FilterCondition.IsEmpty));
+			var data = new TheoryData<string, object, FilterCondition, int[]>();
+			foreach (var (field, row3) in NullableDateFields)
+				foreach (var (condition, expected) in NullableComparisonsAgainstRow3)
+					data.Add(field, row3, condition, expected);
+			return data;
 		}
 
-		[Fact]
-		public void NullableDateTime_IsNotEmpty_ExcludesNull()
+		public static TheoryData<string> NullableFields()
 		{
-			Assert.Equal([3], FilterIds(nameof(Product.DeletedAt), FilterCondition.IsNotEmpty));
+			var data = new TheoryData<string>();
+			foreach (var (field, _) in NullableDateFields)
+				data.Add(field);
+			return data;
 		}
 
-		private const string NullableDateBug =
-			"Known bug: the constant is typed DateTime, not DateTime?, so the comparison cannot be built. DateOnly?/TimeOnly? share the code.";
-
-		[Fact(Skip = NullableDateBug)]
-		public void NullableDateTime_GreaterThan()
+		[Theory]
+		[MemberData(nameof(NullableComparisonCases))]
+		public void Nullable_Comparison_AgainstRow3Value(string field, object row3, FilterCondition condition, int[] expected)
 		{
-			Assert.Equal([3], FilterIds(nameof(Product.DeletedAt), FilterCondition.GreaterThan, new DateTime(2024, 1, 1)));
+			Assert.Equal(expected, FilterIds(field, condition, ToValue(row3)));
 		}
 
-		[Fact(Skip = NullableDateBug)]
-		public void NullableDateTime_Equals()
+		[Theory]
+		[MemberData(nameof(NullableFields))]
+		public void Nullable_IsEmpty_MatchesNull(string field)
 		{
-			Assert.Equal([3], FilterIds(nameof(Product.DeletedAt), FilterCondition.Equals, new DateTime(2024, 7, 1)));
+			Assert.Equal([1, 2, 4], FilterIds(field, FilterCondition.IsEmpty));
+		}
+
+		[Theory]
+		[MemberData(nameof(NullableFields))]
+		public void Nullable_IsNotEmpty_ExcludesNull(string field)
+		{
+			Assert.Equal([3], FilterIds(field, FilterCondition.IsNotEmpty));
 		}
 	}
 }
