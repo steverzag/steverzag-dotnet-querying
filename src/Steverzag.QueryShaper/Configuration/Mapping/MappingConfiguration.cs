@@ -12,8 +12,11 @@ public class MappingConfiguration<TIn, TOut>
 		Expression<Func<TOut, TProp>> destinationMember,
 		PropertySelector<TIn> selector)
 	{
+		// Only a property directly on the destination (d => d.X) can be bound. d => d.Inner.X or d => d.X.Length
+		// are member accesses too, but would never be applied, so they are rejected here.
 		if (destinationMember.Body is not MemberExpression memberExpr
-			|| memberExpr.Member is not PropertyInfo prop)
+			|| memberExpr.Member is not PropertyInfo prop
+			|| memberExpr.Expression is not ParameterExpression)
 			throw new ArgumentException("Destination must be a simple property access.", nameof(destinationMember));
 
 		Mappings[prop] = selector;

@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (306 tests: filtering, ordering, pagination, grouping/select; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (346 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -48,9 +48,9 @@ More detail is in [property-selectors.md](property-selectors.md) and [query-shap
 - ✅ Grouping and aggregation (`ApplyGrouping` / `ApplySelect` → `SelectResult`).
 - ✅ Configuration: `QueryShaperConfiguration` + `AddQueryShaper<T>()`, a selector-based `Mapper`, and `BaseSearchConfiguration`.
 - ⚠️ Known gaps:
-  - **Tests cover filtering, ordering, pagination and grouping/select** so far (Phase 2). They found 6 bugs, now fixed.
+  - **Every feature now has tests** (Phase 2). They found 6 bugs and 2 validation gaps, all fixed.
   - Stray auto-imported usings showed up twice (Roslyn, `Microsoft.Diagnostics.Symbols`). They are gone now that the library no longer sees the lab packages transitively.
-  - Two `NotImplementedException` branches in `FilteringExtensions.cs` (~L520, ~L577) and a TODO about Contains semantics (~L466).
+  - ~~Two `NotImplementedException` branches and the Contains TODO~~: resolved in Phase 2.
   - `ValueResult2` / `SearchValue.cs` naming is temporary.
   - `PaginationParameters` is internal and unused.
   - The `QueryShaperServices` static ambient registry needs a decision (see §5).
@@ -101,7 +101,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 
 ### Phase 2: QueryShaper test baseline
 - [x] Create `tests/Steverzag.QueryShaper.Tests` on **SQLite in-memory** (not EF InMemory, which doesn't translate to SQL). It uses its own test model (`Infrastructure/`), and the seed table is documented in `SeedData.cs`.
-- [ ] Cover each `FilterCondition` ✅ (204 tests), nested `FilterNode` logic ✅ (20 tests), ordering ✅ (26 tests), pagination edges ✅ (18 tests), grouping/aggregation ✅ (19 tests), the mapper, and the base search.
+- [x] Cover each `FilterCondition` ✅ (204 tests), nested `FilterNode` logic ✅ (20 tests), ordering ✅ (26 tests), pagination edges ✅ (18 tests), grouping/aggregation ✅ (19 tests), the mapper ✅ (13 tests), and the base search with configuration/DI ✅ (27 tests).
 - [x] Resolve the `NotImplementedException` branches and the Contains-semantics TODO (2026-11-22). `In`/`NotIn`, `ContainsAny` and `ContainsAll` now share one value-list helper (`CreateTypedValueList`). It supports every scalar type and its nullable form (e.g. `char`, `List<int?>`), and allows `null` in the list for nullable targets. It throws `FilterNotSupportedException` for non-scalar targets (entities, nested collections). `ContainsAny` on enum collections also works now. The ContainsAny TODO was settled by the earlier fix.
 - [x] Fix the bugs the FilterCondition tests found (2026-11-22). Each fix is covered by tests that fail on the old code:
   - `ContainsAny`/`DoesNotContainAny` always threw: the guard in `CreateContainsAnyExpression` was inverted (`Count > 0`).
@@ -114,7 +114,10 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [ ] Validate pagination arguments. Today nothing is checked, and the tests pin what happens: page 0 returns page 1's items with `PageIndex = 0`; page size 0 returns nothing with `TotalPages = int.MaxValue`; a negative page size returns **every row** (SQLite reads `LIMIT -1` as no limit), which also matters for the Phase 4 page-size cap. Recommendation: throw `ArgumentOutOfRangeException` for page < 1 or size < 1. `PaginatedList` also exposes no `TotalCount` or `PageSize`, which clients usually need.
 - [x] And/Or evaluation order: strictly left to right, no AND-before-OR precedence (decision 007, documented in [query-shaper.md](query-shaper.md#combining-filters)).
 - [ ] Decide whether a group node that also has its own condition should be rejected. Today the condition is silently ignored; recommendation: a validation error.
-- [ ] Clear the remaining nullable warnings in QueryShaper and Data (12 left: 1 in QueryShaper's base search, 11 in `lab/Data` entities; `GroupByKeys` slots are now `object?`), then enable `TreatWarningsAsErrors` there.
+- [x] Fix the validation gaps the mapper/base-search tests found (2026-11-22). `ForMember` accepted any property access, so `d => d.Details.Category` or `d => d.Name.Length` were accepted and then silently never applied; it now requires a property directly on the destination. `Configure<T>([])` (no lookups) crashed with `ArgumentNullException`; it now throws a descriptive `ArgumentException`.
+- [ ] Decide on the mapper/search behaviour the tests pinned down. A base search for a type with **no configuration is silently not applied** (the query is returned unfiltered). Mapping a nullable source into a non-nullable destination (`int?` → `int`) fails at materialization for null rows, not at configuration time. The name convention is case-sensitive.
+- [x] QueryShaper and its EF add-on have **zero warnings** and now build with `TreatWarningsAsErrors` (2026-11-22). `GroupByKeys` slots became `object?`, and `CreateBaseSearchLambdaExpression` validates its lookups.
+- [ ] Clear the 11 nullable warnings in `lab/Data` (all CS8618 on EF entities). Use `= null!` or `required`, **not** `string?`, because nullability changes the EF model and would need a migration. Then enable `TreatWarningsAsErrors` there.
 
 ### Phase 3: Close the PropertySelectors gaps
 - [ ] Non-generic arithmetic with properties (`PropertySelectorUtils.cs:31`).
@@ -154,7 +157,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 | D1 | Product/package names and namespace root | ✅ **Decided (005):** `Steverzag.PropertySelectors`, `Steverzag.QueryShaper`, `Steverzag.QueryShaper.EntityFrameworkCore`. |
 | D2 | Target framework(s) | `net8.0` (LTS) + `net9.0`. That widens adoption, and the code uses nothing that needs 9 except possibly `SearchValues`, which exists in 8. |
 | D3 | EF Core coupling | ✅ **Decided (006):** the core uses only `IQueryable`. EF Core-specific code lives in `Steverzag.QueryShaper.EntityFrameworkCore`. |
-| D4 | `QueryShaperServices` static ambient registry | Keep it only as a fallback. Make the explicit `IMapper`/`IBaseSearchConfiguration` parameters the primary path, because static state breaks tests and multi-tenant setups. |
+| D4 | `QueryShaperServices` static ambient registry | Keep it only as a fallback. Make the explicit `IMapper`/`IBaseSearchConfiguration` parameters the primary path, because static state breaks tests and multi-tenant setups. **Evidence (Phase 2):** `ConfigurationTests.TheStaticFallback_FollowsTheLastServiceCollection`: two containers, and the fallback silently follows whichever called `AddQueryShaper` last. A "nothing registered" test can't be written reliably. |
 | D5 | Should `$VAL_*` specifiers start with `$SPEC_`? | `SpecifierStart` exists but nothing uses it. Remove it, or document `$VAL_` as canonical. |
 | D6 | Monorepo vs. two repositories | Stay a monorepo until 1.0. |
 

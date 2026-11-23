@@ -629,6 +629,12 @@ namespace Steverzag.QueryShaper.Filtering
 
 		public static Expression<Func<T, bool>> CreateBaseSearchLambdaExpression<T>(IEnumerable<string>? searchLookups, string? searchValue)
 		{
+			ArgumentNullException.ThrowIfNull(searchLookups);
+			if (!searchLookups.Any())
+			{
+				throw new ArgumentException("At least one search lookup is required.", nameof(searchLookups));
+			}
+
 			var parameterExpressio = Expression.Parameter(typeof(T), "x");
 			var searchValueConstantExpression = Expression.Constant(searchValue, typeof(string));
 
