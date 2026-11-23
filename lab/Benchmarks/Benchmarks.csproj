@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BenchmarkDotNet" Version="0.14.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Data\ExpDataWorker.Data.csproj" />
+    <ProjectReference Include="..\..\src\Steverzag.QueryShaper\Steverzag.QueryShaper.csproj" />
+  </ItemGroup>
+
+</Project>

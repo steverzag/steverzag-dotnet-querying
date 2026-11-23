@@ -8,7 +8,7 @@ by a UI, saved report definitions, dynamic filters, or mapping configuration. If
 known at compile time, a plain lambda is the better tool.
 
 **Non-goals:**
-- Executing queries, filtering, or pagination. Those belong to DataWorker.
+- Executing queries, filtering, or pagination. Those belong to QueryShaper.
 - Being a general-purpose expression language. The grammar stays small and SQL-translatable.
 
 ## Quick look
@@ -53,7 +53,7 @@ All tokens are constants on `SelectorDefaults`. Prefer those constants to string
 - `PropertySelector<T>` knows its root type, so it can resolve property types, function overloads
   and arithmetic on properties. **Use it whenever possible.**
 - Non-generic `PropertySelector` exists for DTOs and serialization, where `T` isn't known yet.
-  DataWorker converts it to the generic form internally. Limitation: arithmetic involving properties
+  QueryShaper converts it to the generic form internally. Limitation: arithmetic involving properties
   only works on the generic form.
 
 ## Extending: custom functions
