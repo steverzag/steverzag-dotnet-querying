@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (243 filtering tests, all passing) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (287 tests: filtering, ordering, pagination; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -48,7 +48,7 @@ More detail is in [property-selectors.md](property-selectors.md) and [query-shap
 - ✅ Grouping and aggregation (`ApplyGrouping` / `ApplySelect` → `SelectResult`).
 - ✅ Configuration: `QueryShaperConfiguration` + `AddQueryShaper<T>()`, a selector-based `Mapper`, and `BaseSearchConfiguration`.
 - ⚠️ Known gaps:
-  - **Tests cover filtering only (conditions and And/Or logic)** so far (Phase 2). They found 3 bugs, now fixed.
+  - **Tests cover filtering, ordering and pagination** so far (Phase 2). They found 4 bugs, now fixed.
   - Stray auto-imported usings showed up twice (Roslyn, `Microsoft.Diagnostics.Symbols`). They are gone now that the library no longer sees the lab packages transitively.
   - Two `NotImplementedException` branches in `FilteringExtensions.cs` (~L520, ~L577) and a TODO about Contains semantics (~L466).
   - `ValueResult2` / `SearchValue.cs` naming is temporary.
@@ -101,13 +101,15 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 
 ### Phase 2: QueryShaper test baseline
 - [x] Create `tests/Steverzag.QueryShaper.Tests` on **SQLite in-memory** (not EF InMemory, which doesn't translate to SQL). It uses its own test model (`Infrastructure/`), and the seed table is documented in `SeedData.cs`.
-- [ ] Cover each `FilterCondition` ✅ (204 tests), nested `FilterNode` logic ✅ (20 tests), ordering, pagination edges, grouping/aggregation, the mapper, and the base search.
+- [ ] Cover each `FilterCondition` ✅ (204 tests), nested `FilterNode` logic ✅ (20 tests), ordering ✅ (26 tests), pagination edges ✅ (18 tests), grouping/aggregation, the mapper, and the base search.
 - [x] Resolve the `NotImplementedException` branches and the Contains-semantics TODO (2026-11-22). `In`/`NotIn`, `ContainsAny` and `ContainsAll` now share one value-list helper (`CreateTypedValueList`). It supports every scalar type and its nullable form (e.g. `char`, `List<int?>`), and allows `null` in the list for nullable targets. It throws `FilterNotSupportedException` for non-scalar targets (entities, nested collections). `ContainsAny` on enum collections also works now. The ContainsAny TODO was settled by the earlier fix.
 - [x] Fix the bugs the FilterCondition tests found (2026-11-22). Each fix is covered by tests that fail on the old code:
   - `ContainsAny`/`DoesNotContainAny` always threw: the guard in `CreateContainsAnyExpression` was inverted (`Count > 0`).
   - Comparisons on nullable `DateTime`/`DateOnly`/`TimeOnly` threw, because the constant was not typed nullable.
   - `In`/`NotIn` on a nullable property threw (`List<int>` vs `int?`). Null rows now count as "not in" for `NotIn`.
 - [ ] Decide on the semantics the tests pinned down: `IsEmpty` on a nullable number means null **or** 0. Undefined enum values (e.g. `99`) are accepted silently. Invalid enum/null input throws a bare `System.Exception`. List values (`In`, `ContainsAny`, `ContainsAll`) must be boxed as the exact type (a JSON `long` for an `int` property throws). Enum names are accepted in lists but not in single-value `Equals`. `ApplyLogicsFilter` writes every expression to `Console`.
+- [x] Fix the ordering bug the tests found (2026-11-22): the list overload of `ApplyOrder` dropped everything after the first `|` segment, so `"Reviews|$FN_AGGR_COUNT"` ordered by `"Reviews"` and EF failed to translate it. It went through `OrderParameters<T>`, whose base string is only `PlainValue`. `ApplyOrder` now uses the typed selector, or parses the original string.
+- [ ] Validate pagination arguments. Today nothing is checked, and the tests pin what happens: page 0 returns page 1's items with `PageIndex = 0`; page size 0 returns nothing with `TotalPages = int.MaxValue`; a negative page size returns **every row** (SQLite reads `LIMIT -1` as no limit), which also matters for the Phase 4 page-size cap. Recommendation: throw `ArgumentOutOfRangeException` for page < 1 or size < 1. `PaginatedList` also exposes no `TotalCount` or `PageSize`, which clients usually need.
 - [x] And/Or evaluation order: strictly left to right, no AND-before-OR precedence (decision 007, documented in [query-shaper.md](query-shaper.md#combining-filters)).
 - [ ] Decide whether a group node that also has its own condition should be rejected. Today the condition is silently ignored; recommendation: a validation error.
 - [ ] Clear the remaining nullable warnings in QueryShaper and Data (33 left after the date fix), then enable `TreatWarningsAsErrors` there.
@@ -119,6 +121,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [ ] Implement `$FN_AGGR_COUNTDISTINCT`, and either finish or delete `SyntheticFunction`.
 - [ ] Clear error messages that give the position and token for invalid selectors (a `SelectorParseException`).
 - [ ] (Optional) Unify the duplicated generic/non-generic record hierarchies.
+- [ ] `PropertySelector<T>.ToString()` returns the compiler-generated record dump (`PropertySelector { PlainValue = … }`), because a derived record gets its own synthesized `ToString`, which hides the base's custom one. Fix: `public sealed override string ToString()` in `PropertySelector`. Affects `ToGeneric()` (which round-trips through `ToString`) and `OrderParameters<T>`'s base string (skipped test `TypedParameters_BaseStringIsTheFullSelector`).
 
 ### Phase 4: Shape the public API (the gate before any package ships)
 - [x] Choose the product names and root namespaces, and rename the code (done in Phase 1).

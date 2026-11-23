@@ -4,11 +4,8 @@ using Steverzag.QueryShaper.Utils;
 
 namespace Steverzag.QueryShaper.Tests.Filtering
 {
-	[Collection(SqliteDatabaseCollection.Name)]
-	public abstract class FilterTestBase(SqliteDatabaseFixture database)
+	public abstract class FilterTestBase(SqliteDatabaseFixture database) : DatabaseTestBase(database)
 	{
-		protected SqliteDatabaseFixture Database { get; } = database;
-
 		/// <summary>
 		/// Applies a single <see cref="FilterNode"/> to the products and runs it on SQLite.
 		/// Returns the matching ids in ascending order.

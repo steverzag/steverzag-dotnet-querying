@@ -15,6 +15,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Steverzag.QueryShaper\Steverzag.QueryShaper.csproj" />
+    <ProjectReference Include="..\..\src\Steverzag.QueryShaper.EntityFrameworkCore\Steverzag.QueryShaper.EntityFrameworkCore.csproj" />
   </ItemGroup>
 
   <ItemGroup>

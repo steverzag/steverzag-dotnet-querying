@@ -36,16 +36,15 @@ namespace Steverzag.QueryShaper.Ordering
 
 			var isFirstIteration = true;
 
-			orderParameters = orderParameters.Select(op =>
-			{
-				return OrderParameters<T>.Create(op);
-			}).ToList()!;
-
 			foreach (var orderParam in orderParameters)
 			{
+				PropertySelector<T> selector = orderParam is OrderParameters<T> typed
+					? typed.OrderBy
+					: orderParam.OrderBy;
+
 				var paramExp = Expression.Parameter(typeof(T), name: "p");
 				var propertyToOrderByExp = Expression.Convert(
-					ExpressionUtils.CreateMemberAccess(paramExp, orderParam.OrderBy)
+					ExpressionUtils.CreateMemberAccess(paramExp, selector)
 					, typeof(object));
 
 				var orderByLambdaExp = Expression.Lambda<Func<T, object>>(propertyToOrderByExp, paramExp);
