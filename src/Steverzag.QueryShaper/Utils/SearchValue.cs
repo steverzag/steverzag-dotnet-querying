@@ -223,28 +223,28 @@ namespace Steverzag.QueryShaper.Utils
 		public static implicit operator ValueResult2(byte value) => new(value);
 		public static implicit operator ValueResult2(byte? value) => new(value);
 		public static explicit operator byte(ValueResult2 d) => d._kind is ResultValueKind.Integer
-			? d._integerValue == null ? (byte)0 : (byte)d._integerValue.Value
+			? d._integerValue == null ? (byte)0 : checked((byte)d._integerValue.Value)
 			: throw new InvalidCastException(castExceptionMessage(typeof(byte), d._kind));
 		public static explicit operator byte?(ValueResult2 d) => d._kind is ResultValueKind.Integer
-			? (byte?)d._integerValue
+			? checked((byte?)d._integerValue)
 			: throw new InvalidCastException(castExceptionMessage(typeof(byte), d._kind));
 
 		public static implicit operator ValueResult2(short value) => new(value);
 		public static implicit operator ValueResult2(short? value) => new(value);
 		public static explicit operator short(ValueResult2 d) => d._kind is ResultValueKind.Integer
-			? d._integerValue == null ? default : (short)d._integerValue.Value
+			? d._integerValue == null ? default : checked((short)d._integerValue.Value)
 			: throw new InvalidCastException(castExceptionMessage(typeof(short), d._kind));
 		public static explicit operator short?(ValueResult2 d) => d._kind is ResultValueKind.Integer
-			? (short?)d._integerValue
+			? checked((short?)d._integerValue)
 			: throw new InvalidCastException(castExceptionMessage(typeof(short), d._kind));
 
 		public static implicit operator ValueResult2(int value) => new(value);
 		public static implicit operator ValueResult2(int? value) => new(value);
 		public static explicit operator int(ValueResult2 d) => d._kind is ResultValueKind.Integer
-			? d._integerValue == null ? default : (int)d._integerValue.Value
+			? d._integerValue == null ? default : checked((int)d._integerValue.Value)
 			: throw new InvalidCastException(castExceptionMessage(typeof(int), d._kind));
 		public static explicit operator int?(ValueResult2 d) => d._kind is ResultValueKind.Integer
-			? (int?)d._integerValue
+			? checked((int?)d._integerValue)
 			: throw new InvalidCastException(castExceptionMessage(typeof(int), d._kind));
 
 		public static implicit operator ValueResult2(long? value) => new(value);
@@ -264,11 +264,17 @@ namespace Steverzag.QueryShaper.Utils
 		public static implicit operator ValueResult2(float value) => new(value);
 		public static implicit operator ValueResult2(float? value) => new(value);
 		public static explicit operator float(ValueResult2 d) => d._kind is ResultValueKind.Double or ResultValueKind.Decimal
-			? (float?)d._doubleValue ?? (float?)d._decimalValue ?? default //d._doubleValue is not null ? (float)d._doubleValue.Value : d._decimalValue is not null ? (float)d._decimalValue.Value : default
+			? ToFloatChecked(d._doubleValue) ?? (float?)d._decimalValue ?? default
 			: throw new InvalidCastException(castExceptionMessage(typeof(float), d._kind));
 		public static explicit operator float?(ValueResult2 d) => d._kind is ResultValueKind.Double or ResultValueKind.Decimal
-			? (float?)d._doubleValue ?? (float?)d._decimalValue
+			? ToFloatChecked(d._doubleValue) ?? (float?)d._decimalValue
 			: throw new InvalidCastException(castExceptionMessage(typeof(float), d._kind));
+
+		// double → float doesn't throw when the value is too big, it gives infinity, so check by hand.
+		private static float? ToFloatChecked(double? value) =>
+			value is double v && double.IsFinite(v) && float.IsInfinity((float)v)
+				? throw new OverflowException($"The value {v} is outside the range of {typeof(float)}.")
+				: (float?)value;
 
 		public static implicit operator ValueResult2(double value) => new(value);
 		public static implicit operator ValueResult2(double? value) => new(value);

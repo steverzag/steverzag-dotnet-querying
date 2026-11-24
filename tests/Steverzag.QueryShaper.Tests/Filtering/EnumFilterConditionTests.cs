@@ -40,6 +40,19 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		}
 
 		[Fact]
+		public void LongValueThatFits_Works()
+		{
+			Assert.Equal([1, 4], FilterIds(nameof(Product.Status), FilterCondition.Equals, (long)ProductStatus.Active));
+		}
+
+		[Fact]
+		public void ValueBeyondTheUnderlyingType_Throws()
+		{
+			// 2^32 + 1: used to wrap to 1 (Active) and match rows 1 and 4.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, 4_294_967_297L));
+		}
+
+		[Fact]
 		public void UndefinedLongValue_Throws()
 		{
 			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, 99L));

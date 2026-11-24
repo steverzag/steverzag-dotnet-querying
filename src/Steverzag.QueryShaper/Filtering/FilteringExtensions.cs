@@ -4,6 +4,7 @@ using Steverzag.QueryShaper.Configuration.Filtering;
 using Steverzag.QueryShaper.Exceptions;
 using Steverzag.QueryShaper.Utils;
 using System.Collections;
+using System.Globalization;
 using System.Linq.Expressions;
 using System.Reflection;
 
@@ -91,8 +92,17 @@ namespace Steverzag.QueryShaper.Filtering
 			if (filter.Filters is null || !filter.Filters.Any())
 			{
 
-				Expression filterConditionExpression = CreateFilterConditionExpression(parameterExpressions, filter);
-				return filterConditionExpression;
+				try
+				{
+					return CreateFilterConditionExpression(parameterExpressions, filter);
+				}
+				catch (OverflowException ex)
+				{
+					// The value doesn't fit the property's type. ValueResult2's casts are checked, so they throw
+					// instead of wrapping (e.g. 4294967346L into an int would otherwise become 50).
+					throw new FilterConditionAndValueNotSupportedException(
+						$"The filter value for '{filter.FieldSelector}' is out of range for the property's type. {ex.Message}");
+				}
 			}
 
 			Expression? subCombinedExpression = null;
@@ -395,7 +405,8 @@ namespace Steverzag.QueryShaper.Filtering
 				object? enumUnderlayingValue = filter.SearchValue is null ? null
 					: filter.SearchValue?.GetKind() switch
 					{
-						ResultValueKind.Integer => (int?)filter.SearchValue!,
+						// Read as long: Enum.TryParse below rejects values outside the enum's own underlying type.
+						ResultValueKind.Integer => (long?)filter.SearchValue!,
 						ResultValueKind.Long => (long?)filter.SearchValue!,
 						_ => throw new Exception("Unsupported value type for enum filtering: " + filter.SearchValue?.GetKind().ToString()),
 					};
@@ -530,18 +541,6 @@ namespace Steverzag.QueryShaper.Filtering
 			return containsMethodCall;
 		}
 
-		/// <summary>
-		/// Turns the request's untyped values into a <c>List&lt;itemType&gt;</c>, which can be used as a
-		/// query constant. Shared by In/NotIn, ContainsAny and ContainsAll.
-		/// <list type="bullet">
-		/// <item>Only scalar item types (and their nullable forms) are supported. Anything else, such as an
-		/// entity or a nested collection, throws <see cref="FilterNotSupportedException"/>.</item>
-		/// <item>Enum values are parsed with <see cref="Enum.TryParse(Type, string?, out object?)"/>, so both
-		/// underlying numbers and names are accepted. Undefined values are rejected (decision 008.2).</item>
-		/// <item>Other values must already be boxed as the exact type: no numeric widening or narrowing.</item>
-		/// <item>null is accepted only when the item type can hold it.</item>
-		/// </list>
-		/// </summary>
 		private static IList CreateTypedValueList(Type itemType, List<object> values, FilterCondition condition)
 		{
 			var underlyingType = Nullable.GetUnderlyingType(itemType) ?? itemType;
@@ -573,6 +572,10 @@ namespace Steverzag.QueryShaper.Filtering
 				else if (underlyingType.IsInstanceOfType(value))
 				{
 					list.Add(value);
+				}
+				else if (IsNumericType(underlyingType) && IsNumericType(value.GetType()))
+				{
+					list.Add(ConvertNumber(value, underlyingType));
 				}
 				else
 				{
@@ -610,6 +613,51 @@ namespace Steverzag.QueryShaper.Filtering
 			TypeCode.Byte or TypeCode.UInt16 or TypeCode.UInt32 or TypeCode.UInt64 => Convert.ToUInt64(enumValue),
 			_ => unchecked((ulong)Convert.ToInt64(enumValue)),
 		};
+
+		private static object ConvertNumber(object value, Type targetType)
+		{
+			try
+			{
+				if (IsIntegralType(targetType) && !IsIntegralType(value.GetType()))
+				{
+					// double/float/decimal → integer: only whole numbers. ToDecimal throws OverflowException
+					// for NaN, infinity and values far outside every integer range.
+					var number = Convert.ToDecimal(value, CultureInfo.InvariantCulture);
+					if (decimal.Truncate(number) != number)
+					{
+						throw new FilterConditionAndValueNotSupportedException(
+							$"The value '{value}' has a fractional part, so it cannot be used for type {targetType.Name}.");
+					}
+					value = number;
+				}
+
+				var converted = Convert.ChangeType(value, targetType, CultureInfo.InvariantCulture);
+
+				// Narrowing to float doesn't throw, it gives infinity.
+				if (converted is float f && float.IsInfinity(f) && !IsInfinity(value))
+				{
+					throw new OverflowException();
+				}
+
+				return converted;
+			}
+			catch (OverflowException)
+			{
+				throw new FilterConditionAndValueNotSupportedException(
+					$"The value '{value}' of type {value.GetType().Name} is out of range for type {targetType.Name}.");
+			}
+
+			static bool IsInfinity(object number) => number is double d && double.IsInfinity(d);
+		}
+
+		private static bool IsIntegralType(Type type) =>
+			type == typeof(byte) || type == typeof(sbyte)
+			|| type == typeof(short) || type == typeof(ushort)
+			|| type == typeof(int) || type == typeof(uint)
+			|| type == typeof(long) || type == typeof(ulong);
+
+		private static bool IsNumericType(Type type) =>
+			IsIntegralType(type) || type == typeof(float) || type == typeof(double) || type == typeof(decimal);
 
 		private static bool IsScalarType(Type type) =>
 			type.IsPrimitive

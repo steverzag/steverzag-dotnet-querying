@@ -157,6 +157,36 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([2, 4], FilterIds(nameof(Product.Measurements), FilterCondition.ContainsAny, new List<object> { 2 }));
 		}
 
+		// Decision 008.3: numeric list values are converted to the element type when they fit.
+
+		[Fact]
+		public void NullableElements_ContainsAny_WithLongValue()
+		{
+			Assert.Equal([2, 4], FilterIds(nameof(Product.Measurements), FilterCondition.ContainsAny, new List<object> { 2L }));
+		}
+
+		[Fact]
+		public void NullableElements_ContainsAll_WithLongValues()
+		{
+			Assert.Equal([4], FilterIds(nameof(Product.Measurements), FilterCondition.ContainsAll, new List<object> { 1L, 2L }));
+		}
+
+		[Fact]
+		public void Projected_ContainsAny_WithLongValue()
+		{
+			// Review stars: 1 [5, 4], 2 [3], 3 [], 4 [4, 4, 2]
+			Assert.Equal([2], FilterIds("Reviews.Stars", FilterCondition.ContainsAny, new List<object> { 3L }));
+		}
+
+		[Theory]
+		[InlineData(FilterCondition.ContainsAny)]
+		[InlineData(FilterCondition.ContainsAll)]
+		public void NumericElements_ValueThatDoesNotFit_Throws(FilterCondition condition)
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Measurements), condition,
+				new List<object> { 1, long.MaxValue }));
+		}
+
 		// Collections of entities have no scalar to compare a value with.
 
 		[Theory]

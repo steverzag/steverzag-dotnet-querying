@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (369 tests covering every feature; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (423 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -118,7 +118,8 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [x] Decide on the mapper/search behaviour the tests pinned down (2026-11-22, **decision 010**). A non-blank search on an unconfigured type throws, and `int?` → `int` maps are rejected when registered. The same-name rule stays case-sensitive.
 - [ ] **Implement decisions 008–010.** The existing tests pin the old behaviour, so each change updates its tests and adds any that are missing:
   - [x] 008.2: reject undefined enum values (allow `[Flags]` combinations) (2026-11-23). Applies to single values and lists (`In`/`NotIn`, `ContainsAny`, `ContainsAll`) and throws `FilterConditionAndValueNotSupportedException`. A `[Flags]` enum accepts any combination of declared bits, including 0. The test model gained `Product.Features` (`[Flags] ProductFeatures`).
-  - [ ] 008.3: convert list values safely to the target type, with overflow checks (in `CreateTypedValueList`).
+  - [x] 008.3: convert list values safely to the target type, with overflow checks (in `CreateTypedValueList`) (2026-11-23). Any numeric value converts to a numeric target if it fits (`ConvertNumber`). Integer targets reject fractional parts, NaN and out-of-range values instead of truncating or wrapping. Values that don't fit throw `FilterConditionAndValueNotSupportedException`; non-numeric values (strings, `bool`, numbers for a `char` property) still throw `InvalidCastException`.
+  - [x] Single-value filters narrowed **unchecked** (`ValueResult2`'s explicit operators used plain `(int)`, `(short)`, `(byte)` casts), so `Quantity = 4294967346L` was read as `50`. Found while implementing 008.3 and fixed to match it (2026-11-23). The casts are now `checked`, and double → float checks for overflow to infinity. `BuildFilterExpression` turns the `OverflowException` into `FilterConditionAndValueNotSupportedException`. The enum branch reads the value as `long`, so out-of-range values are rejected by `Enum.TryParse` instead of wrapping to a defined member.
   - [ ] 008.4: accept enum names in `Equals`/`NotEquals`.
   - [ ] 008 cleanups: `FilterConditionAndValueNotSupportedException` instead of `System.Exception`; remove `Console.WriteLine` from `ApplyLogicsFilter`.
   - [ ] 009.5: reject a group node that has its own condition.
@@ -147,6 +148,10 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [ ] Freeze the selector **grammar** and write it down as a spec (`docs/property-selectors.md` → "Grammar").
 - [ ] Add a QueryShaper request contract: a single `QueryRequest { Filters, Order, Page, Search }` that binds from JSON, plus an `Apply(request)` entry point.
 - [ ] Add a security note and guard rails: a property allow-list, max depth, and a page-size cap, because selectors arrive from untrusted clients.
+- [ ] **Pass filter values as query parameters, not constants** (found 2026-11-23). The filters embed each client value with `Expression.Constant` (`FilteringExtensions.cs`, including the `In`/`ContainsAny`/`ContainsAll` value lists). The base search does the same (`BaseSearchConfiguration.cs`). EF Core includes constants in its query-cache key and inlines them into the SQL. So `Quantity = 50` and `Quantity = 51` are two separate queries, each compiled from scratch (often a millisecond or more), and the cache grows with every distinct value. That's the biggest per-request cost in QueryShaper, far more than any validation. It also means a high-cardinality filter, such as a search box, never hits the cache.
+  - Fix: wrap each client value in a closure-style member access (e.g. a small `ValueHolder<T> { T Value }` passed through `Expression.Property(Expression.Constant(holder), "Value")`), which EF Core turns into a SQL parameter. Fixed values (`0`, `null`, `""` in `IsEmpty`) can stay constants. For value lists, a parameterized `List<T>` makes EF Core 8+ send them as a single JSON parameter (`json_each` on SQLite, `OPENJSON` on SQL Server) instead of inlining every element.
+  - Verify: tests that assert `ToQueryString()` contains a parameter (`@__…`) instead of the literal value, plus one that runs the same filter with two different values and checks that EF compiled only one query (count `CoreEventId.QueryCompilationStarting` events through the test context's logger).
+  - Optionally measure before/after in `lab/Benchmarks/`. This is not a public API change, but it belongs before the first release.
 - [ ] Make the And/Or evaluation order configurable (decision 007 follow-up), once QueryShaper has a settled configuration approach (see D4). Proposed: `FilterEvaluationOrder { LeftToRight, AndBeforeOr }`, settable globally in `QueryShaperConfiguration` and overridable per call. Default `LeftToRight` (today's behaviour). Run `FilterNodeLogicTests` under both modes; only the ordering tests should differ.
 
 ### Phase 5: Package and release `0.1.0-preview`

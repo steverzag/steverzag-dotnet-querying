@@ -119,6 +119,63 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Throws<FilterNotSupportedException>(() => FilterIds(nameof(Product.Quantity), condition, 1));
 		}
 
+		// A single integer value is stored as long and narrowed to the property type with checked casts:
+		// values that fit work, values that don't throw instead of wrapping around.
+		// Quantity/Stock: 1 → 100, 2 → 0, 3 → 50, 4 → 200. Rating: 4, 0, 2, 5.
+
+		[Theory]
+		[InlineData(nameof(Product.Quantity), 50L, new[] { 3 })]
+		[InlineData(nameof(Product.Stock), 50L, new[] { 3 })]
+		[InlineData(nameof(Product.Rating), 4L, new[] { 1 })]
+		[InlineData(nameof(Product.NullableQuantity), 100L, new[] { 1 })]
+		public void Equals_WithLongValueThatFits(string field, long value, int[] expected)
+		{
+			Assert.Equal(expected, FilterIds(field, FilterCondition.Equals, value));
+		}
+
+		[Theory]
+		[InlineData(nameof(Product.Quantity), 4_294_967_346L)] // 2^32 + 50: used to wrap to 50 and match row 3
+		[InlineData(nameof(Product.Quantity), (long)int.MaxValue + 1)]
+		[InlineData(nameof(Product.Quantity), (long)int.MinValue - 1)]
+		[InlineData(nameof(Product.NullableQuantity), 4_294_967_396L)] // 2^32 + 100: used to wrap to 100
+		[InlineData(nameof(Product.Stock), 65_586L)] // 2^16 + 50: used to wrap to 50
+		[InlineData(nameof(Product.Stock), -40_000L)]
+		[InlineData(nameof(Product.Rating), 260L)] // 256 + 4: used to wrap to 4
+		[InlineData(nameof(Product.Rating), -1L)]
+		public void Equals_WithIntegerThatDoesNotFit_Throws(string field, long value)
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, FilterCondition.Equals, value));
+		}
+
+		[Theory]
+		[InlineData(FilterCondition.GreaterThan)]
+		[InlineData(FilterCondition.LessThanOrEqual)]
+		[InlineData(FilterCondition.NotEquals)]
+		public void Comparison_WithIntegerThatDoesNotFit_Throws(FilterCondition condition)
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Quantity), condition, 4_294_967_346L));
+		}
+
+		[Fact]
+		public void Float_WithDoubleBeyondFloatRange_Throws()
+		{
+			// double → float gives infinity instead of throwing, so it's checked separately.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Weight), FilterCondition.LessThan, 1e40));
+		}
+
+		[Fact]
+		public void Decimal_WithDoubleBeyondDecimalRange_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Price), FilterCondition.LessThan, 1e30));
+		}
+
+		[Fact]
+		public void Long_WithLargestLong_Works()
+		{
+			// Views: 1000, 0, 500, 2000. No narrowing, so nothing to check.
+			Assert.Equal([1, 2, 3, 4], FilterIds(nameof(Product.Views), FilterCondition.LessThan, long.MaxValue));
+		}
+
 		[Fact]
 		public void MismatchedValueKind_Throws()
 		{
