@@ -35,6 +35,16 @@ public class MappingConfiguration<TIn, TOut>
 
 			var valueExpr = ExpressionUtils.CreateMemberAccess(param, selector ?? prop.Name);
 
+			if (Nullable.GetUnderlyingType(valueExpr.Type) is { } underlying
+				&& prop.PropertyType.IsValueType
+				&& Nullable.GetUnderlyingType(prop.PropertyType) is null)
+			{
+				var source = selector is null ? $"'{typeof(TIn).Name}.{prop.Name}'" : "its ForMember selector";
+				throw new InvalidOperationException(
+					$"Can't map '{typeof(TOut).Name}.{prop.Name}' ({prop.PropertyType.Name}) from {source} ({underlying.Name}?): " +
+					$"the source can be null and the destination can't. Make the destination nullable ({prop.PropertyType.Name}?).");
+			}
+
 			Expression assignExpr = valueExpr.Type != prop.PropertyType
 				? Expression.Convert(valueExpr, prop.PropertyType)
 				: valueExpr;

@@ -45,6 +45,22 @@ namespace Steverzag.QueryShaper.Tests.Mapping
 		public int Quantity { get; set; }
 	}
 
+	public class ProductWideQuantity
+	{
+		public long Quantity { get; set; }
+	}
+
+	public class ProductNullableQuantity
+	{
+		public int? Quantity { get; set; }
+	}
+
+	// same name as Product.NullableQuantity (int?), but not nullable
+	public class ProductNullableQuantityByName
+	{
+		public int NullableQuantity { get; set; }
+	}
+
 	public class MapperTests(SqliteDatabaseFixture database) : DatabaseTestBase(database)
 	{
 		// 1 Hammer | "Steel head"  | Tools  | Qty 100 | NullableQty 100  | stars 5, 4
@@ -156,15 +172,50 @@ namespace Steverzag.QueryShaper.Tests.Mapping
 				new MappingConfiguration<Product, ProductLabel>().ForMember(d => d.Name.Length, nameof(Product.Quantity)));
 		}
 
-		[Fact]
-		public void NullableSourceIntoNonNullableDestination_FailsForNullRows()
-		{
-			// NullableQuantity is null for row 2. The (int) conversion is translated to SQL, and the null fails
-			// when EF materializes the row.
-			var mapper = new Mapper().Register(
-				new MappingConfiguration<Product, ProductQuantity>().ForMember(d => d.Quantity, nameof(Product.NullableQuantity)));
+		// ---- nullable → non-nullable (decision 010.9)
 
-			Assert.Throws<InvalidOperationException>(() => Map<ProductQuantity>(mapper));
+		[Fact]
+		public void NullableSourceIntoNonNullableDestination_FailsWhenRegistering()
+		{
+			// It used to register fine and then fail on row 2 (NullableQuantity null) when EF materialized it.
+			var configuration = new MappingConfiguration<Product, ProductQuantity>().ForMember(d => d.Quantity, nameof(Product.NullableQuantity));
+
+			var exception = Assert.Throws<InvalidOperationException>(() => new Mapper().Register(configuration));
+			Assert.Contains("ProductQuantity.Quantity", exception.Message);
+			Assert.Contains("Int32?", exception.Message);
+			Assert.Contains("Make the destination nullable", exception.Message);
+		}
+
+		[Fact]
+		public void NullableSourceIntoNonNullableDestination_ByName_FailsWhenRegistering()
+		{
+			var exception = Assert.Throws<InvalidOperationException>(() => new Mapper().Register(new MappingConfiguration<Product, ProductNullableQuantityByName>()));
+			Assert.Contains("Product.NullableQuantity", exception.Message);
+		}
+
+		[Fact]
+		public void NullableSourceIntoAWiderNonNullableDestination_FailsWhenRegistering()
+		{
+			// int? → long is a widening conversion, but a null still has nowhere to go.
+			Assert.Throws<InvalidOperationException>(() => new Mapper().Register(
+				new MappingConfiguration<Product, ProductWideQuantity>().ForMember(d => d.Quantity, nameof(Product.NullableQuantity))));
+		}
+
+		[Fact]
+		public void NullableSourceIntoNullableDestination_KeepsTheNulls()
+		{
+			var mapper = new Mapper().Register(
+				new MappingConfiguration<Product, ProductNullableQuantity>().ForMember(d => d.Quantity, nameof(Product.NullableQuantity)));
+
+			Assert.Equal([100, null, 0, 200], Map<ProductNullableQuantity>(mapper).Select(r => r.Quantity));
+		}
+
+		[Fact]
+		public void NonNullableSourceIntoNullableDestination_IsAllowed()
+		{
+			var mapper = new Mapper().Register(new MappingConfiguration<Product, ProductNullableQuantity>());
+
+			Assert.Equal([100, 0, 50, 200], Map<ProductNullableQuantity>(mapper).Select(r => r.Quantity));
 		}
 
 		// ---- composition

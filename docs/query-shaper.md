@@ -167,6 +167,13 @@ selector if one is registered. Otherwise it's filled from the source property wi
 decision 010), or left at its default. Values are converted when the types differ (e.g. `int` → `long`). Only
 properties directly on the destination can be mapped (`d => d.X`, not `d => d.Inner.X`).
 
+**Maps are checked when registered.** A conversion that doesn't exist (e.g. `int` → `string`) throws
+`InvalidOperationException`. So does a nullable value into a non-nullable one (`int?` → `int`, or `int?` → `long`),
+whether it comes from `ForMember` or the same-name rule (decision 010): make the destination nullable instead.
+The reverse (`int` → `int?`) is fine. This check only sees the selector's declared type. An aggregate typed as
+non-nullable (`MIN`, `MAX`, `AVG` over an empty collection) can still be `NULL` in SQL, so map those to a nullable
+destination.
+
 ## Status
 
 This is a prototype. Every feature (filtering, base search, ordering, paging, grouping, select and mapping) is
