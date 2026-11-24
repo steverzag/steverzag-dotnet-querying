@@ -164,3 +164,22 @@ numbers, `bool` and `Guid` compared with the default (`Quantity = null` matched 
 **Consequence:** a behaviour change. Requests that relied on `null` meaning 0 or `false` now fail. Clients sending
 JSON numbers no longer need to match the property's number kind. The seven numeric branches in `FilteringExtensions`
 became one. 008.3's statement that lists "match single values" now holds.
+
+### 014: Min, Max and Avg are nullable, so an empty collection gives null (2026-11-24)
+**Status:** accepted; implemented (2026-11-24)
+**Context:** over a collection of non-nullable values, `AGGR_MIN`, `AGGR_MAX` and `AGGR_AVG` declared a non-nullable
+type (`int`, `double`). An empty collection broke that in two ways. In memory, `Enumerable.Min/Max/Average` threw
+"Sequence contains no elements". In SQL the aggregate is `NULL`, so mapping it into an `int` property registered fine
+and then failed when EF materialized the row ("Nullable object must have a value"). `ApplySelect` and ordering already
+worked, because they box the value or let SQL sort `NULL`.
+**Decision:** lift a non-nullable value element to its nullable form before aggregating
+(`x.Select(e => (int?)e).Max()`) and declare the nullable result type: `int` → `int?`, `DateTime` → `DateTime?`,
+`AVG` of `int` → `double?`. An empty collection gives `null` in memory and in SQL. `AGGR_SUM` is unchanged: an
+empty sum is 0 in memory, and EF Core wraps `SUM` in `COALESCE(…, 0)`. Reference elements (`string`) are unchanged;
+their `Min`/`Max` already return `null`.
+Rejected: turning an empty collection into `default(T)` (0 stars for a product with no reviews) is the kind of silent
+reinterpretation that 009 and 013 removed.
+**Consequence:** a breaking change in declared types. Code that reads these aggregates as non-nullable must use the
+nullable type. Mapping rule 010.9 now rejects `MIN`/`MAX`/`AVG` into a non-nullable destination at registration,
+instead of failing on the first row with an empty collection. Arithmetic on them stays nullable
+(`Numbers|$FN_AGGR_MAX + 1` is `int?`).

@@ -204,9 +204,9 @@ properties directly on the destination can be mapped (`d => d.X`, not `d => d.In
 **Maps are checked when registered.** A conversion that doesn't exist (e.g. `int` → `string`) throws
 `InvalidOperationException`. So does a nullable value into a non-nullable one (`int?` → `int`, or `int?` → `long`),
 whether it comes from `ForMember` or the same-name rule (decision 010): make the destination nullable instead.
-The reverse (`int` → `int?`) is fine. This check only sees the selector's declared type. An aggregate typed as
-non-nullable (`MIN`, `MAX`, `AVG` over an empty collection) can still be `NULL` in SQL, so map those to a nullable
-destination.
+The reverse (`int` → `int?`) is fine. `MIN`, `MAX` and `AVG` are declared nullable (`Reviews.Stars|$FN_AGGR_MAX` is
+`int?`, decision 014), because over an empty collection they are `NULL` in SQL. So the same check rejects mapping
+them into a non-nullable destination; a nullable destination receives `null` for a row with an empty collection.
 
 ## Status
 

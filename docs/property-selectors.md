@@ -49,13 +49,16 @@ All tokens are constants on `SelectorDefaults`. Prefer those constants to string
 | Date | `DT_ADDYEARS`, `ADDMONTHS`, `ADDDAYS`, `ADDHOURS`, `ADDMINUTES`, `ADDSECONDS`, `ADDMILLISECONDS`, `NOW`, `UTCNOW`, `TODAY` |
 
 **Aggregate result types** follow `Enumerable`'s overload for the element type, and the selector's `Type` matches
-the expression it builds:
+the expression it builds. `AGGR_MIN`, `AGGR_MAX` and `AGGR_AVG` first lift a non-nullable value element to its
+nullable form (`Numbers.Select(x => (int?)x).Max()`), so **an empty collection gives `null`**, both in memory and
+in SQL (decision 014):
 
 | Function | Element type → result |
 |---|---|
-| `AGGR_SUM`, `AGGR_MIN`, `AGGR_MAX` | the element type: `int` → `int`, `decimal?` → `decimal?`, … |
-| `AGGR_AVG` | `int`, `long`, `double` → `double`; `float` → `float`; `decimal` → `decimal`; nullable elements give the nullable form (`int?` → `double?`) |
-| `AGGR_MIN`, `AGGR_MAX` on other comparable types | the element type (`DateTime`, `string`, …), through the generic overload |
+| `AGGR_SUM` | the element type: `int` → `int`, `decimal?` → `decimal?`, … An empty collection sums to 0. |
+| `AGGR_MIN`, `AGGR_MAX` | the nullable element type: `int` → `int?`, `decimal?` → `decimal?`, … |
+| `AGGR_AVG` | `int`, `long`, `double` → `double?`; `float` → `float?`; `decimal` → `decimal?` (nullable elements give the same) |
+| `AGGR_MIN`, `AGGR_MAX` on other comparable types | `DateTime` → `DateTime?` (any value type is lifted); reference types such as `string` stay as they are, through the generic overload |
 
 `AGGR_SUM` and `AGGR_AVG` support the numeric types `int`, `long`, `float`, `double` and `decimal`, and their nullable
 forms. Anything else throws `InvalidOperationException`: `AGGR_AVG` when the selector is parsed, and `AGGR_SUM` when the

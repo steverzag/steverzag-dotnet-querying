@@ -55,6 +55,11 @@ namespace Steverzag.QueryShaper.Tests.Mapping
 		public int? Quantity { get; set; }
 	}
 
+	public class ProductNonNullableAverage
+	{
+		public double AverageStars { get; set; }
+	}
+
 	// same name as Product.NullableQuantity (int?), but not nullable
 	public class ProductNullableQuantityByName
 	{
@@ -216,6 +221,34 @@ namespace Steverzag.QueryShaper.Tests.Mapping
 			var mapper = new Mapper().Register(new MappingConfiguration<Product, ProductNullableQuantity>());
 
 			Assert.Equal([100, 0, 50, 200], Map<ProductNullableQuantity>(mapper).Select(r => r.Quantity));
+		}
+
+		[Theory]
+		[InlineData(SelectorDefaults.MinAggregateFunction)]
+		[InlineData(SelectorDefaults.MaxAggregateFunction)]
+		public void MinOrMaxIntoNonNullableDestination_FailsWhenRegistering(string function)
+		{
+			// It used to register fine and then fail on Wrench (no reviews), where SQL MIN/MAX is NULL.
+			Assert.Throws<InvalidOperationException>(() => new Mapper().Register(
+				new MappingConfiguration<Product, ProductQuantity>().ForMember(d => d.Quantity, "Reviews.Stars|" + function)));
+		}
+
+		[Fact]
+		public void AvgIntoNonNullableDestination_FailsWhenRegistering()
+		{
+			Assert.Throws<InvalidOperationException>(() => new Mapper().Register(
+				new MappingConfiguration<Product, ProductNonNullableAverage>().ForMember(d => d.AverageStars, "Reviews.Stars|" + SelectorDefaults.AvgAggregateFunction)));
+		}
+
+		[Fact]
+		public void MinOrMaxIntoNullableDestination_IsNullForAnEmptyCollection()
+		{
+			List<int?> MapStars(string function) => Map<ProductNullableQuantity>(new Mapper().Register(
+				new MappingConfiguration<Product, ProductNullableQuantity>().ForMember(d => d.Quantity, "Reviews.Stars|" + function)))
+				.Select(r => r.Quantity).ToList();
+
+			Assert.Equal([4, 3, null, 2], MapStars(SelectorDefaults.MinAggregateFunction));
+			Assert.Equal([5, 3, null, 4], MapStars(SelectorDefaults.MaxAggregateFunction));
 		}
 
 		// ---- composition

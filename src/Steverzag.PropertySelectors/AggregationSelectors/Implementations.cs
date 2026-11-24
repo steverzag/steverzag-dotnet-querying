@@ -40,23 +40,39 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 			=> CallAggregate(target, nameof(Enumerable.Sum));
 
 		internal static MethodCallExpression CreateAggregateMinFunction(this Expression target)
-			=> CallAggregate(target, nameof(Enumerable.Min));
+			=> CallAggregate(target, nameof(Enumerable.Min), liftToNullable: true);
 
 		internal static MethodCallExpression CreateAggregateMaxFunction(this Expression target)
-			=> CallAggregate(target, nameof(Enumerable.Max));
+			=> CallAggregate(target, nameof(Enumerable.Max), liftToNullable: true);
 
 		internal static MethodCallExpression CreateAggregateAvgFunction(this Expression target)
-			=> CallAggregate(target, nameof(Enumerable.Average));
+			=> CallAggregate(target, nameof(Enumerable.Average), liftToNullable: true);
 
-		private static MethodCallExpression CallAggregate(Expression target, string methodName)
+		private static MethodCallExpression CallAggregate(Expression target, string methodName, bool liftToNullable = false)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType) || elementType is null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
-			return Expression.Call(GetAggregateMethod(methodName, elementType), target);
+			var lifted = liftToNullable ? LiftedElementType(elementType) : elementType;
+			if (lifted != elementType)
+			{
+				var item = Expression.Parameter(elementType, "x");
+				var lift = Expression.Lambda(Expression.Convert(item, lifted), item);
+				target = Expression.Call(MethodInfos.SelectMethodInfo.MakeGenericMethod(elementType, lifted), target, lift);
+			}
+
+			return Expression.Call(GetAggregateMethod(methodName, lifted), target);
 		}
+
+		internal static Type LiftedElementType(Type elementType)
+			=> elementType.IsValueType && Nullable.GetUnderlyingType(elementType) is null
+				? typeof(Nullable<>).MakeGenericType(elementType)
+				: elementType;
+
+		internal static Type LiftedAggregateType(string methodName, Type elementType)
+			=> GetAggregateMethod(methodName, LiftedElementType(elementType)).ReturnType;
 
 		private static readonly ConcurrentDictionary<(string Name, Type ElementType), MethodInfo> _aggregateMethods = new();
 

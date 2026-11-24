@@ -232,9 +232,9 @@ public class AggregationSelectorTests
     {
         PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.MinAggregateFunction}";
 
-        var result = Evaluate<int>(selector, SampleOrder());
+        var result = Evaluate<int?>(selector, SampleOrder());
 
-        Assert.Equal(typeof(int), selector.Type);
+        Assert.Equal(typeof(int?), selector.Type);
         Assert.Equal(10, result);
     }
 
@@ -243,9 +243,9 @@ public class AggregationSelectorTests
     {
         PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.MaxAggregateFunction}";
 
-        var result = Evaluate<int>(selector, SampleOrder());
+        var result = Evaluate<int?>(selector, SampleOrder());
 
-        Assert.Equal(typeof(int), selector.Type);
+        Assert.Equal(typeof(int?), selector.Type);
         Assert.Equal(30, result);
     }
 
@@ -254,7 +254,7 @@ public class AggregationSelectorTests
     {
         PropertySelector<TestOrder> selector = $"Lines.Amount{Delimiter}{SelectorDefaults.MaxAggregateFunction}";
 
-        var result = Evaluate<int>(selector, SampleOrder());
+        var result = Evaluate<int?>(selector, SampleOrder());
 
         Assert.Equal(30, result);
     }
@@ -264,7 +264,7 @@ public class AggregationSelectorTests
     {
         PropertySelector selector = $"Numbers{Delimiter}{SelectorDefaults.MinAggregateFunction}";
 
-        var result = Evaluate<int>(selector, SampleOrder());
+        var result = Evaluate<int?>(selector, SampleOrder());
 
         Assert.Equal(10, result);
     }
@@ -276,9 +276,9 @@ public class AggregationSelectorTests
     {
         PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
 
-        var result = Evaluate<double>(selector, SampleOrder());
+        var result = Evaluate<double?>(selector, SampleOrder());
 
-        Assert.Equal(typeof(double), selector.Type);
+        Assert.Equal(typeof(double?), selector.Type);
         Assert.Equal(20d, result);
     }
 
@@ -287,7 +287,7 @@ public class AggregationSelectorTests
     {
         PropertySelector<TestOrder> selector = $"Lines.Amount{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
 
-        var result = Evaluate<double>(selector, SampleOrder());
+        var result = Evaluate<double?>(selector, SampleOrder());
 
         Assert.Equal(20d, result);
     }
@@ -297,7 +297,7 @@ public class AggregationSelectorTests
     {
         PropertySelector selector = $"Numbers{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
 
-        var result = Evaluate<double>(selector, SampleOrder());
+        var result = Evaluate<double?>(selector, SampleOrder());
 
         Assert.Equal(20d, result);
     }
@@ -306,26 +306,85 @@ public class AggregationSelectorTests
 
     public static TheoryData<string, string, Type, object> ElementTypeCases() => new()
     {
-        // Average follows Enumerable.Average: double for integers and double, float for float, decimal for decimal.
-        { "Longs", SelectorDefaults.AvgAggregateFunction, typeof(double), 7d / 3 },
-        { "Decimals", SelectorDefaults.AvgAggregateFunction, typeof(decimal), 7m / 3 },
-        { "Doubles", SelectorDefaults.AvgAggregateFunction, typeof(double), 7d / 3 },
-        { "Floats", SelectorDefaults.AvgAggregateFunction, typeof(float), 7f / 3 },
+        // Average follows Enumerable.Average over the nullable element: double? for integers and double,
+        // float? for float, decimal? for decimal.
+        { "Longs", SelectorDefaults.AvgAggregateFunction, typeof(double?), 7d / 3 },
+        { "Decimals", SelectorDefaults.AvgAggregateFunction, typeof(decimal?), 7m / 3 },
+        { "Doubles", SelectorDefaults.AvgAggregateFunction, typeof(double?), 7d / 3 },
+        { "Floats", SelectorDefaults.AvgAggregateFunction, typeof(float?), 7f / 3 },
         { "NullableInts", SelectorDefaults.AvgAggregateFunction, typeof(double?), 7d / 3 },
         { "NullableDecimals", SelectorDefaults.AvgAggregateFunction, typeof(decimal?), 7m / 3 },
-        // Sum, Min and Max keep the element type.
+        // Sum keeps the element type (an empty sum is 0).
         { "Longs", SelectorDefaults.SumAggregateFunction, typeof(long), 7L },
         { "Decimals", SelectorDefaults.SumAggregateFunction, typeof(decimal), 7m },
         { "Floats", SelectorDefaults.SumAggregateFunction, typeof(float), 7f },
         { "NullableInts", SelectorDefaults.SumAggregateFunction, typeof(int?), 7 },
-        { "Decimals", SelectorDefaults.MinAggregateFunction, typeof(decimal), 1m },
+        // Min and Max return the nullable element type, so an empty collection gives null.
+        { "Decimals", SelectorDefaults.MinAggregateFunction, typeof(decimal?), 1m },
         { "NullableDecimals", SelectorDefaults.MinAggregateFunction, typeof(decimal?), 1m },
-        { "Longs", SelectorDefaults.MaxAggregateFunction, typeof(long), 4L },
-        { "Doubles", SelectorDefaults.MaxAggregateFunction, typeof(double), 4d },
+        { "Longs", SelectorDefaults.MaxAggregateFunction, typeof(long?), 4L },
+        { "Doubles", SelectorDefaults.MaxAggregateFunction, typeof(double?), 4d },
         // Min and Max also work on any comparable type, through the generic overload.
-        { "Dates", SelectorDefaults.MinAggregateFunction, typeof(DateTime), new DateTime(2024, 1, 1) },
+        { "Dates", SelectorDefaults.MinAggregateFunction, typeof(DateTime?), new DateTime(2024, 1, 1) },
         { "Names", SelectorDefaults.MaxAggregateFunction, typeof(string), "c" },
     };
+
+    // ── Empty collections ───────────────────────────────────────────────────
+
+    public static TheoryData<string, string, Type> EmptyCollectionCases() => new()
+    {
+        { "Numbers", SelectorDefaults.MinAggregateFunction, typeof(int?) },
+        { "Numbers", SelectorDefaults.MaxAggregateFunction, typeof(int?) },
+        { "Numbers", SelectorDefaults.AvgAggregateFunction, typeof(double?) },
+        { "Lines.Amount", SelectorDefaults.MaxAggregateFunction, typeof(int?) },
+        { "Lines.Weight", SelectorDefaults.AvgAggregateFunction, typeof(double?) },
+        { "Decimals", SelectorDefaults.AvgAggregateFunction, typeof(decimal?) },
+        { "Floats", SelectorDefaults.MinAggregateFunction, typeof(float?) },
+        { "Dates", SelectorDefaults.MaxAggregateFunction, typeof(DateTime?) },
+        { "NullableInts", SelectorDefaults.MaxAggregateFunction, typeof(int?) },
+        { "Names", SelectorDefaults.MinAggregateFunction, typeof(string) },
+    };
+
+    private static TestOrder EmptyOrder() => new() { Longs = [], Decimals = [], Doubles = [], Floats = [], NullableInts = [], NullableDecimals = [], Dates = [], Names = [] };
+
+    // Enumerable.Min/Max/Average throw on an empty sequence of a non-nullable type, and SQL returns NULL.
+    [Theory]
+    [MemberData(nameof(EmptyCollectionCases))]
+    public void MinMaxAvg_OnEmptyCollection_ReturnNull(string property, string function, Type expectedType)
+    {
+        PropertySelector<TestOrder> selector = $"{property}{Delimiter}{function}";
+
+        var parameter = Expression.Parameter(typeof(TestOrder), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var value = Expression.Lambda<Func<TestOrder, object?>>(Expression.Convert(body, typeof(object)), parameter).Compile()(EmptyOrder());
+
+        Assert.Equal(expectedType, selector.Type);
+        Assert.Equal(expectedType, body.Type);
+        Assert.Null(value);
+    }
+
+    [Theory]
+    [MemberData(nameof(EmptyCollectionCases))]
+    public void MinMaxAvg_NonGeneric_OnEmptyCollection_ReturnNull(string property, string function, Type expectedType)
+    {
+        PropertySelector selector = $"{property}{Delimiter}{function}";
+
+        var parameter = Expression.Parameter(typeof(TestOrder), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var value = Expression.Lambda<Func<TestOrder, object?>>(Expression.Convert(body, typeof(object)), parameter).Compile()(EmptyOrder());
+
+        Assert.Equal(expectedType, body.Type);
+        Assert.Null(value);
+    }
+
+    [Fact]
+    public void Max_InArithmetic_OnEmptyCollection_IsNull()
+    {
+        PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.MaxAggregateFunction} + 1";
+
+        Assert.Null(Evaluate<int?>(selector, new TestOrder()));
+        Assert.Equal(31, Evaluate<int?>(selector, SampleOrder()));
+    }
 
     [Theory]
     [MemberData(nameof(ElementTypeCases))]

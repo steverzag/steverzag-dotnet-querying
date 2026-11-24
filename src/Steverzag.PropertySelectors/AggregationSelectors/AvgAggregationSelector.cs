@@ -15,12 +15,10 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 			Overloads.Add(emptyFunctionParameters);
 		}
 
-		// Enumerable.Average's own return type: double for int/long/double, float for float, decimal for decimal,
-		// and the nullable form for nullable elements.
 		public override Type? InitSelectorTypeToApply()
 		{
 			var elementType = ((IEnumerableFunctionSelector<T>)this).ValidateAndGetEnumerableType(nameof(AvgAggregationSelector));
-			return Implementations.GetAggregateMethod(nameof(Enumerable.Average), elementType).ReturnType;
+			return Implementations.LiftedAggregateType(nameof(Enumerable.Average), elementType);
 		}
 	}
 	[SelectorToken(SelectorDefaults.AvgAggregateFunction)]
