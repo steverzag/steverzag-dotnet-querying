@@ -18,6 +18,6 @@ namespace ExpDataWorker.Data.Models
 		public TimeOnly? EndHour { get; set; }
 		public short NumberOfEmployees { get; set; }
 		public int PersonId { get; set; }
-		public AppPerson Person { get; set; }
+		public AppPerson Person { get; set; } = null!;
 	}
 }

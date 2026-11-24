@@ -14,7 +14,7 @@ namespace ExpDataWorker.Data.Models
 		public string Number { get; set; } = null!;
 		public bool? IsOptedIn { get; set; }
 		public PhoneType PhoneType { get; set; }
-		public AppPerson Person { get; set; }
+		public AppPerson Person { get; set; } = null!;
 		public int PersonId { get; set; }
 	}
 }

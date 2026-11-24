@@ -17,6 +17,6 @@ namespace ExpDataWorker.Data.Models
 		public decimal LastDeclarationAmmount { get; set; }
 		public decimal? EstimatedNextDeclarationAmmount { get; set; }
 		public int PersonId { get; set; }
-		public AppPerson Person { get; set; }
+		public AppPerson Person { get; set; } = null!;
 	}
 }

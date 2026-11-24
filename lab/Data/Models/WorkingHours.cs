@@ -12,7 +12,7 @@ namespace ExpDataWorker.Data.Models
 		public DayOfWeek Day { get; set; }
 		public TimeOnly? OpenTime { get; set; }
 		public TimeOnly? CloseTime { get; set; }
-		public Affiliation Affilation { get; set; }
+		public Affiliation Affilation { get; set; } = null!;
 		public int AffiliationId { get; set; }
 	}
 }
