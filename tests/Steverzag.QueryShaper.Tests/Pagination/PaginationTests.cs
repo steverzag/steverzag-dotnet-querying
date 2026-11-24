@@ -21,13 +21,15 @@ namespace Steverzag.QueryShaper.Tests.Pagination
 			return await context.Products.OrderBy(p => p.Id).Select(p => p.Id).PaginateAsync(pageIndex, pageSize, cancellationToken);
 		}
 
-		private static void AssertPage(PaginatedList<int> page, int[] items, int pageIndex, int totalPages, bool hasPrevious, bool hasNext)
+		private static void AssertPage(PaginatedList<int> page, int[] items, int pageIndex, int totalPages, bool hasPrevious, bool hasNext, int? totalCount = null, int? pageSize = null)
 		{
 			Assert.Equal(items, page);
 			Assert.Equal(pageIndex, page.PageIndex);
 			Assert.Equal(totalPages, page.TotalPages);
 			Assert.Equal(hasPrevious, page.HasPreviousPage);
 			Assert.Equal(hasNext, page.HasNextPage);
+			if (totalCount is not null) Assert.Equal(totalCount, page.TotalCount);
+			if (pageSize is not null) Assert.Equal(pageSize, page.PageSize);
 		}
 
 		// ---- regular pages
@@ -76,30 +78,125 @@ namespace Steverzag.QueryShaper.Tests.Pagination
 			using var context = Database.CreateContext();
 			var page = context.Products.Where(p => p.Id < 0).Select(p => p.Id).Paginate(1, 2);
 
-			AssertPage(page, items: [], pageIndex: 1, totalPages: 0, hasPrevious: false, hasNext: false);
-		}
-
-		// ---- arguments that are not validated today. These pin the current results; see ROADMAP Phase 2.
-
-		[Fact]
-		public void PageZero_IsNotRejected_AndReturnsTheFirstPageItems()
-		{
-			// Skip(-2): SQLite treats a negative OFFSET as 0, so the items are page 1's, but PageIndex stays 0.
-			AssertPage(Page(0, 2), items: [1, 2], pageIndex: 0, totalPages: 2, hasPrevious: false, hasNext: true);
+			AssertPage(page, items: [], pageIndex: 1, totalPages: 0, hasPrevious: false, hasNext: false, totalCount: 0, pageSize: 2);
 		}
 
 		[Fact]
-		public void PageSizeZero_IsNotRejected_AndReportsInfinitePages()
+		public void FarPageWhoseOffsetOverflowsInt_IsEmpty()
 		{
-			// Take(0) returns nothing, and TotalPages = (int)Ceiling(4 / 0.0) = (int)Infinity, which .NET saturates to int.MaxValue.
-			AssertPage(Page(1, 0), items: [], pageIndex: 1, totalPages: int.MaxValue, hasPrevious: false, hasNext: true);
+			// (int.MaxValue - 1) * 2 doesn't fit in an int. It used to wrap to a negative Skip, which SQLite reads as 0,
+			// so the "page" came back with the first rows.
+			AssertPage(Page(int.MaxValue, 2), items: [], pageIndex: int.MaxValue, totalPages: 2, hasPrevious: true, hasNext: false, totalCount: 4, pageSize: 2);
+		}
+
+		// ---- TotalCount and PageSize
+
+		[Theory]
+		[InlineData(1, 2, 2)]
+		[InlineData(2, 3, 1)]
+		[InlineData(3, 2, 0)]
+		public void TotalCountAndPageSize_DescribeTheRequest_NotThisPage(int pageIndex, int pageSize, int itemsOnPage)
+		{
+			var page = Page(pageIndex, pageSize);
+
+			Assert.Equal(itemsOnPage, page.Count);
+			Assert.Equal(4, page.TotalCount);
+			Assert.Equal(pageSize, page.PageSize);
+		}
+
+		// ---- argument validation (decision 009.7)
+
+		[Theory]
+		[InlineData(0)]
+		[InlineData(-1)]
+		[InlineData(int.MinValue)]
+		public void PageIndexBelowOne_Throws(int pageIndex)
+		{
+			// Page 0 used to return page 1's items with PageIndex 0 (SQLite reads a negative OFFSET as 0).
+			Assert.Throws<ArgumentOutOfRangeException>("pageIndex", () => Page(pageIndex, 2));
+		}
+
+		[Theory]
+		[InlineData(0)]
+		[InlineData(-1)]
+		[InlineData(int.MinValue)]
+		public void PageSizeBelowOne_Throws(int pageSize)
+		{
+			// Size 0 used to report int.MaxValue pages; size -1 became LIMIT -1 and returned every row.
+			Assert.Throws<ArgumentOutOfRangeException>("pageSize", () => Page(1, pageSize));
 		}
 
 		[Fact]
-		public void NegativePageSize_IsNotRejected_AndReturnsEveryRow()
+		public void InvalidArguments_ThrowBeforeTheQueryRuns()
 		{
-			// Take(-1) becomes LIMIT -1, which SQLite reads as "no limit". TotalPages is Ceiling(4 / -1.0) = -4.
-			AssertPage(Page(1, -1), items: [1, 2, 3, 4], pageIndex: 1, totalPages: -4, hasPrevious: false, hasNext: false);
+			// The source is never enumerated: a query that would fail if it ran proves nothing was sent.
+			var neverRun = new[] { 1 }.AsQueryable().Select(_ => ThrowIfEvaluated());
+
+			Assert.Throws<ArgumentOutOfRangeException>("pageIndex", () => neverRun.Paginate(0, 2));
+			Assert.Throws<ArgumentOutOfRangeException>("pageSize", () => neverRun.Paginate(1, 0));
+		}
+
+		private static int ThrowIfEvaluated() => throw new InvalidOperationException("The query ran.");
+
+		[Fact]
+		public void NullSource_Throws()
+		{
+			Assert.Throws<ArgumentNullException>("source", () => ((IQueryable<int>)null!).Paginate(1, 2));
+		}
+
+		// ---- the PaginatedList constructor (for callers that page by themselves)
+
+		[Fact]
+		public void Constructor_SetsEveryProperty()
+		{
+			var page = new PaginatedList<int>([5, 6], count: 7, pageIndex: 3, pageSize: 2);
+
+			AssertPage(page, items: [5, 6], pageIndex: 3, totalPages: 4, hasPrevious: true, hasNext: true, totalCount: 7, pageSize: 2);
+		}
+
+		// ---- read-only
+
+		[Fact]
+		public void IsReadOnly_NotAMutableCollection()
+		{
+			// Guards against the type going back to List<T> (or picking up a mutable interface) later.
+			var interfaces = typeof(PaginatedList<int>).GetInterfaces();
+
+			Assert.Contains(typeof(IReadOnlyList<int>), interfaces);
+			Assert.DoesNotContain(typeof(ICollection<int>), interfaces);
+			Assert.DoesNotContain(typeof(System.Collections.IList), interfaces);
+			Assert.Equal(typeof(object), typeof(PaginatedList<int>).BaseType);
+		}
+
+		[Fact]
+		public void IndexerAndCount_ReadThisPage()
+		{
+			var page = Page(2, 3);
+
+			Assert.Equal(4, Assert.Single(page));
+			Assert.Equal(4, page[0]);
+			Assert.Throws<IndexOutOfRangeException>(() => page[1]);
+		}
+
+		[Fact]
+		public void Constructor_CopiesTheItems()
+		{
+			List<int> items = [5, 6];
+			var page = new PaginatedList<int>(items, count: 7, pageIndex: 3, pageSize: 2);
+
+			items.Add(7);
+			items[0] = 99;
+
+			Assert.Equal([5, 6], page);
+		}
+
+		[Fact]
+		public void Constructor_ValidatesItsArguments()
+		{
+			Assert.Throws<ArgumentOutOfRangeException>("pageIndex", () => new PaginatedList<int>([], 0, 0, 2));
+			Assert.Throws<ArgumentOutOfRangeException>("pageSize", () => new PaginatedList<int>([], 0, 1, 0));
+			Assert.Throws<ArgumentOutOfRangeException>("count", () => new PaginatedList<int>([], -1, 1, 2));
+			Assert.Throws<ArgumentNullException>("items", () => new PaginatedList<int>(null!, 0, 1, 2));
 		}
 
 		// ---- composition with filtering and ordering
@@ -144,7 +241,29 @@ namespace Steverzag.QueryShaper.Tests.Pagination
 			var expected = Page(pageIndex, pageSize);
 			var actual = await PageAsync(pageIndex, pageSize);
 
-			AssertPage(actual, [.. expected], expected.PageIndex, expected.TotalPages, expected.HasPreviousPage, expected.HasNextPage);
+			AssertPage(actual, [.. expected], expected.PageIndex, expected.TotalPages, expected.HasPreviousPage, expected.HasNextPage, expected.TotalCount, expected.PageSize);
+		}
+
+		[Fact]
+		public async Task Async_FarPageWhoseOffsetOverflowsInt_IsEmpty()
+		{
+			AssertPage(await PageAsync(int.MaxValue, 2), items: [], pageIndex: int.MaxValue, totalPages: 2, hasPrevious: true, hasNext: false, totalCount: 4, pageSize: 2);
+		}
+
+		[Theory]
+		[InlineData(0, 2, "pageIndex")]
+		[InlineData(-1, 2, "pageIndex")]
+		[InlineData(1, 0, "pageSize")]
+		[InlineData(1, -1, "pageSize")]
+		public async Task Async_InvalidArguments_Throw(int pageIndex, int pageSize, string paramName)
+		{
+			await Assert.ThrowsAsync<ArgumentOutOfRangeException>(paramName, () => PageAsync(pageIndex, pageSize));
+		}
+
+		[Fact]
+		public async Task Async_NullSource_Throws()
+		{
+			await Assert.ThrowsAsync<ArgumentNullException>("source", () => ((IQueryable<int>)null!).PaginateAsync(1, 2));
 		}
 
 		[Fact]

@@ -90,7 +90,7 @@ in `Equals`.
 - `ApplyLogicsFilter` no longer writes every expression to `Console`.
 
 ### 009: Invalid requests are rejected up front, not silently reinterpreted (2026-11-22)
-**Status:** accepted; 5 (via 011), 6 and the key-limit cleanup implemented (2026-11-23); 7 pending (ROADMAP Phase 2)
+**Status:** accepted; implemented (2026-11-23). 5 via decision 011.
 **Context:** the tests found inputs that are silently ignored, produce nonsense, or crash deep inside EF Core.
 Requests come from untrusted clients (see the Phase 4 guard rails), so a clear error is safer than a guess.
 **Decision:**
@@ -132,3 +132,16 @@ renaming them is part of the Phase 4 API audit.
 That was true before the split as well (`ValueResult2` and `PropertySelector` have no converters). The Phase 4
 request contract adds a converter that tells the two kinds apart by shape: a node with `filters` is a group,
 anything else is a condition, and a node with both is rejected. The JSON needs no `"type"` discriminator.
+
+### 012: A page is a read-only list (2026-11-23)
+**Status:** accepted; implemented (2026-11-23)
+**Context:** `PaginatedList<T>` inherited from `List<T>`, so callers could `Add`, `Remove`, `Clear` or replace items,
+and the page would then disagree with its own `TotalCount` and `TotalPages`. `List<T>` has no virtual members, so a
+subclass can't guard them.
+**Decision:** `PaginatedList<T>` is a `sealed` class that implements `IReadOnlyList<T>` over a private copy of the
+items, with get-only paging properties. It stays a collection, so `foreach`, LINQ, `Count` and the indexer keep working.
+**Considered:** not being a collection at all, with an `Items` property. That serializes with the paging properties
+included, where a collection serializes as a bare JSON array. Rejected: callers that want the paging properties in a
+response wrap the page in their own type, and the library doesn't impose a response shape.
+**Consequence:** a breaking change for code that mutated the page or relied on it being a `List<T>`; none in this
+repository did. `Count` is the number of items on the page; `TotalCount` is the number across all pages.

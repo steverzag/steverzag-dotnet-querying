@@ -19,7 +19,7 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 | Base (global) search | `query.ApplyBaseFilter(searchValue[, config])` or `ApplyBaseFilter(lookups, value)` | configured with `ConfigureSearch<T>(…)` |
 | Combined | `query.ApplyFilters(lookups, searchValue, nodes)` | |
 | Ordering | `query.ApplyOrder(orderParameters)` | `OrderParameters(string OrderBy, OrderDirection)` |
-| Pagination | `query.Paginate(page, size)` (sync, core) / `query.PaginateAsync(page, size, ct)` (from `Steverzag.QueryShaper.EntityFrameworkCore`) | |
+| Pagination | `query.Paginate(page, size)` (sync, core) / `query.PaginateAsync(page, size, ct)` (from `Steverzag.QueryShaper.EntityFrameworkCore`) | returns `PaginatedList<T>` (see [Pagination](#pagination)) |
 | Grouping / aggregation | `query.ApplyGrouping(keys).ApplySelect(aggregates)` | `GroupByKeys`, `SelectResult` |
 | Mapping | `query.ApplySelect<TIn, TOut>(mapper?)` | `AddMap<TIn,TOut>(m => m.ForMember(d => d.X, "Selector"))` |
 
@@ -61,6 +61,34 @@ These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNod
 | collection | no elements |
 
 For non-nullable `Guid`, `bool`, date and enum properties, `IsEmpty` is not supported and throws.
+
+## Pagination
+
+`Paginate(page, size)` and `PaginateAsync(page, size, ct)` run two queries: a count, then the page's rows. Order the
+query first, or the pages are not deterministic. Both return a `PaginatedList<T>`: a read-only `IReadOnlyList<T>` of
+the page's items (`Count` is the number on this page), plus:
+
+| Property | Means |
+|---|---|
+| `PageIndex` | the requested page, 1-based |
+| `PageSize` | the requested size (the last page may hold fewer items) |
+| `TotalCount` | the number of rows in the whole (filtered) source |
+| `TotalPages` | `ceil(TotalCount / PageSize)`; 0 for an empty source |
+| `HasPreviousPage` / `HasNextPage` | `PageIndex > 1` / `PageIndex < TotalPages` |
+
+Arguments are checked before any query runs (decision 009). A page or size below 1 throws
+`ArgumentOutOfRangeException`, and a `null` source throws `ArgumentNullException`. A page after the last one is
+**not** an error: it comes back empty, with the real `TotalCount` and `TotalPages`, so a client can tell where the
+data ends. That includes pages so far out that the offset doesn't fit in an `int`, where the row query is skipped.
+
+The page can't be changed after it's built (decision 012), so its items always agree with `TotalCount` and
+`TotalPages`. Because it is a collection, System.Text.Json serializes it as a plain JSON array of the items, without
+the paging properties. To send those to a client, wrap the page in your own response type:
+
+```csharp
+var page = await query.PaginateAsync(request.Page, request.Size, ct);
+return new { items = page, page.PageIndex, page.PageSize, page.TotalCount, page.TotalPages };
+```
 
 ## Grouping and aggregates
 
