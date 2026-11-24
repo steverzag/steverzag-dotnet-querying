@@ -86,6 +86,62 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([1, 4], FilterIds(nameof(Product.Status), FilterCondition.In, new List<object> { "Active" }));
 		}
 
+		// Decision 008.2: undefined enum values are rejected, except combinations of a [Flags] enum.
+
+		[Theory]
+		[InlineData(FilterCondition.In)]
+		[InlineData(FilterCondition.NotIn)]
+		public void In_Enum_UndefinedValue_Throws(FilterCondition condition)
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), condition,
+				new List<object> { (int)ProductStatus.Active, 99 }));
+		}
+
+		[Fact]
+		public void In_NullableEnum_UndefinedValue_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.OptionalStatus), FilterCondition.In,
+				new List<object?> { null, 99 }!));
+		}
+
+		[Fact]
+		public void In_Enum_UnknownName_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.In,
+				new List<object> { "Retired" }));
+		}
+
+		[Fact]
+		public void In_Enum_CombinedNames_OnNonFlagsEnum_Throws()
+		{
+			// Enum.TryParse turns "Active, Discontinued" into 3, which Status doesn't declare.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.In,
+				new List<object> { "Active, Discontinued" }));
+		}
+
+		// Features ([Flags]): 1 Waterproof|Cordless (5), 2 None (0), 3 Foldable (2), 4 Waterproof|Foldable|Cordless (7)
+
+		[Fact]
+		public void In_FlagsEnum_AcceptsCombinations()
+		{
+			Assert.Equal([1, 2], FilterIds(nameof(Product.Features), FilterCondition.In,
+				new List<object> { 5, (int)ProductFeatures.None }));
+		}
+
+		[Fact]
+		public void In_FlagsEnum_AcceptsCombinedNames()
+		{
+			Assert.Equal([1], FilterIds(nameof(Product.Features), FilterCondition.In,
+				new List<object> { "Waterproof, Cordless" }));
+		}
+
+		[Fact]
+		public void In_FlagsEnum_UndeclaredBit_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Features), FilterCondition.In,
+				new List<object> { 5, 8 }));
+		}
+
 		[Fact]
 		public void In_TimeSpan()
 		{

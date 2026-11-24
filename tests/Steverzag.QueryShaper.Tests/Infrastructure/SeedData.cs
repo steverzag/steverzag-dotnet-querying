@@ -13,6 +13,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 	/// Non-nullable numerics: row 1 high, row 2 zero, row 3 mid (<see cref="Mid"/>), row 4 highest.
 	/// Dates: ascending by id, row 2 is the mid value.
 	/// Nullable dates (DeletedAt, DiscontinuedOn, LastServicedAt): only row 3 has a value, see <see cref="Row3NullableDate"/>.
+	/// Features ([Flags]): 1 Waterproof|Cordless (5), 2 None (0), 3 Foldable (2), 4 Waterproof|Foldable|Cordless (7).
 	/// </summary>
 	public static class SeedData
 	{
@@ -67,6 +68,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				ReleaseDate = new(2024, 1, 1), OpensAt = new(8, 0),
 				Warranty = TimeSpan.FromDays(365),
 				Status = ProductStatus.Active, OptionalStatus = ProductStatus.Active,
+				Features = ProductFeatures.Waterproof | ProductFeatures.Cordless,
 				Tags = ["tools", "steel"], Grade = 'A', StatusHistory = [ProductStatus.Draft, ProductStatus.Active], Measurements = [1, null], CategoryId = 1,
 				Reviews = [new() { Id = 1, Stars = 5 }, new() { Id = 2, Stars = 4 }],
 			},
@@ -80,6 +82,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				ReleaseDate = MidDate.ReleaseDate, OpensAt = MidDate.OpensAt,
 				Warranty = TimeSpan.FromDays(180),
 				Status = ProductStatus.Draft, OptionalStatus = null,
+				Features = ProductFeatures.None,
 				Tags = ["garden"], Grade = 'B', StatusHistory = [ProductStatus.Draft], Measurements = [2], CategoryId = 2,
 				Reviews = [new() { Id = 3, Stars = 3 }],
 			},
@@ -94,6 +97,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				DiscontinuedOn = Row3NullableDate.DiscontinuedOn, LastServicedAt = Row3NullableDate.LastServicedAt,
 				Warranty = TimeSpan.Zero,
 				Status = ProductStatus.Discontinued, OptionalStatus = ProductStatus.Discontinued,
+				Features = ProductFeatures.Foldable,
 				Tags = [], Grade = 'C', StatusHistory = [ProductStatus.Draft, ProductStatus.Active, ProductStatus.Discontinued], Measurements = [], CategoryId = 1,
 				Reviews = [],
 			},
@@ -107,6 +111,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 				ReleaseDate = new(2024, 9, 1), OpensAt = new(18, 45),
 				Warranty = TimeSpan.FromDays(730),
 				Status = ProductStatus.Active, OptionalStatus = ProductStatus.Draft,
+				Features = ProductFeatures.Waterproof | ProductFeatures.Foldable | ProductFeatures.Cordless,
 				Tags = ["garden", "tools"], Grade = 'A', StatusHistory = [ProductStatus.Active], Measurements = [1, 2], CategoryId = 2,
 				Reviews = [new() { Id = 4, Stars = 4 }, new() { Id = 5, Stars = 4 }, new() { Id = 6, Stars = 2 }],
 			},

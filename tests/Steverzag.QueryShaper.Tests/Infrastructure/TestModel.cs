@@ -45,6 +45,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 		// enums
 		public ProductStatus Status { get; set; }
 		public ProductStatus? OptionalStatus { get; set; }
+		public ProductFeatures Features { get; set; }
 
 		// a scalar with no dedicated filter branch (only In/NotIn apply)
 		public char Grade { get; set; }
@@ -65,6 +66,16 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 		Draft = 0,
 		Active = 1,
 		Discontinued = 2
+	}
+
+	/// <summary>A <see cref="FlagsAttribute"/> enum: combinations of declared bits are valid values (decision 008.2).</summary>
+	[Flags]
+	public enum ProductFeatures
+	{
+		None = 0,
+		Waterproof = 1,
+		Foldable = 2,
+		Cordless = 4,
 	}
 
 	public class Category

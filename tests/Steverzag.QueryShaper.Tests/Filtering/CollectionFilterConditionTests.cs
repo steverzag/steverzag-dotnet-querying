@@ -125,6 +125,18 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 				new List<object> { "Active", "Discontinued" }));
 		}
 
+		[Theory]
+		[InlineData(FilterCondition.ContainsAny)]
+		[InlineData(FilterCondition.DoesNotContainAny)]
+		[InlineData(FilterCondition.ContainsAll)]
+		[InlineData(FilterCondition.DoesNotContainAll)]
+		public void EnumElements_UndefinedValue_Throws(FilterCondition condition)
+		{
+			// Decision 008.2.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.StatusHistory), condition,
+				new List<object> { (int)ProductStatus.Active, 99 }));
+		}
+
 		// Nullable elements. Measurements: 1 [1, null], 2 [2], 3 [], 4 [1, 2]
 
 		[Fact]

@@ -22,11 +22,63 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([2, 3], FilterIds(nameof(Product.Status), FilterCondition.NotEquals, (int)ProductStatus.Active));
 		}
 
-		[Fact]
-		public void Equals_UndefinedValue_IsAcceptedAndMatchesNothing()
+		// Decision 008.2: undefined enum values are rejected, except combinations of a [Flags] enum.
+		[Theory]
+		[InlineData(FilterCondition.Equals, 99)]
+		[InlineData(FilterCondition.NotEquals, 99)]
+		[InlineData(FilterCondition.Equals, -1)]
+		[InlineData(FilterCondition.Equals, 3)] // Active | Discontinued: not a combination, Status isn't [Flags]
+		public void UndefinedValue_Throws(FilterCondition condition, int value)
 		{
-			// Enum.TryParse accepts any numeric string, so an undefined value is not rejected.
-			Assert.Empty(FilterIds(nameof(Product.Status), FilterCondition.Equals, 99));
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), condition, value));
+		}
+
+		[Fact]
+		public void UndefinedValue_OnNullable_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.OptionalStatus), FilterCondition.Equals, 99));
+		}
+
+		[Fact]
+		public void UndefinedLongValue_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, 99L));
+		}
+
+		// Features ([Flags]): 1 Waterproof|Cordless (5), 2 None (0), 3 Foldable (2), 4 Waterproof|Foldable|Cordless (7)
+
+		[Fact]
+		public void Flags_Equals_SingleDeclaredValue()
+		{
+			Assert.Equal([3], FilterIds(nameof(Product.Features), FilterCondition.Equals, (int)ProductFeatures.Foldable));
+		}
+
+		[Fact]
+		public void Flags_Equals_CombinationOfDeclaredValues()
+		{
+			Assert.Equal([1], FilterIds(nameof(Product.Features), FilterCondition.Equals,
+				(int)(ProductFeatures.Waterproof | ProductFeatures.Cordless)));
+		}
+
+		[Fact]
+		public void Flags_Equals_AllDeclaredBits()
+		{
+			Assert.Equal([4], FilterIds(nameof(Product.Features), FilterCondition.Equals, 7));
+		}
+
+		[Fact]
+		public void Flags_Equals_Zero()
+		{
+			Assert.Equal([2], FilterIds(nameof(Product.Features), FilterCondition.Equals, (int)ProductFeatures.None));
+		}
+
+		[Theory]
+		[InlineData(8)]  // an undeclared bit
+		[InlineData(9)]  // a declared bit plus an undeclared one
+		[InlineData(-1)] // every bit set
+		public void Flags_UndeclaredBits_Throw(int value)
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Features), FilterCondition.Equals, value));
 		}
 
 		[Fact]

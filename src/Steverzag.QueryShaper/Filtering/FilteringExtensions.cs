@@ -402,11 +402,13 @@ namespace Steverzag.QueryShaper.Filtering
 
 				object? enumValue = null;
 				var isInvalidValueProvided = enumUnderlayingValue is not null
-					&& !Enum.TryParse(propertyType, enumUnderlayingValue.ToString(), out enumValue);
+					&& (!Enum.TryParse(propertyType, enumUnderlayingValue.ToString(), out enumValue)
+						|| !IsDefinedEnumValue(propertyType, enumValue!));
 
 				if (isInvalidValueProvided)
 				{
-					throw new Exception($"Invalid value ({enumUnderlayingValue ?? "null"}) provided for type {propertyType.Name}");
+					throw new FilterConditionAndValueNotSupportedException(
+						$"Invalid value ({enumUnderlayingValue ?? "null"}) provided for type {propertyType.Name}.");
 				}
 				var enumConstant = enumUnderlayingValue is null
 					? Expression.Constant(null, propertyExpression.Type)
@@ -535,7 +537,7 @@ namespace Steverzag.QueryShaper.Filtering
 		/// <item>Only scalar item types (and their nullable forms) are supported. Anything else, such as an
 		/// entity or a nested collection, throws <see cref="FilterNotSupportedException"/>.</item>
 		/// <item>Enum values are parsed with <see cref="Enum.TryParse(Type, string?, out object?)"/>, so both
-		/// underlying numbers and names are accepted.</item>
+		/// underlying numbers and names are accepted. Undefined values are rejected (decision 008.2).</item>
 		/// <item>Other values must already be boxed as the exact type: no numeric widening or narrowing.</item>
 		/// <item>null is accepted only when the item type can hold it.</item>
 		/// </list>
@@ -563,8 +565,10 @@ namespace Steverzag.QueryShaper.Filtering
 				else if (underlyingType.IsEnum)
 				{
 					list.Add(Enum.TryParse(underlyingType, value.ToString(), out var enumValue)
+						&& IsDefinedEnumValue(underlyingType, enumValue!)
 						? enumValue
-						: throw new Exception($"Invalid value ({value}) provided for type {underlyingType.Name}"));
+						: throw new FilterConditionAndValueNotSupportedException(
+							$"Invalid value ({value}) provided for type {underlyingType.Name}."));
 				}
 				else if (underlyingType.IsInstanceOfType(value))
 				{
@@ -579,6 +583,33 @@ namespace Steverzag.QueryShaper.Filtering
 
 			return list;
 		}
+
+		private static bool IsDefinedEnumValue(Type enumType, object enumValue)
+		{
+			if (Enum.IsDefined(enumType, enumValue))
+			{
+				return true;
+			}
+
+			if (!enumType.IsDefined(typeof(FlagsAttribute), inherit: false))
+			{
+				return false;
+			}
+
+			ulong declaredBits = 0;
+			foreach (var member in Enum.GetValues(enumType))
+			{
+				declaredBits |= ToEnumBits(member);
+			}
+
+			return (ToEnumBits(enumValue) & ~declaredBits) == 0;
+		}
+
+		private static ulong ToEnumBits(object enumValue) => Convert.GetTypeCode(enumValue) switch
+		{
+			TypeCode.Byte or TypeCode.UInt16 or TypeCode.UInt32 or TypeCode.UInt64 => Convert.ToUInt64(enumValue),
+			_ => unchecked((ulong)Convert.ToInt64(enumValue)),
+		};
 
 		private static bool IsScalarType(Type type) =>
 			type.IsPrimitive

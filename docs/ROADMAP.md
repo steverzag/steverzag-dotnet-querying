@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (346 tests covering every feature; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (369 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -117,7 +117,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [x] Fix the validation gaps the mapper/base-search tests found (2026-11-22). `ForMember` accepted any property access, so `d => d.Details.Category` or `d => d.Name.Length` were accepted and then silently never applied; it now requires a property directly on the destination. `Configure<T>([])` (no lookups) crashed with `ArgumentNullException`; it now throws a descriptive `ArgumentException`.
 - [x] Decide on the mapper/search behaviour the tests pinned down (2026-11-22, **decision 010**). A non-blank search on an unconfigured type throws, and `int?` → `int` maps are rejected when registered. The same-name rule stays case-sensitive.
 - [ ] **Implement decisions 008–010.** The existing tests pin the old behaviour, so each change updates its tests and adds any that are missing:
-  - [ ] 008.2: reject undefined enum values (allow `[Flags]` combinations).
+  - [x] 008.2: reject undefined enum values (allow `[Flags]` combinations) (2026-11-23). Applies to single values and lists (`In`/`NotIn`, `ContainsAny`, `ContainsAll`) and throws `FilterConditionAndValueNotSupportedException`. A `[Flags]` enum accepts any combination of declared bits, including 0. The test model gained `Product.Features` (`[Flags] ProductFeatures`).
   - [ ] 008.3: convert list values safely to the target type, with overflow checks (in `CreateTypedValueList`).
   - [ ] 008.4: accept enum names in `Equals`/`NotEquals`.
   - [ ] 008 cleanups: `FilterConditionAndValueNotSupportedException` instead of `System.Exception`; remove `Console.WriteLine` from `ApplyLogicsFilter`.
