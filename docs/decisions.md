@@ -71,7 +71,7 @@ AND-before-OR precedence. Proposed name: `FilterEvaluationOrder { LeftToRight, A
 Tracked in ROADMAP Phase 4.
 
 ### 008: How filter values are interpreted (2026-11-22)
-**Status:** accepted; implementation pending (ROADMAP Phase 2)
+**Status:** accepted; implemented (2026-11-23)
 **Context:** the Phase 2 tests pinned several rules that were never chosen on purpose, and some disagree
 with each other: single values accept any integer size but lists don't, and enum names work in lists but not
 in `Equals`.

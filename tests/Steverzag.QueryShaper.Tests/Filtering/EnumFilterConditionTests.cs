@@ -134,11 +134,48 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Batch), FilterCondition.Equals, 5_000_000_001L));
 		}
 
-		[Fact]
-		public void NullValue_OnNonNullable_Throws()
+		// Decision 008 cleanup: bad enum or null input throws FilterConditionAndValueNotSupportedException,
+		// not a plain System.Exception.
+
+		[Theory]
+		[InlineData(FilterCondition.Equals)]
+		[InlineData(FilterCondition.NotEquals)]
+		public void NullValue_OnNonNullable_Throws(FilterCondition condition)
 		{
-			// Today this is a bare System.Exception.
-			Assert.Throws<Exception>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals));
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), condition));
+		}
+
+		[Theory]
+		[InlineData(FilterCondition.IsEmpty)]
+		[InlineData(FilterCondition.IsNotEmpty)]
+		public void IsEmpty_OnNonNullable_Throws(FilterCondition condition)
+		{
+			// A non-nullable enum has no "empty" state, like non-nullable Guid, bool and dates.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), condition));
+		}
+
+		[Fact]
+		public void BoolValue_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, true));
+		}
+
+		[Fact]
+		public void DoubleValue_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, 1.0));
+		}
+
+		[Fact]
+		public void GuidValue_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, SeedData.Code1));
+		}
+
+		[Fact]
+		public void UnsupportedValueType_OnNullable_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.OptionalStatus), FilterCondition.Equals, true));
 		}
 
 		// Decision 008.4: enum names are accepted in Equals/NotEquals, the same as in lists.

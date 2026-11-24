@@ -81,7 +81,6 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 
 			var lambda = Expression.Lambda<Func<T, bool>>(combinedExpression!, parameterExpressions);
-			Console.WriteLine(ExpressionUtils.ToFlatString(lambda.Body));
 
 			return query.Where(lambda);
 		}
@@ -398,7 +397,11 @@ namespace Steverzag.QueryShaper.Filtering
 
 				if (filter.SearchValue is null && !isNullableType)
 				{
-					throw new Exception("Null value provided for non-nullable enum type " + propertyType.Name);
+					// Covers a missing value for Equals/NotEquals and IsEmpty/IsNotEmpty on a non-nullable enum,
+					// which has no "empty" state (the same rule as non-nullable Guid, bool and dates).
+					throw new FilterConditionAndValueNotSupportedException(
+						$"A value is required for non-nullable enum type {propertyType.Name}; " +
+						$"{nameof(FilterCondition.IsEmpty)} and {nameof(FilterCondition.IsNotEmpty)} are only supported on nullable enums.");
 				}
 
 				object? rawEnumValue = filter.SearchValue is null ? null
@@ -408,7 +411,8 @@ namespace Steverzag.QueryShaper.Filtering
 						ResultValueKind.Integer => (long?)filter.SearchValue!,
 						ResultValueKind.Long => (long?)filter.SearchValue!,
 						ResultValueKind.String => (string)filter.SearchValue!,
-						_ => throw new Exception("Unsupported value type for enum filtering: " + filter.SearchValue?.GetKind().ToString()),
+						var kind => throw new FilterConditionAndValueNotSupportedException(
+							$"A {kind} value cannot be used for enum type {propertyType.Name}; pass the underlying integer or a member name."),
 					};
 
 				object? enumValue = rawEnumValue is null ? null : ParseEnumValue(propertyType, rawEnumValue);

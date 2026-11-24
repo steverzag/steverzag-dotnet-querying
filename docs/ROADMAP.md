@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (440 tests covering every feature; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (448 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -121,7 +121,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
   - [x] 008.3: convert list values safely to the target type, with overflow checks (in `CreateTypedValueList`) (2026-11-23). Any numeric value converts to a numeric target if it fits (`ConvertNumber`). Integer targets reject fractional parts, NaN and out-of-range values instead of truncating or wrapping. Values that don't fit throw `FilterConditionAndValueNotSupportedException`; non-numeric values (strings, `bool`, numbers for a `char` property) still throw `InvalidCastException`.
   - [x] Single-value filters narrowed **unchecked** (`ValueResult2`'s explicit operators used plain `(int)`, `(short)`, `(byte)` casts), so `Quantity = 4294967346L` was read as `50`. Found while implementing 008.3 and fixed to match it (2026-11-23). The casts are now `checked`, and double → float checks for overflow to infinity. `BuildFilterExpression` turns the `OverflowException` into `FilterConditionAndValueNotSupportedException`. The enum branch reads the value as `long`, so out-of-range values are rejected by `Enum.TryParse` instead of wrapping to a defined member.
   - [x] 008.4: accept enum names in `Equals`/`NotEquals` (2026-11-23). Single values and lists now share one parser (`ParseEnumValue`). It accepts the underlying number, a member name (case-sensitive), a numeric string, or comma-separated names for a `[Flags]` enum. Unknown names throw `FilterConditionAndValueNotSupportedException`, the same as undefined numbers.
-  - [ ] 008 cleanups: `FilterConditionAndValueNotSupportedException` instead of `System.Exception`; remove `Console.WriteLine` from `ApplyLogicsFilter`.
+  - [x] 008 cleanups (2026-11-23). The enum branch's two plain `System.Exception`s now throw `FilterConditionAndValueNotSupportedException` with descriptive messages: a missing value on a non-nullable enum (which also covers `IsEmpty`/`IsNotEmpty` there), and an unsupported value kind (`bool`, `double`, `Guid`, …). `ApplyLogicsFilter` no longer writes every expression to `Console`. QueryShaper now has no plain `System.Exception` throws left. The four in PropertySelectors' arithmetic parser belong to Phase 3's `SelectorParseException`.
   - [ ] 009.5: reject a group node that has its own condition.
   - [ ] 009.6: reject `ApplyGrouping([])`; give more than 21 keys a descriptive error.
   - [ ] 009.7: validate `Paginate`/`PaginateAsync` arguments; add `PaginatedList.TotalCount` and `PageSize`.

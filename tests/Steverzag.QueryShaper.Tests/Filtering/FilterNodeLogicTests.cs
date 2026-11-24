@@ -227,5 +227,24 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 					And(Node(nameof(Product.DeletedAt), FilterCondition.IsNotEmpty)))),
 			]));
 		}
+
+		[Fact]
+		public void ApplyLogicsFilter_DoesNotWriteToConsole()
+		{
+			// Decision 008 cleanup: it used to print every filter expression. A library must not write to stdout.
+			var original = Console.Out;
+			using var captured = new StringWriter();
+			Console.SetOut(captured);
+			try
+			{
+				FilterIds([NameIs("Hammer"), Or(StatusIs(ProductStatus.Draft))]);
+			}
+			finally
+			{
+				Console.SetOut(original);
+			}
+
+			Assert.Equal(string.Empty, captured.ToString());
+		}
 	}
 }
