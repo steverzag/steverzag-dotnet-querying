@@ -115,3 +115,20 @@ Requests come from untrusted clients (see the Phase 4 guard rails), so a clear e
    then fails on the first row with a null.
 10. **The same-name rule stays case-sensitive. Kept as is.** These are C# property names, and ignoring case could
     match two properties.
+
+### 011: A filter node is either a condition or a group (2026-11-23)
+**Status:** accepted; implemented (2026-11-23)
+**Context:** `FilterNode` carried a condition (`FieldSelector`, `FilterCondition`, `SearchValue`) and child `Filters`
+on one type. Decision 009.5 then needed a runtime check that a group sets no condition, and that check couldn't see
+`FilterCondition.Equals`, the enum's default. `FieldSelector` was `= null!`, so a condition without a field failed
+deep inside `CreateMemberAccess`. A node with an empty `Filters` list silently became a plain filter.
+**Decision:** `FilterNode` is an abstract record with exactly two kinds: `ConditionNode` (required `FieldSelector`,
+plus `FilterCondition` and `SearchValue`) and `GroupNode` (required, non-empty `Filters` with no nulls, copied).
+`FilterLogicOption` stays on the base. The constructor is `private protected`, so no other assembly can add a node
+kind (C# has no closed unions, so a `switch` over nodes still needs a default arm). The property names are unchanged;
+renaming them is part of the Phase 4 API audit.
+**Considered:** keeping one type and making `FilterCondition` nullable, which closes only the `Equals` gap.
+**Consequence:** a breaking change, made while nothing is released. System.Text.Json can't bind `FilterNode` yet.
+That was true before the split as well (`ValueResult2` and `PropertySelector` have no converters). The Phase 4
+request contract adds a converter that tells the two kinds apart by shape: a node with `filters` is a group,
+anything else is a condition, and a node with both is rejected. The JSON needs no `"type"` discriminator.

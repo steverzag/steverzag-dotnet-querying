@@ -59,73 +59,51 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 
 			var parameterExpressions = Expression.Parameter(typeof(T), name: "x");
-
-			Expression? combinedExpression = null;
-			foreach (var filter in logicFilters)
-			{
-
-				var filterExpression = BuildFilterExpression(parameterExpressions, filter);
-
-				if (combinedExpression == null)
-				{
-					combinedExpression = filterExpression;
-				}
-				else if (filter.FilterLogicOption == LogicalConnector.And)
-				{
-					combinedExpression = Expression.AndAlso(combinedExpression, filterExpression);
-				}
-				else
-				{
-					combinedExpression = Expression.OrElse(combinedExpression, filterExpression);
-				}
-			}
-
-			var lambda = Expression.Lambda<Func<T, bool>>(combinedExpression!, parameterExpressions);
+			var lambda = Expression.Lambda<Func<T, bool>>(CombineNodes(parameterExpressions, logicFilters), parameterExpressions);
 
 			return query.Where(lambda);
 		}
 
-		private static Expression BuildFilterExpression(ParameterExpression parameterExpressions, FilterNode filter)
+		private static Expression CombineNodes(ParameterExpression parameterExpressions, IEnumerable<FilterNode> nodes)
 		{
-
-			if (filter.Filters is null || !filter.Filters.Any())
+			Expression? combinedExpression = null;
+			foreach (var node in nodes)
 			{
+				var nodeExpression = BuildFilterExpression(parameterExpressions, node);
 
-				try
-				{
-					return CreateFilterConditionExpression(parameterExpressions, filter);
-				}
-				catch (OverflowException ex)
-				{
-					// The value doesn't fit the property's type. ValueResult2's casts are checked, so they throw
-					// instead of wrapping (e.g. 4294967346L into an int would otherwise become 50).
-					throw new FilterConditionAndValueNotSupportedException(
-						$"The filter value for '{filter.FieldSelector}' is out of range for the property's type. {ex.Message}");
-				}
+				combinedExpression = combinedExpression is null ? nodeExpression
+					: node.FilterLogicOption == LogicalConnector.And ? Expression.AndAlso(combinedExpression, nodeExpression)
+					: Expression.OrElse(combinedExpression, nodeExpression);
 			}
 
-			Expression? subCombinedExpression = null;
-			foreach (var subFilter in filter.Filters)
-			{
-				var subFilterExpression = BuildFilterExpression(parameterExpressions, subFilter);
-				if (subCombinedExpression == null)
-				{
-					subCombinedExpression = subFilterExpression;
-				}
-				else if (subFilter.FilterLogicOption == LogicalConnector.And)
-				{
-					subCombinedExpression = Expression.AndAlso(subCombinedExpression, subFilterExpression);
-				}
-				else
-				{
-					subCombinedExpression = Expression.OrElse(subCombinedExpression, subFilterExpression);
-				}
-			}
-
-			return subCombinedExpression!;
+			// Callers pass a non-empty list: ApplyLogicsFilter returns early on an empty one, and GroupNode rejects one.
+			return combinedExpression!;
 		}
 
-		private static Expression CreateFilterConditionExpression(ParameterExpression parameterExpressions, FilterNode filter)
+		private static Expression BuildFilterExpression(ParameterExpression parameterExpressions, FilterNode node) => node switch
+		{
+			ConditionNode condition => BuildConditionExpression(parameterExpressions, condition),
+			GroupNode group => CombineNodes(parameterExpressions, group.Filters),
+			null => throw new ArgumentException("A filter list cannot contain null nodes."),
+			_ => throw new NotSupportedException($"Unknown filter node type {node.GetType().Name}."),
+		};
+
+		private static Expression BuildConditionExpression(ParameterExpression parameterExpressions, ConditionNode filter)
+		{
+			try
+			{
+				return CreateFilterConditionExpression(parameterExpressions, filter);
+			}
+			catch (OverflowException ex)
+			{
+				// The value doesn't fit the property's type. ValueResult2's casts are checked, so they throw
+				// instead of wrapping (e.g. 4294967346L into an int would otherwise become 50).
+				throw new FilterConditionAndValueNotSupportedException(
+					$"The filter value for '{filter.FieldSelector}' is out of range for the property's type. {ex.Message}");
+			}
+		}
+
+		private static Expression CreateFilterConditionExpression(ParameterExpression parameterExpressions, ConditionNode filter)
 		{
 			var propertyExpression = ExpressionUtils.CreateMemberAccess(parameterExpressions, filter.FieldSelector);
 

@@ -77,21 +77,21 @@ var logicFilters = new List<FilterNode>
 	//	FilterCondition = FilterCondition.IsNotEmpty,
 	//	FilterLogicOption = LogicalConnector.And,
 	//},
-	new()
+	new ConditionNode()
 	{
 		FieldSelector = string.Join(".", [nameof(AppPerson.Phones), nameof(Phone.PhoneType)]),
 		SearchValue = new List<object>() { PhoneType.Home, PhoneType.Work },
 		FilterCondition = FilterCondition.ContainsAll,
 		FilterLogicOption = LogicalConnector.And,
 	},
-	new()
+	new ConditionNode()
 	{
 		FieldSelector = string.Join(".", [nameof(AppPerson.Id)]),
 		FilterCondition = FilterCondition.NotIn,
 		SearchValue = new List<object>() { 1, 2, 3, 4, 5 },
 		FilterLogicOption = LogicalConnector.And,
 	},
-	new ()
+	new ConditionNode()
 	{
 		FieldSelector = nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.AvgAggregateFunction,
 		FilterCondition = FilterCondition.Equals,

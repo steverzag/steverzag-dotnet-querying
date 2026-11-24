@@ -9,7 +9,8 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 	/// <item>Nodes join strictly left to right. Each node's connector says how it joins everything before it,
 	/// and the first node's connector is ignored.</item>
 	/// <item>There is no AND-before-OR precedence: <c>A or B and C</c> means <c>(A or B) and C</c>.</item>
-	/// <item>A node with child Filters is a group, i.e. parentheses. Its own field, condition and value are ignored.</item>
+	/// <item>A <see cref="GroupNode"/> is parentheses around one or more child nodes. It has no condition of its own
+	/// (decision 009.5 holds by construction).</item>
 	/// </list>
 	/// </summary>
 	public class FilterNodeLogicTests(SqliteDatabaseFixture database) : FilterTestBase(database)
@@ -27,7 +28,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 
 		private static FilterNode Or(FilterNode node) => node with { FilterLogicOption = LogicalConnector.Or };
 		private static FilterNode And(FilterNode node) => node with { FilterLogicOption = LogicalConnector.And };
-		private static FilterNode Group(params FilterNode[] children) => new() { Filters = children };
+		private static GroupNode Group(params FilterNode[] children) => new() { Filters = children };
 
 		// ---- basics
 
@@ -187,24 +188,63 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			]));
 		}
 
-		// ---- group edge cases
+		// ---- node shapes
+		// A node is either a ConditionNode or a GroupNode, so a group can't carry a condition of its own
+		// (decision 009.5 holds by construction). The remaining invariants are checked when a node is built.
 
 		[Fact]
-		public void GroupOwnCondition_IsSilentlyIgnored()
+		public void GroupWithConnector_JoinsLikeAnyNode()
 		{
-			// The node asks for Hammer, but it has children, so only the child (Rake) is applied.
-			// Candidate for a validation error later (see ROADMAP Phase 2).
-			var group = NameIs("Hammer") with { Filters = [NameIs("Rake")] };
+			Assert.Equal([1, 4], FilterIds([NameIs("Hammer"), Or(Group(NameIs("Rake")))]));
+		}
+
+		[Fact]
+		public void GroupWithNoChildren_Throws()
+		{
+			// Used to act as a plain node, applying the node's own condition.
+			Assert.Throws<ArgumentException>(() => new GroupNode { Filters = [] });
+		}
+
+		[Fact]
+		public void GroupWithNullChildList_Throws()
+		{
+			Assert.Throws<ArgumentNullException>(() => new GroupNode { Filters = null! });
+		}
+
+		[Fact]
+		public void GroupWithANullChild_Throws()
+		{
+			Assert.Throws<ArgumentException>(() => new GroupNode { Filters = [NameIs("Rake"), null!] });
+		}
+
+		[Fact]
+		public void Group_EmptiedThroughWith_Throws()
+		{
+			// `with` goes through the same init accessor, so a copy can't bypass the check.
+			Assert.Throws<ArgumentException>(() => Group(NameIs("Rake")) with { Filters = [] });
+		}
+
+		[Fact]
+		public void Group_CopiesItsChildren()
+		{
+			var children = new List<FilterNode> { NameIs("Rake") };
+			var group = new GroupNode { Filters = children };
+
+			children.Add(Or(NameIs("Hammer")));
 
 			Assert.Equal([4], FilterIds([group]));
 		}
 
 		[Fact]
-		public void GroupWithNoChildren_ActsAsAPlainNode()
+		public void ConditionWithNullField_Throws()
 		{
-			var node = NameIs("Hammer") with { Filters = [] };
+			Assert.Throws<ArgumentNullException>(() => new ConditionNode { FieldSelector = null!, FilterCondition = FilterCondition.IsEmpty });
+		}
 
-			Assert.Equal([1], FilterIds([node]));
+		[Fact]
+		public void NullNodeInTheList_Throws()
+		{
+			Assert.Throws<ArgumentException>(() => FilterIds([NameIs("Rake"), null!]));
 		}
 
 		// ---- mixed types in one tree, translated to a single SQL query

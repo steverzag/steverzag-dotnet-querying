@@ -110,7 +110,7 @@ namespace Steverzag.QueryShaper.Tests.Pagination
 			// active: Hammer (1), Shovel (2), Rake (4). By name: Hammer, Rake, Shovel.
 			using var context = Database.CreateContext();
 			var page = context.Products
-				.ApplyLogicsFilter([new FilterNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, SearchValue = true }])
+				.ApplyLogicsFilter([new ConditionNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, SearchValue = true }])
 				.ApplyOrder([new OrderParameters(nameof(Product.Name), OrderDirection.Ascending)])
 				.Select(p => p.Id)
 				.Paginate(1, 2);
@@ -123,7 +123,7 @@ namespace Steverzag.QueryShaper.Tests.Pagination
 		{
 			using var context = Database.CreateContext();
 			var page = context.Products
-				.ApplyLogicsFilter([new FilterNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, SearchValue = false }])
+				.ApplyLogicsFilter([new ConditionNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, SearchValue = false }])
 				.OrderBy(p => p.Id)
 				.Select(p => p.Id)
 				.Paginate(1, 2);

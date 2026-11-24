@@ -15,7 +15,7 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 
 | Feature | Entry point | Input model |
 |---|---|---|
-| Logic filters | `query.ApplyLogicsFilter(nodes)` | `FilterNode { FieldSelector, FilterCondition, SearchValue, FilterLogicOption, Filters[] }` |
+| Logic filters | `query.ApplyLogicsFilter(nodes)` | `FilterNode` = `ConditionNode { FieldSelector, FilterCondition, SearchValue }` or `GroupNode { Filters[] }`, both with `FilterLogicOption` |
 | Base (global) search | `query.ApplyBaseFilter(searchValue[, config])` or `ApplyBaseFilter(lookups, value)` | configured with `ConfigureSearch<T>(…)` |
 | Combined | `query.ApplyFilters(lookups, searchValue, nodes)` | |
 | Ordering | `query.ApplyOrder(orderParameters)` | `OrderParameters(string OrderBy, OrderDirection)` |
@@ -34,12 +34,17 @@ before it**:
 
 - **Strictly left to right, with no precedence.** `A`, `Or B`, `And C` means `(A or B) and C`, not
   `A or (B and C)` as in SQL or C#. The first node's connector is ignored.
-- **Groups are parentheses.** A node with child `Filters` is a group. Its children combine with the
-  same rules, and its own connector joins the whole group to what came before. Groups nest to any depth.
-  To get `A or (B and C)`, write `A`, `Or [group: B, And C]`.
-- **A group's own condition is ignored.** If a node has children, its `FieldSelector`,
-  `FilterCondition` and `SearchValue` are not used. A node whose `Filters` is empty acts as a plain filter.
-- An empty list leaves the query unchanged; a `null` list throws `ArgumentNullException`.
+- **A node is a condition or a group** (decision 011). `FilterNode` is abstract, and its only two kinds are
+  `ConditionNode` (one test on a field) and `GroupNode` (parentheses). A group has no field, condition or value
+  of its own, so decision 009.5 holds by construction.
+- **Groups are parentheses.** A `GroupNode`'s children combine with the same rules, and its own connector joins the
+  whole group to what came before. Groups nest to any depth. To get `A or (B and C)`, write
+  `A`, `Or GroupNode [B, And C]`.
+- **Invariants are checked when a node is built**, also through `with`. A group needs at least one child and no
+  `null` children (`ArgumentException`), and it copies the list it is given. A condition needs a
+  `FieldSelector` (`ArgumentNullException`).
+- An empty list leaves the query unchanged; a `null` list throws `ArgumentNullException`, and a `null` node in
+  the list throws `ArgumentException`.
 
 These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNodeLogicTests.cs`.
 
@@ -83,11 +88,19 @@ var totals = db.Products
 ```csharp
 var page = await db.Persons
     .ApplyLogicsFilter([
-        new() { FieldSelector = "Phones.PhoneType", FilterCondition = FilterCondition.ContainsAll,
+        new ConditionNode { FieldSelector = "Phones.PhoneType", FilterCondition = FilterCondition.ContainsAll,
                 SearchValue = new List<object> { PhoneType.Home, PhoneType.Work } },
-        new() { FieldSelector = "Phones.Id|" + SelectorDefaults.AvgAggregateFunction,
-                FilterCondition = FilterCondition.GreaterThan, SearchValue = 100,
-                FilterLogicOption = LogicalConnector.And },
+        new GroupNode
+        {
+            FilterLogicOption = LogicalConnector.And,
+            Filters =
+            [
+                new ConditionNode { FieldSelector = "Phones.Id|" + SelectorDefaults.AvgAggregateFunction,
+                        FilterCondition = FilterCondition.GreaterThan, SearchValue = 100 },
+                new ConditionNode { FieldSelector = "Email", FilterCondition = FilterCondition.IsEmpty,
+                        FilterLogicOption = LogicalConnector.Or },
+            ],
+        },
     ])
     .ApplyOrder([new OrderParameters("Name", OrderDirection.Ascending)])
     .PaginateAsync(1, 50);

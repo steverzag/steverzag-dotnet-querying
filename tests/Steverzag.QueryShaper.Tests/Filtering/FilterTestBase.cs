@@ -23,7 +23,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 				.ToArray();
 		}
 
-		protected static FilterNode Node(string field, FilterCondition condition, ValueResult2? value = null) => new()
+		protected static ConditionNode Node(string field, FilterCondition condition, ValueResult2? value = null) => new()
 		{
 			FieldSelector = field,
 			FilterCondition = condition,
