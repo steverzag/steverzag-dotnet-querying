@@ -185,7 +185,7 @@ instead of failing on the first row with an empty collection. Arithmetic on them
 (`Numbers|$FN_AGGR_MAX + 1` is `int?`).
 
 ### 015: `$FN_COALESCE` is a variadic function whose piped value is the first operand (2026-11-24)
-**Status:** accepted; not implemented yet
+**Status:** accepted; implemented (2026-11-24)
 **Context:** since 014, `MIN`, `MAX` and `AVG` are nullable, so mapping `Reviews.Stars|$FN_AGGR_MAX` into an `int`
 property is rejected at registration (010.9). The selector language had no way to say "or 0 if empty", so the only
 workaround was an `int?` destination coalesced after the query. The same need shows up outside aggregates: "the last
@@ -212,10 +212,12 @@ update, or the creation date if there was none".
 6. **Collections are rejected** as operands (`Phones.Number|$FN_COALESCE(…)`): coalescing a sequence has no meaning.
 7. **Delivery: literal defaults first, typed arguments later.** Function arguments are parsed as non-generic
    selectors, so a property fallback has no type until the expression is built. With a literal last operand (the
-   main case) the declared type is exact when the selector is parsed, and 010.9 checks it. With a property fallback the
-   declared type is only resolved when the expression is built, and until then 010.9 can't check it. This is
-   documented as a limitation. Typed arguments (the root type passed down to argument parsing) are a separate roadmap
-   item, shared with type-aware overload resolution.
+   main case) the declared type is exact when the selector is parsed. With a property fallback the declared type
+   (`Type`) is `null` until the expression is built, except for a reference-type subject such as `string`, whose
+   type can't change. 010.9 is unaffected, because the mapper checks the built expression's type. What the
+   limitation does block is chaining a function after a value-type coalesce with a property fallback, in the generic
+   form. Typed arguments (the root type passed down to argument parsing) are a separate roadmap item, shared with
+   type-aware overload resolution.
 
 **Considered:**
 - **The static form, `$FN_COALESCE(a, b, 0)`.** It reads like SQL, but the dependent form is enough: it covers every

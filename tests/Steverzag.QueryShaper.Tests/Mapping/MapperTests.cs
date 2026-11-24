@@ -251,6 +251,33 @@ namespace Steverzag.QueryShaper.Tests.Mapping
 			Assert.Equal([5, 3, null, 4], MapStars(SelectorDefaults.MaxAggregateFunction));
 		}
 
+		// ---- coalesce (decision 015)
+
+		[Fact]
+		public void CoalescedMaxIntoNonNullableDestination_UsesTheDefault()
+		{
+			var mapper = new Mapper().Register(new MappingConfiguration<Product, ProductQuantity>()
+				.ForMember(d => d.Quantity, "Reviews.Stars|" + SelectorDefaults.MaxAggregateFunction + "|" + SelectorDefaults.Coalesce + "(0)"));
+
+			Assert.Equal([5, 3, 0, 4], Map<ProductQuantity>(mapper).Select(r => r.Quantity));
+		}
+
+		[Fact]
+		public void CoalescedNullablePropertyIntoNonNullableDestination_UsesTheDefault()
+		{
+			var mapper = new Mapper().Register(new MappingConfiguration<Product, ProductQuantity>()
+				.ForMember(d => d.Quantity, nameof(Product.NullableQuantity) + "|" + SelectorDefaults.Coalesce + "(-1)"));
+
+			Assert.Equal([100, -1, 0, 200], Map<ProductQuantity>(mapper).Select(r => r.Quantity));
+		}
+
+		[Fact]
+		public void CoalesceWithANullableLastOperand_IsStillRejectedIntoNonNullable()
+		{
+			Assert.Throws<InvalidOperationException>(() => new Mapper().Register(new MappingConfiguration<Product, ProductQuantity>()
+				.ForMember(d => d.Quantity, nameof(Product.NullableQuantity) + "|" + SelectorDefaults.Coalesce + "(NullableQuantity)")));
+		}
+
 		// ---- composition
 
 		[Fact]

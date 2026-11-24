@@ -47,6 +47,7 @@ All tokens are constants on `SelectorDefaults`. Prefer those constants to string
 | Math | `MATH_CEILING`, `FLOOR`, `ROUND`, `TRUNCATE`, `SIGN`, `POW`, `SQRT`, `EXP`, `LOG`, `LOG10`, `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATAN`, `ATAN2`, `MAX`, `MIN` |
 | String | `STR_LENGTH`, `TOUPPER`, `TOLOWER`, `TRIM`, `TRIMSTART`, `TRIMEND`, `SUBSTRING`, `INDEXOF`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, `CONCAT`, `JOIN`, `COMPARE`, `ISNULLOREMPTY`, `ISNULLORWHITESPACE` |
 | Date | `DT_ADDYEARS`, `ADDMONTHS`, `ADDDAYS`, `ADDHOURS`, `ADDMINUTES`, `ADDSECONDS`, `ADDMILLISECONDS`, `NOW`, `UTCNOW`, `TODAY` |
+| Null handling | `COALESCE` |
 
 **Aggregate result types** follow `Enumerable`'s overload for the element type, and the selector's `Type` matches
 the expression it builds. `AGGR_MIN`, `AGGR_MAX` and `AGGR_AVG` first lift a non-nullable value element to its
@@ -63,6 +64,34 @@ in SQL (decision 014):
 `AGGR_SUM` and `AGGR_AVG` support the numeric types `int`, `long`, `float`, `double` and `decimal`, and their nullable
 forms. Anything else throws `InvalidOperationException`: `AGGR_AVG` when the selector is parsed, and `AGGR_SUM` when the
 expression is built.
+
+## Coalesce: a default for null
+
+`$FN_COALESCE` takes its first operand from the pipe, and its arguments are the fallbacks in order (decision 015):
+
+```csharp
+PropertySelector<Product> stars   = "Reviews.Stars|$FN_AGGR_MAX|$FN_COALESCE(0)"; // p.Reviews.Select(r => (int?)r.Stars).Max() ?? 0  → int
+PropertySelector<Product> touched = "DeletedAt|$FN_COALESCE(CreatedAt)";          // p.DeletedAt ?? p.CreatedAt                   → DateTime
+PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";         // x.First ?? x.Second ?? x.Third ?? 0
+```
+
+- Every argument is a selector (a literal, a property, a chain, a function), resolved against the scope root.
+  EF translates the result to SQL `COALESCE`.
+- Every operand except the last must be able to be null (`Nullable<>` or a reference type). Otherwise the selector is
+  rejected with `InvalidOperationException`, including a non-nullable piped value (`Quantity|$FN_COALESCE(0)` on an `int`).
+- Types unify like C#'s `??`: numbers widen (`decimal? ?? 0` → `decimal`, `int? ?? long` → `long`), and other types
+  must match exactly (`DateTime?` with `DateTime`, an enum with the same enum). The result is nullable only if the last
+  operand is.
+- Collections can't be coalesced, and the function needs a piped value: `$FN_COALESCE(a, 0)` at the head of a chain
+  is rejected.
+- **Declared type (`Type`) when the selector is parsed:** exact when every fallback is a literal. With a property
+  fallback, arguments have no type yet, so `Type` is `null` until the expression is built. A string subject is the
+  exception: it declares `string`. Code that builds the expression first, such as the QueryShaper mapper, still checks
+  the result type. A function chained after a value-type coalesce with a property fallback (`DeletedAt|$FN_COALESCE(CreatedAt)|…`)
+  can't be resolved in the generic form yet (roadmap: typed function arguments).
+- Current parser limits that also apply here: a string literal containing an arithmetic character (`"n/a"`) is read
+  as arithmetic, and in arithmetic a chain that starts with a property can't contain a function with arguments
+  (`A|$FN_COALESCE(0) + 1` fails, while `$FN_MATH_POW(2, 3) * 2` and `Numbers|$FN_AGGR_MAX + 1` work).
 
 ## Generic vs non-generic
 
@@ -95,4 +124,5 @@ which a front end can use to offer column/field pickers.
 | String pre-scan, arithmetic entry | `PropertySelectorUtils.cs`, `ArithmeticSelectors/` (tokenizer → parser) |
 | Function dispatch | `Registration/SelectorRegistry.cs`, `SelectorTokenAttribute.cs` |
 | Literals | `ValueSelectors/ValueSelectorFactory.cs` |
+| Coalesce | `NullSelectors/` |
 | Member access building | `ExpressionUtils.cs`, `SelectorImplementations/MethodInfos.cs` |

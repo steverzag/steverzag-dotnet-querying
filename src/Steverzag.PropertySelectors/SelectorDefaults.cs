@@ -81,6 +81,8 @@ namespace Steverzag.PropertySelectors
 		public const string DateUtcNow = FunctionStart + "DT_UTCNOW";
 		public const string DateToday = FunctionStart + "DT_TODAY";
 
+		public const string Coalesce = FunctionStart + "COALESCE";
+
 		public const string IntegerValueSpecifier = ValueStart + "INT";
 		public const string DoubleValueSpecifier = ValueStart + "DOUBLE";
 		public const string BooleanValueSpecifier = ValueStart + "BOOL";
