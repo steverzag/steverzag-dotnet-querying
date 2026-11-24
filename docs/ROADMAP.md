@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (423 tests covering every feature; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (440 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -120,7 +120,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
   - [x] 008.2: reject undefined enum values (allow `[Flags]` combinations) (2026-11-23). Applies to single values and lists (`In`/`NotIn`, `ContainsAny`, `ContainsAll`) and throws `FilterConditionAndValueNotSupportedException`. A `[Flags]` enum accepts any combination of declared bits, including 0. The test model gained `Product.Features` (`[Flags] ProductFeatures`).
   - [x] 008.3: convert list values safely to the target type, with overflow checks (in `CreateTypedValueList`) (2026-11-23). Any numeric value converts to a numeric target if it fits (`ConvertNumber`). Integer targets reject fractional parts, NaN and out-of-range values instead of truncating or wrapping. Values that don't fit throw `FilterConditionAndValueNotSupportedException`; non-numeric values (strings, `bool`, numbers for a `char` property) still throw `InvalidCastException`.
   - [x] Single-value filters narrowed **unchecked** (`ValueResult2`'s explicit operators used plain `(int)`, `(short)`, `(byte)` casts), so `Quantity = 4294967346L` was read as `50`. Found while implementing 008.3 and fixed to match it (2026-11-23). The casts are now `checked`, and double → float checks for overflow to infinity. `BuildFilterExpression` turns the `OverflowException` into `FilterConditionAndValueNotSupportedException`. The enum branch reads the value as `long`, so out-of-range values are rejected by `Enum.TryParse` instead of wrapping to a defined member.
-  - [ ] 008.4: accept enum names in `Equals`/`NotEquals`.
+  - [x] 008.4: accept enum names in `Equals`/`NotEquals` (2026-11-23). Single values and lists now share one parser (`ParseEnumValue`). It accepts the underlying number, a member name (case-sensitive), a numeric string, or comma-separated names for a `[Flags]` enum. Unknown names throw `FilterConditionAndValueNotSupportedException`, the same as undefined numbers.
   - [ ] 008 cleanups: `FilterConditionAndValueNotSupportedException` instead of `System.Exception`; remove `Console.WriteLine` from `ApplyLogicsFilter`.
   - [ ] 009.5: reject a group node that has its own condition.
   - [ ] 009.6: reject `ApplyGrouping([])`; give more than 21 keys a descriptive error.
@@ -145,6 +145,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [x] Choose the product names and root namespaces, and rename the code (done in Phase 1).
 - [ ] Audit `public` vs `internal`, and add XML docs to everything public.
 - [ ] Rename temporaries (`ValueResult2`, `SearchValue.cs`, the `SyntheticFuncions` typo folder).
+- [ ] Tidy `ValueResult2`'s value kinds (found 2026-11-23). Every integer (`byte`, `short`, `int`, `long`) is stored as `long` and reported as `ResultValueKind.Integer`, and `float` as `Double`. So the `Byte`, `Short`, `Long` and `Float` kinds are never produced, and the `ResultValueKind.Long` arm in the enum branch of `FilteringExtensions.cs` is dead code. Either remove those kinds or make `ValueResult2` report them. A related gap: there is no `ulong` conversion, so a single value above `long.MaxValue` (e.g. a `ulong`-backed enum member) can only be passed by name or as a numeric string. Lists accept a `ulong` directly.
 - [ ] Freeze the selector **grammar** and write it down as a spec (`docs/property-selectors.md` → "Grammar").
 - [ ] Add a QueryShaper request contract: a single `QueryRequest { Filters, Order, Page, Search }` that binds from JSON, plus an `Apply(request)` entry point.
 - [ ] Add a security note and guard rails: a property allow-list, max depth, and a page-size cap, because selectors arrive from untrusted clients.

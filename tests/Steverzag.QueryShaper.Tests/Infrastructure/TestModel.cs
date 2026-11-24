@@ -46,6 +46,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 		public ProductStatus Status { get; set; }
 		public ProductStatus? OptionalStatus { get; set; }
 		public ProductFeatures Features { get; set; }
+		public ProductBatch Batch { get; set; }
 
 		// a scalar with no dedicated filter branch (only In/NotIn apply)
 		public char Grade { get; set; }
@@ -76,6 +77,14 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 		Waterproof = 1,
 		Foldable = 2,
 		Cordless = 4,
+	}
+
+	/// <summary>A <see langword="long"/>-backed enum whose values don't fit in an <see langword="int"/>.</summary>
+	public enum ProductBatch : long
+	{
+		Legacy = 1,
+		Current = 5_000_000_000,
+		Next = long.MaxValue,
 	}
 
 	public class Category

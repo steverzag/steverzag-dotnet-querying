@@ -401,29 +401,18 @@ namespace Steverzag.QueryShaper.Filtering
 					throw new Exception("Null value provided for non-nullable enum type " + propertyType.Name);
 				}
 
-				Type enumUnderlyingType = Enum.GetUnderlyingType(propertyType);
-				object? enumUnderlayingValue = filter.SearchValue is null ? null
+				object? rawEnumValue = filter.SearchValue is null ? null
 					: filter.SearchValue?.GetKind() switch
 					{
-						// Read as long: Enum.TryParse below rejects values outside the enum's own underlying type.
+						// Read as long: ParseEnumValue rejects values outside the enum's own underlying type.
 						ResultValueKind.Integer => (long?)filter.SearchValue!,
 						ResultValueKind.Long => (long?)filter.SearchValue!,
+						ResultValueKind.String => (string)filter.SearchValue!,
 						_ => throw new Exception("Unsupported value type for enum filtering: " + filter.SearchValue?.GetKind().ToString()),
 					};
 
-				object? enumValue = null;
-				var isInvalidValueProvided = enumUnderlayingValue is not null
-					&& (!Enum.TryParse(propertyType, enumUnderlayingValue.ToString(), out enumValue)
-						|| !IsDefinedEnumValue(propertyType, enumValue!));
-
-				if (isInvalidValueProvided)
-				{
-					throw new FilterConditionAndValueNotSupportedException(
-						$"Invalid value ({enumUnderlayingValue ?? "null"}) provided for type {propertyType.Name}.");
-				}
-				var enumConstant = enumUnderlayingValue is null
-					? Expression.Constant(null, propertyExpression.Type)
-					: Expression.Constant(enumValue, propertyExpression.Type);
+				object? enumValue = rawEnumValue is null ? null : ParseEnumValue(propertyType, rawEnumValue);
+				var enumConstant = Expression.Constant(enumValue, propertyExpression.Type);
 
 				return filter.FilterCondition switch
 				{
@@ -563,11 +552,7 @@ namespace Steverzag.QueryShaper.Filtering
 				}
 				else if (underlyingType.IsEnum)
 				{
-					list.Add(Enum.TryParse(underlyingType, value.ToString(), out var enumValue)
-						&& IsDefinedEnumValue(underlyingType, enumValue!)
-						? enumValue
-						: throw new FilterConditionAndValueNotSupportedException(
-							$"Invalid value ({value}) provided for type {underlyingType.Name}."));
+					list.Add(ParseEnumValue(underlyingType, value));
 				}
 				else if (underlyingType.IsInstanceOfType(value))
 				{
@@ -585,6 +570,15 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 
 			return list;
+		}
+
+		private static object ParseEnumValue(Type enumType, object value)
+		{
+			var text = Convert.ToString(value, CultureInfo.InvariantCulture);
+			return Enum.TryParse(enumType, text, out var enumValue) && IsDefinedEnumValue(enumType, enumValue!)
+				? enumValue!
+				: throw new FilterConditionAndValueNotSupportedException(
+					$"Invalid value ({value}) provided for type {enumType.Name}.");
 		}
 
 		private static bool IsDefinedEnumValue(Type enumType, object enumValue)

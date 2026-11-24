@@ -8,7 +8,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 	{
 		// Status: 1 Active, 2 Draft, 3 Discontinued, 4 Active
 		// OptionalStatus: 1 Active, 2 null, 3 Discontinued, 4 Draft
-		// Enum values are passed as their underlying integer.
+		// Enum values are passed as their underlying integer or as a member name.
 
 		[Fact]
 		public void Equals_ByUnderlyingValue()
@@ -94,6 +94,46 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Features), FilterCondition.Equals, value));
 		}
 
+		// Batch (long-backed): 1 Current (5_000_000_000), 2 Legacy (1), 3 Next (long.MaxValue), 4 Current.
+		// ValueResult2 stores every integer as a long, so values beyond int range must survive intact.
+
+		[Fact]
+		public void LongBacked_Equals_ValueBeyondIntRange()
+		{
+			Assert.Equal([1, 4], FilterIds(nameof(Product.Batch), FilterCondition.Equals, (long)ProductBatch.Current));
+		}
+
+		[Fact]
+		public void LongBacked_Equals_LongMaxValue()
+		{
+			Assert.Equal([3], FilterIds(nameof(Product.Batch), FilterCondition.Equals, long.MaxValue));
+		}
+
+		[Fact]
+		public void LongBacked_Equals_IntValue()
+		{
+			Assert.Equal([2], FilterIds(nameof(Product.Batch), FilterCondition.Equals, (int)ProductBatch.Legacy));
+		}
+
+		[Fact]
+		public void LongBacked_NotEquals_ByName()
+		{
+			Assert.Equal([2, 3], FilterIds(nameof(Product.Batch), FilterCondition.NotEquals, nameof(ProductBatch.Current)));
+		}
+
+		[Fact]
+		public void LongBacked_In_ValuesBeyondIntRange()
+		{
+			Assert.Equal([1, 3, 4], FilterIds(nameof(Product.Batch), FilterCondition.In,
+				new List<object> { (long)ProductBatch.Current, long.MaxValue }));
+		}
+
+		[Fact]
+		public void LongBacked_UndefinedValue_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Batch), FilterCondition.Equals, 5_000_000_001L));
+		}
+
 		[Fact]
 		public void NullValue_OnNonNullable_Throws()
 		{
@@ -101,11 +141,59 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Throws<Exception>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals));
 		}
 
+		// Decision 008.4: enum names are accepted in Equals/NotEquals, the same as in lists.
+
 		[Fact]
-		public void StringValue_Throws()
+		public void Equals_ByName()
 		{
-			// Only integer values are accepted; the name "Active" is rejected (as a bare System.Exception).
-			Assert.Throws<Exception>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, "Active"));
+			Assert.Equal([1, 4], FilterIds(nameof(Product.Status), FilterCondition.Equals, nameof(ProductStatus.Active)));
+		}
+
+		[Fact]
+		public void NotEquals_ByName()
+		{
+			Assert.Equal([2, 3], FilterIds(nameof(Product.Status), FilterCondition.NotEquals, nameof(ProductStatus.Active)));
+		}
+
+		[Fact]
+		public void Nullable_Equals_ByName()
+		{
+			Assert.Equal([4], FilterIds(nameof(Product.OptionalStatus), FilterCondition.Equals, nameof(ProductStatus.Draft)));
+		}
+
+		[Fact]
+		public void Nullable_NotEquals_ByName_IncludesNullRows()
+		{
+			Assert.Equal([2, 3, 4], FilterIds(nameof(Product.OptionalStatus), FilterCondition.NotEquals, nameof(ProductStatus.Active)));
+		}
+
+		[Fact]
+		public void Equals_ByNumericString()
+		{
+			// Enum.TryParse reads a numeric string as the underlying value, as it does in lists.
+			Assert.Equal([1, 4], FilterIds(nameof(Product.Status), FilterCondition.Equals, "1"));
+		}
+
+		[Fact]
+		public void Flags_Equals_ByCombinedNames()
+		{
+			Assert.Equal([1], FilterIds(nameof(Product.Features), FilterCondition.Equals, "Waterproof, Cordless"));
+		}
+
+		[Theory]
+		[InlineData("Archived")]  // not a member
+		[InlineData("active")]    // names are case-sensitive, like the lists and the same-name rule (010.10)
+		[InlineData("")]
+		[InlineData("99")]        // a numeric string is still checked against the defined values
+		public void UnknownName_Throws(string value)
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Status), FilterCondition.Equals, value));
+		}
+
+		[Fact]
+		public void Flags_UnknownNameInCombination_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Features), FilterCondition.Equals, "Waterproof, Heated"));
 		}
 
 		[Theory]

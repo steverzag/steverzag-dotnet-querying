@@ -82,7 +82,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		[Fact]
 		public void In_Enum_ByName()
 		{
-			// List values are parsed with Enum.TryParse, so names work here (unlike single-value Equals).
+			// List values are parsed with Enum.TryParse, so names work here (as in single-value Equals, decision 008.4).
 			Assert.Equal([1, 4], FilterIds(nameof(Product.Status), FilterCondition.In, new List<object> { "Active" }));
 		}
 
