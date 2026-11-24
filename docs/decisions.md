@@ -145,3 +145,22 @@ included, where a collection serializes as a bare JSON array. Rejected: callers 
 response wrap the page in their own type, and the library doesn't impose a response shape.
 **Consequence:** a breaking change for code that mutated the page or relied on it being a `List<T>`; none in this
 repository did. `Count` is the number of items on the page; `TotalCount` is the number across all pages.
+
+### 013: Single filter values follow the same rules as lists (2026-11-23)
+**Status:** accepted; implemented (2026-11-23)
+**Context:** writing down decision 008 found two inconsistencies. A single number had to be the same kind as the
+property (`1` for a `double` property threw `InvalidCastException`), while lists converted any number that fits.
+And a missing value (`SearchValue = null`) meant different things per type: strings and enums threw a filter error,
+numbers, `bool` and `Guid` compared with the default (`Quantity = null` matched `Quantity = 0`), and dates threw a bare
+`InvalidOperationException`.
+**Decision:**
+1. **A single number converts like a list value.** Any number that fits the property is accepted, with the same
+   `ConvertNumber` rules: `1` for a `double` or `decimal`, `50.0` for an `int`. A fractional part, NaN, infinity or an
+   out-of-range value for an integer property throws `FilterConditionAndValueNotSupportedException`. A non-number
+   (a numeric string, `bool`) still throws `InvalidCastException`.
+2. **A condition that compares with a value needs one, for every type.** `null` (or a `ValueResult2` holding null)
+   with `Equals`, `NotEquals` or a comparison throws `FilterConditionAndValueNotSupportedException`. This also applies to
+   nullable properties: to match nulls, use `IsEmpty`. A client that means 0 or `false` sends 0 or `false`.
+**Consequence:** a behaviour change. Requests that relied on `null` meaning 0 or `false` now fail. Clients sending
+JSON numbers no longer need to match the property's number kind. The seven numeric branches in `FilteringExtensions`
+became one. 008.3's statement that lists "match single values" now holds.

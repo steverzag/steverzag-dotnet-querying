@@ -75,9 +75,19 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		}
 
 		[Fact]
-		public void Bool_NullValue_IsTreatedAsFalse()
+		public void Bool_NullValue_Throws()
 		{
-			Assert.Equal([3], FilterIds(nameof(Product.IsActive), FilterCondition.Equals));
+			// Decision 013.2. A missing value used to be read as false.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.IsActive), FilterCondition.Equals));
+		}
+
+		[Theory]
+		[InlineData(nameof(Product.Code))]
+		[InlineData(nameof(Product.OptionalCode))]
+		public void Guid_NullValue_Throws(string field)
+		{
+			// A missing value used to be read as Guid.Empty.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, FilterCondition.Equals));
 		}
 
 		[Fact]

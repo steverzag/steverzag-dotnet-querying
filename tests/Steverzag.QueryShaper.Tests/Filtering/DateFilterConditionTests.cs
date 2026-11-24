@@ -17,6 +17,20 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			(FilterCondition.NotEquals, [1, 3, 4]),
 		];
 
+		[Theory]
+		[InlineData(nameof(Product.CreatedAt))]
+		[InlineData(nameof(Product.DeletedAt))]
+		[InlineData(nameof(Product.ReleaseDate))]
+		[InlineData(nameof(Product.DiscontinuedOn))]
+		[InlineData(nameof(Product.OpensAt))]
+		[InlineData(nameof(Product.LastServicedAt))]
+		public void NullValue_Throws(string field)
+		{
+			// Decision 013.2. This used to be a bare InvalidOperationException from Nullable<T>.Value.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, FilterCondition.GreaterThan));
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, FilterCondition.Equals));
+		}
+
 		private static readonly (string Field, object Mid)[] DateFields =
 		[
 			(nameof(Product.CreatedAt), SeedData.MidDate.CreatedAt),

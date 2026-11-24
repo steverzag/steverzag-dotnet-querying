@@ -48,6 +48,40 @@ before it**:
 
 These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNodeLogicTests.cs`.
 
+## Filter values
+
+A `ConditionNode.SearchValue` is converted to the property's type when the filter is built (decision 008). Every
+rejection below happens before the query runs.
+
+**Numbers.** Single values and lists (`In`, `NotIn`, `ContainsAny`, `ContainsAll`) follow the same rules
+(decision 013):
+- Any number converts to the property's type if it fits: `50L` or `50.0` for an `int`, `1` for a `double` or `decimal`.
+- A fractional part, NaN, infinity or an out-of-range value for an integer property throws
+  `FilterConditionAndValueNotSupportedException`. The value is never truncated or wrapped.
+- A value too large for a `float` or `decimal` property throws the same exception.
+- A non-number (a numeric string, `bool`, a number for a `char` property) throws `InvalidCastException`.
+
+**Enums.** Single values and lists follow the same rules:
+- Accepted: the underlying number, a member name (case-sensitive), a numeric string, or, for a `[Flags]` enum,
+  comma-separated names (`"Waterproof, Cordless"`).
+- An undefined value or an unknown name throws `FilterConditionAndValueNotSupportedException`. A `[Flags]` enum accepts
+  any combination of declared bits, including 0.
+- Other kinds of values (`bool`, `double`, `Guid`, …) throw `FilterConditionAndValueNotSupportedException`.
+
+**A missing value** (`SearchValue = null`, or a `ValueResult2` that holds null) works only with `IsEmpty` and
+`IsNotEmpty`. With `Equals`, `NotEquals` or a comparison it throws `FilterConditionAndValueNotSupportedException`,
+for every property type and also on nullable properties (decision 013). To match nulls, use `IsEmpty`. A missing
+value is never read as 0 or `false`. A non-nullable enum also rejects `IsEmpty`, because it has no empty state.
+
+**Nulls in lists.** A list may contain `null` when the property is nullable (`int?`). `NotIn` counts rows whose value
+is null as "not in" the list. A `null` in the list for a non-nullable property throws
+`FilterConditionAndValueNotSupportedException`.
+
+**List conditions.**
+- `In`/`NotIn` and the collection conditions work on scalar types (numbers, `string`, `char`, `bool`, `Guid`, dates,
+  enums, and their nullable forms). On entities or nested collections they throw `FilterNotSupportedException`.
+- An empty list throws `ArgumentException`.
+
 ## What "empty" means
 
 `IsEmpty` / `IsNotEmpty` test for "no meaningful value", not just for null (decision 008):

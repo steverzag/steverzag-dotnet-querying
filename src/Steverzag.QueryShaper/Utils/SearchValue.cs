@@ -47,6 +47,24 @@ namespace Steverzag.QueryShaper.Utils
 
 		public ResultValueKind GetKind() => _kind;
 
+		internal object? ToObject() => _kind switch
+		{
+			ResultValueKind.Bool => _boolValue,
+			ResultValueKind.Integer => _integerValue,
+			ResultValueKind.Double => _doubleValue,
+			ResultValueKind.Decimal => _decimalValue,
+			ResultValueKind.Char => _charValue,
+			ResultValueKind.String => _stringValue,
+			ResultValueKind.Guid => _guidValue,
+			ResultValueKind.DateTime => _dateTimeValue,
+			ResultValueKind.DateOnly => _dateOnlyValue,
+			ResultValueKind.TimeOnly => _timeOnlyValue,
+			ResultValueKind.TimeSpan => _timeSpanValue,
+			ResultValueKind.DateTimeOffset => _dateTimeOffset,
+			ResultValueKind.Enumerable => _valuesList,
+			_ => null,
+		};
+
 		private ValueResult2(bool value) : this(typeof(bool))
 		{
 			_boolValue = value;

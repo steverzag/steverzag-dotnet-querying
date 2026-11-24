@@ -148,12 +148,12 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(Guid) && !isInOrNotInCondition)
 			{
-				Guid guidValue = filter.SearchValue is null ? Guid.Empty : (Guid)filter.SearchValue;
 				var constantType = isNullableType ? typeof(Guid?) : typeof(Guid);
+				ConstantExpression Value() => Expression.Constant((Guid)RequireValue(filter, propertyType), constantType);
 				return filter.FilterCondition switch
 				{
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(guidValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(guidValue, constantType))),
+					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
+					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
 					FilterCondition.IsEmpty when isNullableType => Expression.Equal(propertyExpression, Expression.Constant(null, typeof(Guid?))),
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(Guid?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable Guid filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
@@ -163,12 +163,12 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(bool) && !isInOrNotInCondition)
 			{
-				bool boolValue = filter.SearchValue is null ? false : (bool)filter.SearchValue;
 				var constantType = isNullableType ? typeof(bool?) : typeof(bool);
+				ConstantExpression Value() => Expression.Constant((bool)RequireValue(filter, propertyType), constantType);
 				return filter.FilterCondition switch
 				{
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(boolValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(boolValue, constantType))),
+					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
+					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
 					FilterCondition.IsEmpty when isNullableType => Expression.Equal(propertyExpression, Expression.Constant(null, typeof(bool?))),
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(bool?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable bool filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
@@ -176,149 +176,30 @@ namespace Steverzag.QueryShaper.Filtering
 					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
 				};
 			}
-			else if (propertyType == typeof(byte) && !isInOrNotInCondition)
+			else if (propertyType is { } numberType && IsComparableNumberType(numberType) && !isInOrNotInCondition)
 			{
-				byte byteValue = filter.SearchValue is null ? (byte)0 : (byte)filter.SearchValue;
+				var zero = Expression.Constant(Activator.CreateInstance(numberType), numberType);
+				Expression Empty() => isNullableType
+					? Expression.Equal(Expression.Coalesce(propertyExpression, zero), zero)
+					: Expression.Equal(propertyExpression, zero);
+				ConstantExpression Value() => Expression.Constant(ReadNumber(filter, numberType), propertyExpression.Type);
 
-				var constantType = isNullableType ? typeof(byte?) : typeof(byte);
 				return filter.FilterCondition switch
 				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant(byteValue, constantType)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant(byteValue, constantType)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant(byteValue, constantType)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant(byteValue, constantType)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(byteValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(byteValue, constantType))),
-					FilterCondition.IsEmpty when isNullableType => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant((byte)0)), Expression.Constant((byte)0)),
-					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant((byte)0)), Expression.Constant((byte)0))),
-					FilterCondition.IsEmpty => Expression.Equal(propertyExpression, Expression.Constant((byte)0)),
-					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant((byte)0))),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
-				};
-			}
-			else if (propertyType == typeof(short) && !isInOrNotInCondition)
-			{
-				short shortValue = filter.SearchValue is null ? (short)0 : (short)filter.SearchValue;
-
-				var constantType = isNullableType ? typeof(short?) : typeof(short);
-				return filter.FilterCondition switch
-				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant(shortValue, constantType)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant(shortValue, constantType)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant(shortValue, constantType)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant(shortValue, constantType)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(shortValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(shortValue, constantType))),
-					FilterCondition.IsEmpty when isNullableType => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant((short)0)), Expression.Constant((short)0)),
-					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant((short)0)), Expression.Constant((short)0))),
-					FilterCondition.IsEmpty => Expression.Equal(propertyExpression, Expression.Constant((short)0)),
-					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant((short)0))),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
-				};
-			}
-			else if (propertyType == typeof(int) && !isInOrNotInCondition)
-			{
-				int intValue = filter.SearchValue is null ? 0 : (int)filter.SearchValue;
-
-				var constantType = isNullableType ? typeof(int?) : typeof(int);
-				return filter.FilterCondition switch
-				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant(intValue, constantType)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant(intValue, constantType)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant(intValue, constantType)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant(intValue, constantType)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(intValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(intValue, constantType))),
-					FilterCondition.IsEmpty when isNullableType => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0)), Expression.Constant(0)),
-					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0)), Expression.Constant(0))),
-					FilterCondition.IsEmpty => Expression.Equal(propertyExpression, Expression.Constant(0)),
-					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(0))),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
-				};
-			}
-			else if (propertyType == typeof(long) && !isInOrNotInCondition)
-			{
-				long longValue = filter.SearchValue is null ? 0L : (long)filter.SearchValue;
-
-				var constantType = isNullableType ? typeof(long?) : typeof(long);
-				return filter.FilterCondition switch
-				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant(longValue, constantType)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant(longValue, constantType)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant(longValue, constantType)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant(longValue, constantType)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(longValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(longValue, constantType))),
-					FilterCondition.IsEmpty when isNullableType => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0L)), Expression.Constant(0L)),
-					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0L)), Expression.Constant(0L))),
-					FilterCondition.IsEmpty => Expression.Equal(propertyExpression, Expression.Constant(0L)),
-					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(0L))),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
-				};
-			}
-			else if (propertyType == typeof(float) && !isInOrNotInCondition)
-			{
-				float floatValue = filter.SearchValue is null ? 0f : (float)filter.SearchValue;
-
-				var constantType = isNullableType ? typeof(float?) : typeof(float);
-				return filter.FilterCondition switch
-				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant(floatValue, constantType)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant(floatValue, constantType)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant(floatValue, constantType)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant(floatValue, constantType)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(floatValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(floatValue, constantType))),
-					FilterCondition.IsEmpty when isNullableType => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0f)), Expression.Constant(0f)),
-					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0f)), Expression.Constant(0f))),
-					FilterCondition.IsEmpty => Expression.Equal(propertyExpression, Expression.Constant(0f)),
-					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(0f))),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
-				};
-			}
-			else if (propertyType == typeof(double) && !isInOrNotInCondition)
-			{
-				double doubleValue = filter.SearchValue is null ? 0d : (double)filter.SearchValue;
-
-				var constantType = isNullableType ? typeof(double?) : typeof(double);
-				return filter.FilterCondition switch
-				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant(doubleValue, constantType)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant(doubleValue, constantType)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant(doubleValue, constantType)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant(doubleValue, constantType)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(doubleValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(doubleValue, constantType))),
-					FilterCondition.IsEmpty when isNullableType => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0d)), Expression.Constant(0d)),
-					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0d)), Expression.Constant(0d))),
-					FilterCondition.IsEmpty => Expression.Equal(propertyExpression, Expression.Constant(0d)),
-					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(0d))),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
-				};
-			}
-			else if (propertyType == typeof(decimal) && !isInOrNotInCondition)
-			{
-				decimal decimalValue = filter.SearchValue is null ? 0m : (decimal)filter.SearchValue;
-
-				var constantType = isNullableType ? typeof(decimal?) : typeof(decimal);
-				return filter.FilterCondition switch
-				{
-					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Expression.Constant(decimalValue, constantType)),
-					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Expression.Constant(decimalValue, constantType)),
-					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Expression.Constant(decimalValue, constantType)),
-					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Expression.Constant(decimalValue, constantType)),
-					FilterCondition.Equals => Expression.Equal(propertyExpression, Expression.Constant(decimalValue, constantType)),
-					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(decimalValue, constantType))),
-					FilterCondition.IsEmpty when isNullableType => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0m)), Expression.Constant(0m)),
-					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(0m)), Expression.Constant(0m))),
-					FilterCondition.IsEmpty => Expression.Equal(propertyExpression, Expression.Constant(0m)),
-					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(0m))),
+					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
+					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
+					FilterCondition.LessThan => Expression.LessThan(propertyExpression, Value()),
+					FilterCondition.LessThanOrEqual => Expression.LessThanOrEqual(propertyExpression, Value()),
+					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
+					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
+					FilterCondition.IsEmpty => Empty(),
+					FilterCondition.IsNotEmpty => Expression.Not(Empty()),
 					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType == typeof(DateTime) && !isInOrNotInCondition)
 			{
-				ConstantExpression Value() => Expression.Constant((DateTime)filter.SearchValue!.Value, propertyExpression.Type);
+				ConstantExpression Value() => Expression.Constant((DateTime)RequireValue(filter, propertyType), propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
@@ -336,7 +217,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(DateOnly) && !isInOrNotInCondition)
 			{
-				ConstantExpression Value() => Expression.Constant((DateOnly)filter.SearchValue!.Value, propertyExpression.Type);
+				ConstantExpression Value() => Expression.Constant((DateOnly)RequireValue(filter, propertyType), propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
@@ -354,7 +235,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(TimeOnly) && !isInOrNotInCondition)
 			{
-				ConstantExpression Value() => Expression.Constant((TimeOnly)filter.SearchValue!.Value, propertyExpression.Type);
+				ConstantExpression Value() => Expression.Constant((TimeOnly)RequireValue(filter, propertyType), propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
@@ -625,6 +506,27 @@ namespace Steverzag.QueryShaper.Filtering
 
 			static bool IsInfinity(object number) => number is double d && double.IsInfinity(d);
 		}
+
+		// Decision 013.2: a condition that compares with a value needs one, whatever the property type.
+		private static ValueResult2 RequireValue(ConditionNode filter, Type propertyType)
+			=> filter.SearchValue is { } value && value.ToObject() is not null
+				? value
+				: throw new FilterConditionAndValueNotSupportedException(
+					$"{filter.FilterCondition} on type {propertyType.Name} needs a value; only {nameof(FilterCondition.IsEmpty)} and {nameof(FilterCondition.IsNotEmpty)} work without one.");
+
+		// Decision 013.1: single values convert like list values.
+		private static object ReadNumber(ConditionNode filter, Type numberType)
+		{
+			var value = RequireValue(filter, numberType).ToObject()!;
+			return IsNumericType(value.GetType())
+				? ConvertNumber(value, numberType)
+				: throw new InvalidCastException(
+					$"The value '{value}' of type {value.GetType().Name} cannot be used for type {numberType.Name}.");
+		}
+
+		private static bool IsComparableNumberType(Type type) =>
+			type == typeof(byte) || type == typeof(short) || type == typeof(int) || type == typeof(long)
+			|| type == typeof(float) || type == typeof(double) || type == typeof(decimal);
 
 		private static bool IsIntegralType(Type type) =>
 			type == typeof(byte) || type == typeof(sbyte)

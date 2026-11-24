@@ -71,9 +71,58 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 
 		[Theory]
 		[MemberData(nameof(Fields))]
-		public void NullValue_IsTreatedAsZero(string field)
+		public void NullValue_Throws(string field)
 		{
-			Assert.Equal([2], FilterIds(field, FilterCondition.Equals));
+			// Decision 013.2. A missing value used to be read as 0, so "Quantity = null" matched "Quantity = 0".
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, FilterCondition.Equals));
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, FilterCondition.GreaterThan));
+		}
+
+		[Fact]
+		public void TypedNullValue_Throws()
+		{
+			// A ValueResult2 that holds a null (from an int? variable) is a missing value too.
+			int? missing = null;
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Quantity), FilterCondition.Equals, missing));
+		}
+
+		[Fact]
+		public void NullValue_OnANullableProperty_Throws_UseIsEmptyInstead()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.NullableQuantity), FilterCondition.Equals));
+		}
+
+		// ---- a single value converts like a list value (decision 013.1)
+
+		[Theory]
+		[InlineData(nameof(Product.Score), 1L)]     // double ← integer
+		[InlineData(nameof(Product.Price), 1L)]     // decimal ← integer
+		[InlineData(nameof(Product.Weight), 0L)]    // float ← integer
+		[InlineData(nameof(Product.Quantity), 1.0)] // int ← whole double
+		[InlineData(nameof(Product.Views), 1.0)]    // long ← whole double
+		public void AnyNumberThatFits_Converts(string field, object value)
+		{
+			// Rows 1, 3 and 4 are above 1 (row 2 is 0) for every numeric property.
+			Assert.Equal([1, 3, 4], FilterIds(field, FilterCondition.GreaterThan, ToValue(value)));
+		}
+
+		[Fact]
+		public void Equals_WithAnotherNumberKind_MatchesExactly()
+		{
+			Assert.Equal([3], FilterIds(nameof(Product.Quantity), FilterCondition.Equals, 50.0));
+			Assert.Equal([3], FilterIds(nameof(Product.Score), FilterCondition.Equals, 2.25m));
+			Assert.Equal([3], FilterIds(nameof(Product.Price), FilterCondition.Equals, 9.99));
+		}
+
+		[Theory]
+		[InlineData(50.5)]
+		[InlineData(double.NaN)]
+		[InlineData(double.PositiveInfinity)]
+		[InlineData(1e20)]
+		public void IntegerProperty_WithAFractionalOrNonFiniteOrHugeValue_Throws(double value)
+		{
+			// Rejected, not truncated: 50.5 used to be an InvalidCastException and is never read as 50.
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Quantity), FilterCondition.Equals, value));
 		}
 
 		// NullableQuantity: 1 → 100, 2 → null, 3 → 0, 4 → 200
@@ -179,8 +228,9 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		[Fact]
 		public void MismatchedValueKind_Throws()
 		{
-			// The value is cast to the property type; a string for an int property is rejected.
+			// Only numbers convert: a numeric string or a bool for a number property is rejected.
 			Assert.Throws<InvalidCastException>(() => FilterIds(nameof(Product.Quantity), FilterCondition.Equals, "50"));
+			Assert.Throws<InvalidCastException>(() => FilterIds(nameof(Product.Score), FilterCondition.Equals, true));
 		}
 	}
 }
