@@ -229,11 +229,60 @@ public class ArithmeticOperationSelectorTests
     }
 
     [Fact]
-    public void NonGenericOperator_WithPropertyOperand_ThrowsBecauseItParsesAgainstObject()
+    public void NonGenericOperator_BuildsNonGenericNodes()
     {
-        // Known limitation, flagged as a TODO in PropertySelectorUtils: the non-generic path
-        // parses operands as PropertySelector<object>, so a property path cannot be resolved.
-        Assert.Throws<InvalidOperationException>(() => (PropertySelector)"Amount + 2");
+        // It used to parse against PropertySelector<object>, which can't resolve "Amount".
+        PropertySelector selector = "Amount + 2";
+
+        var arithmetic = Assert.IsType<ArithmeticOperationSelector>(selector);
+        Assert.Equal(ArithmeticOperator.Addition, arithmetic.Operator);
+        Assert.Equal("Amount", arithmetic.LeftExpression.PlainValue);
+        Assert.IsType<PropertySelector>(arithmetic.LeftExpression);
+    }
+
+    [Theory]
+    [InlineData("Amount + 2", 12d)]
+    [InlineData("Amount - 2", 8d)]
+    [InlineData("Amount * 3", 30d)]
+    [InlineData("Amount / 4", 2d)]           // integer division, as in the generic path
+    [InlineData("-Amount", -10d)]
+    [InlineData("Value + Amount", 12.5d)]
+    [InlineData("Nested.Amount + 1", 6d)]
+    [InlineData("Amount + 2 * 3", 16d)]
+    [InlineData("(Amount + 2) * 3", 36d)]
+    [InlineData("Amount - 3 - 2", 5d)]
+    public void NonGenericOperator_WithPropertyOperands_MatchesTheGenericPath(string expression, double expected)
+    {
+        var item = new TestItem { Amount = 10, Value = 2.5, Nested = new TestNested { Amount = 5 } };
+
+        Assert.Equal(expected, Convert.ToDouble(EvaluateObject((PropertySelector)expression, item)));
+        Assert.Equal(expected, Convert.ToDouble(EvaluateObject((PropertySelector<TestItem>)expression, item)));
+    }
+
+    [Fact]
+    public void NonGenericOperator_WithFunctionOperand_Evaluates()
+    {
+        PropertySelector selector = $"{SelectorDefaults.MathSqrt}(9) + Amount";
+
+        Assert.Equal(13d, Evaluate<double>(selector, new TestItem { Amount = 10 }));
+    }
+
+    [Fact]
+    public void NonGenericOperator_UnknownProperty_FailsWhenBuilt()
+    {
+        // The non-generic selector has no type to check against when it's parsed, so a missing
+        // property is reported when the expression is built, by Expression.PropertyOrField.
+        PropertySelector selector = "Missing + 2";
+
+        var exception = Assert.Throws<ArgumentException>(() => Evaluate<int>(selector, new TestItem()));
+        Assert.Contains("'Missing' is not a member", exception.Message);
+    }
+
+    private static object EvaluateObject(PropertySelector selector, TestItem item)
+    {
+        var parameter = Expression.Parameter(typeof(TestItem), "x");
+        var body = Expression.Convert(ExpressionUtils.CreateMemberAccess(parameter, selector), typeof(object));
+        return Expression.Lambda<Func<TestItem, object>>(body, parameter).Compile()(item);
     }
 
     // ── Failures ────────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (506 tests covering every feature; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (379 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (506 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -34,7 +34,6 @@ More detail is in [property-selectors.md](property-selectors.md) and [query-shap
 - ✅ `SelectorRegistry`: attribute-based (`[SelectorToken]`), open to external assemblies, with cached compiled factories.
 - ✅ `PropertiesExplorer<T>` / `SelectorsMetaDataTree`, which expose metadata for UIs.
 - ⚠️ Known gaps:
-  - Non-generic arithmetic on properties throws (`(PropertySelector)"Age * 2"`, see `PropertySelectorUtils.cs:31`).
   - Avg always returns `double` (`AvgAggregationSelector.cs:8`).
   - Overload resolution goes by argument **count**, not type (`FunctionPropertySelector.cs:31`).
   - `$FN_AGGR_COUNTDISTINCT` is declared but has no selector.
@@ -135,11 +134,11 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [x] Clear the 11 nullable warnings in `lab/Data` (all CS8618 on EF entities) (2026-11-24). Fixed with `= null!`, which the models already used for their other non-nullable properties: 4 strings and the `Person` navigation in `Address`, and the `Person`/`Affilation` navigations and the two `Affiliation` collections elsewhere. `dotnet ef migrations has-pending-model-changes` reports no model changes, so no migration was needed. `lab/Data` now builds with `TreatWarningsAsErrors`, and the whole solution has zero warnings.
 
 ### Phase 3: Close the PropertySelectors gaps
-- [ ] Non-generic arithmetic with properties (`PropertySelectorUtils.cs:31`).
+- [x] Non-generic arithmetic with properties (2026-11-24). `(PropertySelector)"Age * 2"` threw, because the non-generic path parsed against `PropertySelector<object>`. `ArithmeticOperationParser` now builds through an operand factory and an operation factory. `Parse<T>()` creates `PropertySelector<T>`/`ArithmeticOperationSelector<T>`. The new `Parse()` creates the non-generic `PropertySelector`/`ArithmeticOperationSelector`, whose property paths resolve against the target when the expression is built. Tests run the same ten expressions through both paths (operators, negation, two properties, nested path, precedence, grouping). An unknown property in the non-generic form fails only when the expression is built, with `Expression.PropertyOrField`'s `ArgumentException` (see the error-message item below).
 - [ ] Avg return type follows the element type (decimal/float).
 - [ ] Type-aware overload resolution.
 - [ ] Implement `$FN_AGGR_COUNTDISTINCT`, and either finish or delete `SyntheticFunction`.
-- [ ] Clear error messages that give the position and token for invalid selectors (a `SelectorParseException`).
+- [ ] Clear error messages that give the position and token for invalid selectors (a `SelectorParseException`). This includes the non-generic path: an unknown property there surfaces as `Expression.PropertyOrField`'s `ArgumentException` ("'Missing' is not a member of type …"), while the generic path says the property "was not found" (`InvalidOperationException`). The two should agree.
 - [ ] (Optional) Unify the duplicated generic/non-generic record hierarchies.
 - [ ] `PropertySelector<T>.ToString()` returns the compiler-generated record dump (`PropertySelector { PlainValue = … }`), because a derived record gets its own synthesized `ToString`, which hides the base's custom one. Fix: `public sealed override string ToString()` in `PropertySelector`. Affects `ToGeneric()` (which round-trips through `ToString`) and `OrderParameters<T>`'s base string (skipped test `TypedParameters_BaseStringIsTheFullSelector`).
 - [ ] `PropertySelector<T>` type resolution unwraps `IGrouping<K, T>` to `T`, so `PropertySelector<IGrouping<K, T>>` can't resolve `Key` or root-level aggregates (`$FN_AGGR_COUNT`) and fails with an arity error. QueryShaper works around it with the non-generic selector (grouped `ApplySelect`).
