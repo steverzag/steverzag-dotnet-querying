@@ -183,3 +183,88 @@ reinterpretation that 009 and 013 removed.
 nullable type. Mapping rule 010.9 now rejects `MIN`/`MAX`/`AVG` into a non-nullable destination at registration,
 instead of failing on the first row with an empty collection. Arithmetic on them stays nullable
 (`Numbers|$FN_AGGR_MAX + 1` is `int?`).
+
+### 015: `$FN_COALESCE` is a variadic function whose piped value is the first operand (2026-11-24)
+**Status:** accepted; not implemented yet
+**Context:** since 014, `MIN`, `MAX` and `AVG` are nullable, so mapping `Reviews.Stars|$FN_AGGR_MAX` into an `int`
+property is rejected at registration (010.9). The selector language had no way to say "or 0 if empty", so the only
+workaround was an `int?` destination coalesced after the query. The same need shows up outside aggregates: "the last
+update, or the creation date if there was none".
+**Decision:**
+1. **One token, `$FN_COALESCE`, written in the dependent form.** The piped value is the first operand, and the
+   arguments are the fallbacks in order: `a|$FN_COALESCE(b, c, 0)` means `a ?? b ?? c ?? 0`.
+   - `Reviews.Stars|$FN_AGGR_MAX|$FN_COALESCE(0)` → `p.Reviews.Select(r => (int?)r.Stars).Max() ?? 0`, declared `int`.
+   - `LastUpdated|$FN_COALESCE(Created)` → `p.LastUpdated ?? p.Created`.
+2. **Every argument is a selector.** A default is just a value selector (`0`, `"n/a"`, `$VAL_DATETIME:…`), and a
+   fallback can be a property, a chain or a nested function. Arguments are resolved against the scope root, like the
+   arguments of the instance string functions (`STR_CONTAINS`).
+3. **Nullability.** Every operand except the last must be able to be null (`Nullable<>` or a reference type).
+   Otherwise the selector is rejected, because the operands after it can never be reached. This includes a
+   non-nullable piped value: `Quantity|$FN_COALESCE(0)` on an `int` is an error, not a no-op. C# rejects the same thing
+   (CS0019), and a silent no-op would hide a wrong assumption about the field.
+4. **Result type.** The underlying types are unified the way C#'s `??` does it. Numbers widen with
+   `GetWiderNumericType` (`int? ?? long` → `long`, `decimal? ?? 0` → `decimal`). Other types must match exactly
+   (`DateTime?` with `DateTime`, `string` with `string`). Anything else is rejected. The result is nullable if, and only
+   if, the last operand is nullable, so `a ?? b` with both nullable stays nullable and 010.9 still rejects it into a
+   non-nullable destination.
+5. **Expression shape.** A right fold, `Coalesce(o0, Coalesce(o1, … on))`, with each operand converted to the unified
+   type first. EF translates it to `COALESCE(a, COALESCE(b, 0))`, and in memory it short-circuits the same way.
+6. **Collections are rejected** as operands (`Phones.Number|$FN_COALESCE(…)`): coalescing a sequence has no meaning.
+7. **Delivery: literal defaults first, typed arguments later.** Function arguments are parsed as non-generic
+   selectors, so a property fallback has no type until the expression is built. With a literal last operand (the
+   main case) the declared type is exact when the selector is parsed, and 010.9 checks it. With a property fallback the
+   declared type is only resolved when the expression is built, and until then 010.9 can't check it. This is
+   documented as a limitation. Typed arguments (the root type passed down to argument parsing) are a separate roadmap
+   item, shared with type-aware overload resolution.
+
+**Considered:**
+- **The static form, `$FN_COALESCE(a, b, 0)`.** It reads like SQL, but the dependent form is enough: it covers every
+  case (each argument is a full selector, so `$FN_MATH_MAX(A|$FN_COALESCE(0), B)` works). It also fits the pipe, so a
+  default goes after an aggregate without wrapping it in parentheses, and the subject's type comes from the chain.
+  Allowing the static form at the head, as sugar for the same rule, is left open: it makes the token depend on its
+  position, and the language has no consistent rule yet for when a function takes its subject from the pipe or from
+  an argument (see 016).
+- **A mapper-only `ForMember(…, defaultValue: 0)`.** Simpler, but it only helps mapping, not filters, ordering or
+  `ApplySelect`.
+
+**Consequence:** the caller writes the default explicitly, which fits 009, 013 and 014: they removed *silent*
+defaults, not explicit ones. 010.9 accepts `…|$FN_COALESCE(0)` into a non-nullable destination. The function works
+anywhere a selector does. It is the first variadic function: one overload for any count ≥ 1, instead of listing each
+count by hand as `STR_CONCAT` does.
+
+### 016: When a function takes its subject from the pipe or from an argument (2026-11-24)
+**Status:** open; to be discussed before the Phase 4 grammar freeze
+**Context:** a function can get the value it operates on in two ways:
+- **Dependent:** the subject is the piped value, and the arguments are the extra inputs.
+  `Name|$FN_STR_CONTAINS("x")` → `p.Name.Contains("x")`. The arguments are resolved against the scope root
+  (`FindRootParameter`).
+- **Static:** the subject is one of the arguments, and the function is usually the head of its chain.
+  `$FN_MATH_ROUND(Price, 2)` → `Math.Round(p.Price, 2)`. The arguments are resolved against the target, which is the
+  root when the function is the head of the chain.
+
+There is no written rule for which a function uses. The functions as they stand:
+
+| Form | Functions |
+|---|---|
+| Dependent | aggregation (`AGGR_*`), element (`ELM_*`), ordering (`ORDER_*`, `THEN_ORDER_*`), `STR_LENGTH`, `TOUPPER`, `TOLOWER`, `TRIM`, `TRIMSTART`, `TRIMEND`, `SUBSTRING`, `INDEXOF`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, and `COALESCE` (015) |
+| Static | every `MATH_*`, `STR_CONCAT`, `STR_JOIN`, `STR_COMPARE`, `STR_ISNULLOREMPTY`, `STR_ISNULLORWHITESPACE`, `DT_ADD*` |
+| No subject | `DT_NOW`, `DT_UTCNOW`, `DT_TODAY` |
+
+The pattern behind it is "follow the shape of the .NET call": instance and extension methods are dependent, and
+static methods are static. `DT_ADD*` breaks that pattern: `DateTime.AddDays` is an instance method, but
+`$FN_DT_ADDDAYS(Created, 3)` takes its subject as an argument, while `Name|$FN_STR_TRIM` doesn't. A caller can't
+predict the form from the function's name, and `Price|$FN_MATH_ROUND` and `Created|$FN_DT_ADDDAYS(3)` look valid but
+are not supported.
+**To decide:**
+1. **The criterion.** Options: (a) follow .NET (then `DT_ADD*` becomes dependent); (b) follow the language's own
+   rule: anything with a single natural subject is dependent, and only functions whose operands are symmetric are
+   static (`CONCAT`, `MATH_MAX`, `MATH_POW`, `STR_COMPARE`); (c) support both forms for every function, with the rule
+   from 015: in the dependent form the piped value is the first argument (`Price|$FN_MATH_ROUND(2)` ≡
+   `$FN_MATH_ROUND(Price, 2)`).
+2. **If both forms are allowed, how the parser tells them apart.** At the head of a chain the target is the root
+   parameter, which must not become an operand. The selector needs to know whether it is the head; today it can't.
+3. **Typing.** In the dependent form the subject's type comes from the chain, but the arguments' types are unknown
+   when they're parsed. At the head of the chain the root type is known, so the arguments could be typed. Whatever
+   is chosen should fit typed arguments and type-aware overload resolution.
+4. **Migration.** Which existing functions change form, and whether the old form is kept as an alias until the
+   grammar is frozen.
