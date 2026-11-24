@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (478 tests covering every feature; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (482 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -126,7 +126,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
   - [x] 009.6: reject `ApplyGrouping([])`; give more than 21 keys a descriptive error (2026-11-23). Both throw `ArgumentException` (param `groupByParameters`) before any expression is built. A `null` list throws `ArgumentNullException`, and a `null` key `ArgumentException`. The limit is now `GroupByKeys.MaxKeys`, with a test that keeps it in sync with the `GroupKeyN` slots.
   - [x] 009.7: validate `Paginate`/`PaginateAsync` arguments; add `PaginatedList.TotalCount` and `PageSize` (2026-11-23). Page or size < 1 throws `ArgumentOutOfRangeException` before any query runs; a `null` source throws `ArgumentNullException`. The public `PaginatedList` constructor checks the same, plus `count >= 0`. The sync and async paths share an internal `PaginationGuard` (the core now has `InternalsVisibleTo` for the EF add-on). Also fixed: the offset `(page - 1) * size` overflowed `int` for far pages (e.g. `Paginate(int.MaxValue, 2)`) and wrapped to a negative `Skip`, which SQLite reads as 0, so those pages returned the first rows. It is now computed as `long`, and a page beyond `int.MaxValue` rows is empty without running the row query.
   - [x] `PaginatedList<T>` is read-only (2026-11-23, **decision 012**). It was a `List<T>` subclass, so `Add`/`Remove`/`Clear` could make the items disagree with `TotalCount`/`TotalPages`. It is now a `sealed` `IReadOnlyList<T>` over a private copy of the items, with get-only properties. The constructor takes any `IEnumerable<T>`. Every caller only read the page, so no call site changed.
-  - [ ] 010.8: throw for a non-blank base search on an unconfigured type.
+  - [x] 010.8: throw for a non-blank base search on an unconfigured type (2026-11-23). `ApplyBaseFilter(value, configuration)` throws `InvalidOperationException` naming the type and how to configure it. A blank value still returns the query unchanged, also for an unconfigured type. Unchanged: with no `IBaseSearchConfiguration` at all, even a blank search throws.
   - [ ] 010.9: reject nullable → non-nullable mappings at registration.
   - [ ] Update `query-shaper.md` with the resulting rules.
 - [x] QueryShaper and its EF add-on have **zero warnings** and now build with `TreatWarningsAsErrors` (2026-11-22). `GroupByKeys` slots became `object?`, and `CreateBaseSearchLambdaExpression` validates its lookups.
@@ -167,6 +167,9 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 ### Phase 6: Later
 - Source generator for selector discovery (trimming/AOT).
 - Additional providers (beyond EF Core), and a projection/`Select` DSL.
+- **Base search over every string property, as an explicit opt-in** (discussed 2026-11-23). Proposed: `ConfigureSearch<T>()` with no lookups searches every public string property of `T`, and `ConfigureSearch<T>(except: u => u.PasswordHash)` leaves named ones out. The property list is built and checked once at registration, and a type with no string properties throws then, at startup, not on the first search. An unconfigured type still throws (010.8).
+  - Rejected for now: making "all string properties" the implicit default for unconfigured types. Search values come from untrusted clients, so every string field, including hashes, tokens and internal notes, would become searchable and could be guessed one character at a time from whether rows come back. Search results would also change whenever a string property is added. The core can't see EF metadata (006), so `[NotMapped]` properties, computed getters and converted columns would only fail on the first search. And an OR of `LIKE '%x%'` across every column is a costly default. If an implicit default is ever wanted, make it a global setting that is off unless an app turns it on.
+  - Do it after the Phase 4 guard rails (property allow-list) and D4 settle the configuration approach. The `except:` list should use the same mechanism as the allow-list.
 - Benchmarks published in the docs, and an optional docs site.
 - Possibly split into separate repositories once the APIs are stable.
 

@@ -658,9 +658,17 @@ namespace Steverzag.QueryShaper.Filtering
 					$"Pass one explicitly or register it via AddQueryShaper.");
 			}
 
-			if (string.IsNullOrWhiteSpace(searchValue) || !configuration.TryGetSearchPredicate<T>(searchValue, out var predicate))
+			if (string.IsNullOrWhiteSpace(searchValue))
 			{
 				return query;
+			}
+
+			if (!configuration.TryGetSearchPredicate<T>(searchValue, out var predicate))
+			{
+				throw new InvalidOperationException(
+					$"No base search is configured for type {typeof(T).Name}. " +
+					$"Configure one with ConfigureSearch<{typeof(T).Name}>(…) or {nameof(BaseSearchConfiguration)}.Configure<{typeof(T).Name}>(…), " +
+					$"or pass a blank search value to skip it.");
 			}
 
 			return query.Where(predicate!);

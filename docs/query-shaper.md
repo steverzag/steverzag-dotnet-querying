@@ -62,6 +62,19 @@ These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNod
 
 For non-nullable `Guid`, `bool`, date and enum properties, `IsEmpty` is not supported and throws.
 
+## Base search
+
+`ApplyBaseFilter(value[, configuration])` applies the search configured for `T` (`ConfigureSearch<T>(…)` or
+`BaseSearchConfiguration.Configure<T>(…)`). Without an explicit configuration it uses the one registered by
+`AddQueryShaper` (decision D4).
+
+- A blank value (`null`, `""`, whitespace) leaves the query unchanged, even for a type with no search configured.
+- A non-blank value on a type with no search configured throws `InvalidOperationException` (decision 010), before
+  the query runs. It used to return every row, which hid the missing configuration.
+- No `IBaseSearchConfiguration` at all, neither passed nor registered, throws `InvalidOperationException`.
+
+`ApplyBaseFilter(lookups, value)` builds the search from the given lookups instead and needs no configuration.
+
 ## Pagination
 
 `Paginate(page, size)` and `PaginateAsync(page, size, ct)` run two queries: a count, then the page's rows. Order the
@@ -156,6 +169,6 @@ properties directly on the destination can be mapped (`d => d.X`, not `d => d.In
 
 ## Status
 
-This is a prototype. Filtering, ordering, paging, grouping and select are covered by tests; mapping
-and base search are not yet. The public API is not final. See
+This is a prototype. Every feature (filtering, base search, ordering, paging, grouping, select and mapping) is
+covered by tests. The public API is not final. See
 [ROADMAP.md](ROADMAP.md) Phases 1, 2 and 4 for the path to a library.

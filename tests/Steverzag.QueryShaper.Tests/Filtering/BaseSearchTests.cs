@@ -122,12 +122,35 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		}
 
 		[Fact]
-		public void Configured_TypeWithoutConfiguration_IsNotFiltered()
+		public void Configured_TypeWithoutConfiguration_Throws()
 		{
-			// A configuration that has nothing for Product leaves the query unchanged, without an error.
+			// Decision 010.8. This used to return every row, which hid the missing configuration.
 			var configuration = new BaseSearchConfiguration().Configure<Category>([nameof(Category.Name)]);
 
-			Assert.Equal([1, 2, 3, 4], Ids(q => q.ApplyBaseFilter("zzz", configuration)));
+			var exception = Assert.Throws<InvalidOperationException>(() => Ids(q => q.ApplyBaseFilter("zzz", configuration)));
+			Assert.Contains(nameof(Product), exception.Message);
+			Assert.Contains("ConfigureSearch<Product>", exception.Message);
+		}
+
+		[Fact]
+		public void Configured_TypeWithoutConfiguration_ThrowsBeforeTheQueryRuns()
+		{
+			using var context = Database.CreateContext();
+			var configuration = new BaseSearchConfiguration();
+
+			Assert.Throws<InvalidOperationException>(() => context.Products.ApplyBaseFilter("zzz", configuration));
+		}
+
+		[Theory]
+		[InlineData(null)]
+		[InlineData("")]
+		[InlineData("   ")]
+		public void Configured_TypeWithoutConfiguration_BlankSearch_IsNotFiltered(string? value)
+		{
+			// A blank search means "no search", so it doesn't need a configuration.
+			var configuration = new BaseSearchConfiguration().Configure<Category>([nameof(Category.Name)]);
+
+			Assert.Equal([1, 2, 3, 4], Ids(q => q.ApplyBaseFilter(value, configuration)));
 		}
 
 		[Fact]

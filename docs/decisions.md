@@ -105,7 +105,7 @@ Requests come from untrusted clients (see the Phase 4 guard rails), so a clear e
 `ArgumentNullException` from `Expression.Bind`.
 
 ### 010: Mapper and base search fail at configuration time, not silently at query time (2026-11-22)
-**Status:** accepted; implementation pending for 8 and 9 (ROADMAP Phase 2)
+**Status:** accepted; 8 implemented (2026-11-23); 9 pending (ROADMAP Phase 2)
 **Decision:**
 8. **A non-blank base search on a type with no configuration throws** `InvalidOperationException`, the same as
    `GetSearchPredicate` already does. Today the query is returned unfiltered, which hides a misconfiguration.
