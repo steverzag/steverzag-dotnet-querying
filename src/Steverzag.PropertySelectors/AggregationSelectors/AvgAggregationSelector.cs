@@ -3,10 +3,8 @@ using Steverzag.PropertySelectors.Registration;
 namespace Steverzag.PropertySelectors.AggregationSelectors
 {
 	[SelectorToken(SelectorDefaults.AvgAggregateFunction)]
-	public record AvgAggregationSelector<T> : FunctionPropertySelector<T>
+	public record AvgAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
 	{
-		public override Type? SelectorType => typeof(double);//TODO: when enumerable is of decimal/float type. should be retrned decimal/float?
-
 		public AvgAggregationSelector() : base(SelectorDefaults.AvgAggregateFunction)
 		{
 		}
@@ -16,12 +14,18 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateAvgFunction());
 			Overloads.Add(emptyFunctionParameters);
 		}
+
+		// Enumerable.Average's own return type: double for int/long/double, float for float, decimal for decimal,
+		// and the nullable form for nullable elements.
+		public override Type? InitSelectorTypeToApply()
+		{
+			var elementType = ((IEnumerableFunctionSelector<T>)this).ValidateAndGetEnumerableType(nameof(AvgAggregationSelector));
+			return Implementations.GetAggregateMethod(nameof(Enumerable.Average), elementType).ReturnType;
+		}
 	}
 	[SelectorToken(SelectorDefaults.AvgAggregateFunction)]
 	public record AvgAggregationSelector : FunctionPropertySelector
 	{
-		public override Type? SelectorType => typeof(double);
-
 		public AvgAggregationSelector() : base(SelectorDefaults.AvgAggregateFunction)
 		{
 		}

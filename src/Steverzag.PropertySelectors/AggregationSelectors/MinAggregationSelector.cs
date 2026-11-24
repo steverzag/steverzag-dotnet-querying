@@ -21,7 +21,7 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 		}
 		public override Type? InitSelectorTypeToApply()
 		{
-			return ((IEnumerableFunctionSelector<T>)this).ValidateAndGetEnumerableType(nameof(MaxAggregationSelector));
+			return ((IEnumerableFunctionSelector<T>)this).ValidateAndGetEnumerableType(nameof(MinAggregationSelector));
 		}
 	}
 

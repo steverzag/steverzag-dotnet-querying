@@ -21,6 +21,16 @@ public class AggregationSelectorTests
         public List<int> Numbers { get; set; } = [];
         public List<double> Weights { get; set; } = [];
         public string Code { get; set; } = string.Empty;
+
+        // one list per element type, all holding 1, 2, 4 (the nullable ones also hold a null)
+        public List<long> Longs { get; set; } = [1, 2, 4];
+        public List<decimal> Decimals { get; set; } = [1m, 2m, 4m];
+        public List<double> Doubles { get; set; } = [1, 2, 4];
+        public List<float> Floats { get; set; } = [1, 2, 4];
+        public List<int?> NullableInts { get; set; } = [1, 2, null, 4];
+        public List<decimal?> NullableDecimals { get; set; } = [1m, 2m, null, 4m];
+        public List<DateTime> Dates { get; set; } = [new(2024, 5, 1), new(2024, 1, 1), new(2024, 9, 1)];
+        public List<string> Names { get; set; } = ["b", "a", "c"];
     }
 
     // Aggregations take their source from the chained target, so the whole selector chain has
@@ -197,13 +207,12 @@ public class AggregationSelectorTests
     }
 
     [Fact]
-    public void Sum_OnNonIntegerCollection_ThrowsOnBuild()
+    public void Sum_OnDoubleCollection_ReturnsTotal()
     {
-        // The aggregation implementations bind the non-generic Enumerable.Sum(IEnumerable<int>)
-        // overload, so any other element type fails when the call is built.
+        // Every aggregate used to bind the IEnumerable<int> overload, so this threw an ArgumentException.
         PropertySelector<TestOrder> selector = $"Weights{Delimiter}{SelectorDefaults.SumAggregateFunction}";
 
-        Assert.ThrowsAny<ArgumentException>(() => Evaluate<double>(selector, SampleOrder()));
+        Assert.Equal(4d, Evaluate<double>(selector, SampleOrder()));
     }
 
     [Fact]
@@ -291,6 +300,80 @@ public class AggregationSelectorTests
         var result = Evaluate<double>(selector, SampleOrder());
 
         Assert.Equal(20d, result);
+    }
+
+    // ── Every numeric element type ──────────────────────────────────────────
+
+    public static TheoryData<string, string, Type, object> ElementTypeCases() => new()
+    {
+        // Average follows Enumerable.Average: double for integers and double, float for float, decimal for decimal.
+        { "Longs", SelectorDefaults.AvgAggregateFunction, typeof(double), 7d / 3 },
+        { "Decimals", SelectorDefaults.AvgAggregateFunction, typeof(decimal), 7m / 3 },
+        { "Doubles", SelectorDefaults.AvgAggregateFunction, typeof(double), 7d / 3 },
+        { "Floats", SelectorDefaults.AvgAggregateFunction, typeof(float), 7f / 3 },
+        { "NullableInts", SelectorDefaults.AvgAggregateFunction, typeof(double?), 7d / 3 },
+        { "NullableDecimals", SelectorDefaults.AvgAggregateFunction, typeof(decimal?), 7m / 3 },
+        // Sum, Min and Max keep the element type.
+        { "Longs", SelectorDefaults.SumAggregateFunction, typeof(long), 7L },
+        { "Decimals", SelectorDefaults.SumAggregateFunction, typeof(decimal), 7m },
+        { "Floats", SelectorDefaults.SumAggregateFunction, typeof(float), 7f },
+        { "NullableInts", SelectorDefaults.SumAggregateFunction, typeof(int?), 7 },
+        { "Decimals", SelectorDefaults.MinAggregateFunction, typeof(decimal), 1m },
+        { "NullableDecimals", SelectorDefaults.MinAggregateFunction, typeof(decimal?), 1m },
+        { "Longs", SelectorDefaults.MaxAggregateFunction, typeof(long), 4L },
+        { "Doubles", SelectorDefaults.MaxAggregateFunction, typeof(double), 4d },
+        // Min and Max also work on any comparable type, through the generic overload.
+        { "Dates", SelectorDefaults.MinAggregateFunction, typeof(DateTime), new DateTime(2024, 1, 1) },
+        { "Names", SelectorDefaults.MaxAggregateFunction, typeof(string), "c" },
+    };
+
+    [Theory]
+    [MemberData(nameof(ElementTypeCases))]
+    public void Aggregate_FollowsTheElementType(string property, string function, Type expectedType, object expectedValue)
+    {
+        PropertySelector<TestOrder> selector = $"{property}{Delimiter}{function}";
+
+        var parameter = Expression.Parameter(typeof(TestOrder), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var value = Expression.Lambda<Func<TestOrder, object>>(Expression.Convert(body, typeof(object)), parameter).Compile()(new TestOrder());
+
+        Assert.Equal(expectedType, selector.Type);
+        Assert.Equal(expectedType, body.Type);
+        Assert.Equal(expectedValue, value);
+    }
+
+    [Theory]
+    [MemberData(nameof(ElementTypeCases))]
+    public void Aggregate_NonGeneric_FollowsTheElementType(string property, string function, Type expectedType, object expectedValue)
+    {
+        PropertySelector selector = $"{property}{Delimiter}{function}";
+
+        var parameter = Expression.Parameter(typeof(TestOrder), "x");
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var value = Expression.Lambda<Func<TestOrder, object>>(Expression.Convert(body, typeof(object)), parameter).Compile()(new TestOrder());
+
+        Assert.Equal(expectedType, body.Type);
+        Assert.Equal(expectedValue, value);
+    }
+
+    [Fact]
+    public void Avg_OnNonNumericElements_ThrowsAtParseTime()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+        {
+            PropertySelector<TestOrder> selector = $"Names{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
+        });
+        Assert.Contains("Average is not supported for elements of type String", exception.Message);
+    }
+
+    [Fact]
+    public void Sum_OnNonNumericElements_ThrowsOnBuild()
+    {
+        // Sum declares the element type without checking it, so a string list fails when the call is built.
+        PropertySelector<TestOrder> selector = $"Names{Delimiter}{SelectorDefaults.SumAggregateFunction}";
+
+        var exception = Assert.Throws<InvalidOperationException>(() => Evaluate<object>(selector, new TestOrder()));
+        Assert.Contains("Sum is not supported for elements of type String", exception.Message);
     }
 
     // ── Combined with the other families ────────────────────────────────────

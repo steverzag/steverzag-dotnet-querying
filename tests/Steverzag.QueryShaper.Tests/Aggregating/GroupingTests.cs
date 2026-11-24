@@ -185,6 +185,35 @@ namespace Steverzag.QueryShaper.Tests.Aggregating
 			Assert.Contains("null", exception.Message);
 		}
 
+		[Fact]
+		public void AggregatesOverADoubleProperty_KeepItsType()
+		{
+			// Every aggregate used to bind Enumerable's IEnumerable<int> overload, so a non-int property failed to build.
+			const string scoreSum = "Score|" + SelectorDefaults.SumAggregateFunction;
+			const string scoreMax = "Score|" + SelectorDefaults.MaxAggregateFunction;
+			const string scoreAvg = "Score|" + SelectorDefaults.AvgAggregateFunction;
+			var results = Grouped([nameof(Product.IsActive)], [Key0, scoreSum, scoreMax, scoreAvg]);
+
+			// The inactive group is only row 3 (Wrench).
+			var inactive = GroupWhere(results, Key0, false);
+			Assert.Equal(SeedData.Mid.Score, Assert.IsType<double>(Value(inactive, scoreSum)));
+			Assert.Equal(SeedData.Mid.Score, Assert.IsType<double>(Value(inactive, scoreMax)));
+			Assert.Equal(SeedData.Mid.Score, Assert.IsType<double>(Value(inactive, scoreAvg)));
+		}
+
+		[Fact]
+		public void AggregatesOverADecimalProperty_StayDecimal()
+		{
+			// Avg used to declare double for every element type; over decimals it now returns decimal.
+			const string priceSum = "Price|" + SelectorDefaults.SumAggregateFunction;
+			const string priceAvg = "Price|" + SelectorDefaults.AvgAggregateFunction;
+			var results = Grouped([nameof(Product.IsActive)], [Key0, priceSum, priceAvg]);
+
+			var inactive = GroupWhere(results, Key0, false);
+			Assert.Equal(SeedData.Mid.Price, Assert.IsType<decimal>(Value(inactive, priceSum)));
+			Assert.Equal(SeedData.Mid.Price, Assert.IsType<decimal>(Value(inactive, priceAvg)));
+		}
+
 		// ---- computed keys and nested collections
 
 		[Fact]
