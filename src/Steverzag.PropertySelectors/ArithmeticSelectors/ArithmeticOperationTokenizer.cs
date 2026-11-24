@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Steverzag.PropertySelectors.Extensions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -33,6 +34,14 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				if (c == '$' || char.IsDigit(c) || char.IsLetter(c) || c == '_' || c == '@')
 				{
 					tokens.Add(ReadSelector());
+					continue;
+				}
+
+				if (c == '"')
+				{
+					var start = _pos;
+					_pos = _text.EndOfQuotedLiteral(_pos) + 1;
+					tokens.Add(new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos]));
 					continue;
 				}
 
@@ -107,7 +116,11 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				{
 					var c = _text[_pos];
 
-					if (c == '(')
+					if (c == '"')
+					{
+						_pos = _text.EndOfQuotedLiteral(_pos);
+					}
+					else if (c == '(')
 					{
 						parenDepth++;
 					}
@@ -132,10 +145,32 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			{
 				_pos++;
 
+				var delimiter = SelectorDefaults.PropertyDelimiter[0];
+				var inComplexSegment = false;
+				var parenDepth = 0;
+
 				while (_pos < _text.Length)
 				{
 					var c = _text[_pos];
-					if ((c is '+' or '-' or '*' or '/' or '(' or ')') || char.IsWhiteSpace(c))
+
+					if (c == '"')
+					{
+						_pos = _text.EndOfQuotedLiteral(_pos);
+					}
+					else if (parenDepth > 0)
+					{
+						if (c == '(') parenDepth++;
+						else if (c == ')') parenDepth--;
+					}
+					else if (c == delimiter)
+					{
+						inComplexSegment = _pos + 1 < _text.Length && _text[_pos + 1] == complexSelectorStart;
+					}
+					else if (c == '(' && inComplexSegment)
+					{
+						parenDepth++;
+					}
+					else if ((c is '+' or '-' or '*' or '/' or '(' or ')') || char.IsWhiteSpace(c))
 					{
 						break;
 					}

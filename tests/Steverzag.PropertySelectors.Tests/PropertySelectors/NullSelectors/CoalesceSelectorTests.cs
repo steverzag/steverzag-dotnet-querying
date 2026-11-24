@@ -103,9 +103,9 @@ public class CoalesceSelectorTests
     [MemberData(nameof(BothForms))]
     public void NullableString_WithLiteralDefault(bool generic)
     {
-        var selector = Parse($"Nickname|{Coalesce}(\"none\")", generic);
+        var selector = Parse($"Nickname|{Coalesce}(\"n/a\")", generic);
 
-        Assert.Equal("none", Evaluate(selector, new TestItem { Nickname = null }));
+        Assert.Equal("n/a", Evaluate(selector, new TestItem { Nickname = null }));
         Assert.Equal("Bob", Evaluate(selector, new TestItem { Nickname = "Bob" }));
         Assert.Equal(typeof(string), BuiltType(selector));
     }
@@ -198,6 +198,16 @@ public class CoalesceSelectorTests
     }
 
     // ── Composition ────────────────────────────────────────────────────────
+
+    [Theory]
+    [MemberData(nameof(BothForms))]
+    public void InArithmetic(bool generic)
+    {
+        var selector = Parse($"First|{Coalesce}(0) + 1", generic);
+
+        Assert.Equal(1, Evaluate(selector, new TestItem()));
+        Assert.Equal(5, Evaluate(selector, new TestItem { First = 4 }));
+    }
 
     [Fact]
     public void StringSubject_WithPropertyFallback_DeclaresString()

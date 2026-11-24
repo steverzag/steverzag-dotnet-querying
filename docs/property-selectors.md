@@ -31,8 +31,8 @@ Expression body = avgId.PropertyAccess(parameter);
 | Property path | `Name(.Name)*` | `Address.City` |
 | Pipe / chain | `part\|part\|…`, where each part applies to the previous result | `Phones.Id\|$FN_AGGR_SUM` |
 | Function | `$FN_<NAME>` or `$FN_<NAME>(arg, …)`. Arguments are selectors themselves. | `$FN_STR_SUBSTRING(0, 3)` |
-| Literal | number, `true`/`false`, `"quoted string"` | `55`, `"Hi"` |
-| Typed literal | `$VAL_<KIND>:<value>` with KIND ∈ INT, DOUBLE, BOOL, STR, DATETIME, DATE, TIME | `$VAL_DATE:2025-01-31` |
+| Literal | number, `true`/`false`, `"quoted string"`. Everything between the quotes is text, including `\| + - * / ( ) ,`. There are no escapes, so a string can't contain `"`. | `55`, `"Hi"`, `"n/a"` |
+| Typed literal | `$VAL_<KIND>:<value>` with KIND ∈ INT, DOUBLE, BOOL, STR, DATETIME, DATE, TIME. The value runs to the end of its part, so as a function argument it ends at the next `,` or `)`. For text with commas or parentheses, use a quoted string. | `$VAL_DATE:2025-01-31` |
 | Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths or literals. | `Amount - 3 - 2` |
 
 All tokens are constants on `SelectorDefaults`. Prefer those constants to string literals in your code.
@@ -89,9 +89,8 @@ PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";     
   exception: it declares `string`. Code that builds the expression first, such as the QueryShaper mapper, still checks
   the result type. A function chained after a value-type coalesce with a property fallback (`DeletedAt|$FN_COALESCE(CreatedAt)|…`)
   can't be resolved in the generic form yet (roadmap: typed function arguments).
-- Current parser limits that also apply here: a string literal containing an arithmetic character (`"n/a"`) is read
-  as arithmetic, and in arithmetic a chain that starts with a property can't contain a function with arguments
-  (`A|$FN_COALESCE(0) + 1` fails, while `$FN_MATH_POW(2, 3) * 2` and `Numbers|$FN_AGGR_MAX + 1` work).
+- Coalesce works inside arithmetic (`A|$FN_COALESCE(0) + 1`), and a quoted default can hold any character but `"`
+  (`Nickname|$FN_COALESCE("n/a")`).
 
 ## Generic vs non-generic
 

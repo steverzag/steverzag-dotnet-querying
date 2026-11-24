@@ -1,4 +1,5 @@
 ﻿using Steverzag.PropertySelectors.ArithmeticSelectors;
+using Steverzag.PropertySelectors.Extensions;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -53,7 +54,11 @@ namespace Steverzag.PropertySelectors
 			for (var i = 0; i < innerParameters.Length; i++)
 			{
 				var ch = innerParameters[i];
-				if (ch == '(')
+				if (ch == '"')
+				{
+					i = innerParameters.EndOfQuotedLiteral(i);
+				}
+				else if (ch == '(')
 				{
 					nestedParenthesesCount++;
 				}

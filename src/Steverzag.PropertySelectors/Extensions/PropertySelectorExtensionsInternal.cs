@@ -47,6 +47,12 @@ namespace Steverzag.PropertySelectors.Extensions
 			{
 				var c = expression[i];
 
+				if (c == '"')
+				{
+					i = expression.EndOfQuotedLiteral(i);
+					continue;
+				}
+
 				if (c == '(')
 				{
 					parenthesesDepth++;
@@ -88,6 +94,12 @@ namespace Steverzag.PropertySelectors.Extensions
 			parts.Add(expression[partStartIndex..].Trim());
 
 			return new SelectorExpressionAnalysis(false, parts);
+		}
+
+		internal static int EndOfQuotedLiteral(this string text, int openingQuoteIndex)
+		{
+			var closingQuoteIndex = text.IndexOf('"', openingQuoteIndex + 1);
+			return closingQuoteIndex == -1 ? text.Length - 1 : closingQuoteIndex;
 		}
 	}
 }
