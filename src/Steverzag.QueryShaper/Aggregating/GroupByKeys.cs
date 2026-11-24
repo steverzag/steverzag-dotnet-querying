@@ -8,6 +8,8 @@ namespace Steverzag.QueryShaper.Aggregating
 {
 	public class GroupByKeys
 	{
+		public const int MaxKeys = 21;
+
 		public object? GroupKey0 { get; set; }
 		public object? GroupKey1 { get; set; }
 		public object? GroupKey2 { get; set; }

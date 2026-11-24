@@ -90,7 +90,7 @@ in `Equals`.
 - `ApplyLogicsFilter` no longer writes every expression to `Console`.
 
 ### 009: Invalid requests are rejected up front, not silently reinterpreted (2026-11-22)
-**Status:** accepted; implementation pending (ROADMAP Phase 2)
+**Status:** accepted; 5 (via 011), 6 and the key-limit cleanup implemented (2026-11-23); 7 pending (ROADMAP Phase 2)
 **Context:** the tests found inputs that are silently ignored, produce nonsense, or crash deep inside EF Core.
 Requests come from untrusted clients (see the Phase 4 guard rails), so a clear error is safer than a guess.
 **Decision:**

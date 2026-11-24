@@ -13,6 +13,25 @@ namespace Steverzag.QueryShaper.Aggregating
 
 		public static IQueryable<IGrouping<GroupByKeys, T>> ApplyGrouping<T>(this IQueryable<T> query, List<PropertySelector<T>> groupByParameters)
 		{
+			ArgumentNullException.ThrowIfNull(groupByParameters);
+
+			if (groupByParameters.Count == 0)
+			{
+				throw new ArgumentException("Grouping needs at least one key.", nameof(groupByParameters));
+			}
+
+			if (groupByParameters.Count > GroupByKeys.MaxKeys)
+			{
+				throw new ArgumentException(
+					$"Grouping supports at most {GroupByKeys.MaxKeys} keys, but {groupByParameters.Count} were given.",
+					nameof(groupByParameters));
+			}
+
+			if (groupByParameters.Any(key => key is null))
+			{
+				throw new ArgumentException("Grouping keys can't contain null.", nameof(groupByParameters));
+			}
+
 			ParameterExpression param = Expression.Parameter(typeof(T), "x");
 
 			var newGroupByKeysExp = Expression.New(typeof(GroupByKeys));

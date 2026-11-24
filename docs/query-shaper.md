@@ -64,7 +64,9 @@ For non-nullable `Guid`, `bool`, date and enum properties, `IsEmpty` is not supp
 
 ## Grouping and aggregates
 
-`ApplyGrouping(keys)` groups by up to 21 selectors. `ApplySelect(selectors)` on the grouped query then returns
+`ApplyGrouping(keys)` groups by 1 to 21 selectors (`GroupByKeys.MaxKeys`). An empty key list, more than 21 keys,
+or a `null` key throws `ArgumentException` when the grouping is built, before the query runs (decision 009).
+`ApplySelect(selectors)` on the grouped query then returns
 one `SelectResult` per group, and its selectors resolve against the **group**:
 
 | Selector | Means |

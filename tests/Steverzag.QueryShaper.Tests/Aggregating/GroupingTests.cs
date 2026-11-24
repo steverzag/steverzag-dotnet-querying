@@ -123,9 +123,18 @@ namespace Steverzag.QueryShaper.Tests.Aggregating
 		}
 
 		[Fact]
+		public void MaxKeys_MatchesTheKeySlots()
+		{
+			var slots = typeof(GroupByKeys).GetProperties().Where(p => p.Name.StartsWith("GroupKey")).ToList();
+
+			Assert.Equal(GroupByKeys.MaxKeys, slots.Count);
+			Assert.All(Enumerable.Range(0, GroupByKeys.MaxKeys), i => Assert.Contains(slots, p => p.Name == "GroupKey" + i));
+		}
+
+		[Fact]
 		public void TwentyOneKeys_IsTheMaximum()
 		{
-			List<PropertySelector<Product>> keys = [.. Enumerable.Repeat<PropertySelector<Product>>(nameof(Product.IsActive), 21)];
+			List<PropertySelector<Product>> keys = [.. Enumerable.Repeat<PropertySelector<Product>>(nameof(Product.IsActive), GroupByKeys.MaxKeys)];
 
 			Assert.Equal(2, Grouped(keys, [Count]).Count);
 		}
@@ -133,21 +142,47 @@ namespace Steverzag.QueryShaper.Tests.Aggregating
 		[Fact]
 		public void MoreThanTwentyOneKeys_Throws()
 		{
-			// GroupByKeys has 21 slots. A 22nd key has no property to bind to; today that surfaces as
-			// an ArgumentNullException from Expression.Bind rather than a descriptive error.
-			List<PropertySelector<Product>> keys = [.. Enumerable.Repeat<PropertySelector<Product>>(nameof(Product.IsActive), 22)];
+			// Decision 009 cleanup: a descriptive error instead of an ArgumentNullException from Expression.Bind.
+			List<PropertySelector<Product>> keys = [.. Enumerable.Repeat<PropertySelector<Product>>(nameof(Product.IsActive), GroupByKeys.MaxKeys + 1)];
 
-			Assert.Throws<ArgumentNullException>(() => Grouped(keys, [Count]));
+			var exception = Assert.Throws<ArgumentException>("groupByParameters", () => Grouped(keys, [Count]));
+			Assert.Contains("at most 21 keys", exception.Message);
+			Assert.Contains("22", exception.Message);
 		}
 
 		[Fact]
-		public void NoKeys_FailsInsideEfCore()
+		public void NoKeys_Throws()
 		{
-			// ApplyGrouping([]) builds GroupBy(x => new GroupByKeys()) with no key columns, and EF Core's
-			// translator crashes on it ("Sequence contains no elements"). See ROADMAP Phase 2: either reject an
-			// empty key list up front or treat it as "aggregate the whole table".
-			var exception = Assert.Throws<InvalidOperationException>(() => Grouped([], [Count, QuantitySum]));
-			Assert.Contains("Sequence contains no elements", exception.Message);
+			// Decision 009.6: rejected up front. It used to reach EF Core, whose translator crashed on
+			// GroupBy(x => new GroupByKeys()) ("Sequence contains no elements").
+			var exception = Assert.Throws<ArgumentException>("groupByParameters", () => Grouped([], [Count, QuantitySum]));
+			Assert.Contains("at least one key", exception.Message);
+		}
+
+		[Fact]
+		public void NoKeys_ThrowsBeforeTheQueryRuns()
+		{
+			using var context = Database.CreateContext();
+
+			Assert.Throws<ArgumentException>("groupByParameters", () => context.Products.ApplyGrouping([]));
+		}
+
+		[Fact]
+		public void NullKeyList_Throws()
+		{
+			using var context = Database.CreateContext();
+
+			Assert.Throws<ArgumentNullException>("groupByParameters", () => context.Products.ApplyGrouping(null!));
+		}
+
+		[Fact]
+		public void NullKey_Throws()
+		{
+			using var context = Database.CreateContext();
+			List<PropertySelector<Product>> keys = [nameof(Product.IsActive), null!];
+
+			var exception = Assert.Throws<ArgumentException>("groupByParameters", () => context.Products.ApplyGrouping(keys));
+			Assert.Contains("null", exception.Message);
 		}
 
 		// ---- computed keys and nested collections

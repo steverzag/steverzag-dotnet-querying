@@ -12,7 +12,7 @@
 | **Audience** | Library authors and anyone who builds dynamic expressions. | Application developers writing data-access APIs (mainly EF Core). |
 | **Dependencies** | **None** (BCL only). This must stay true. | Core: PropertySelectors + `Microsoft.Extensions.DependencyInjection.Abstractions`. `.EntityFrameworkCore` add-on: EF Core (async pagination). |
 | **Project** | `src/Steverzag.PropertySelectors/` | `src/Steverzag.QueryShaper/` + `src/Steverzag.QueryShaper.EntityFrameworkCore/` |
-| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (454 tests covering every feature; 1 skipped as a known gap) |
+| **Tests** | `tests/Steverzag.PropertySelectors.Tests/` (367 tests, all passing) | `tests/Steverzag.QueryShaper.Tests/` on SQLite (458 tests covering every feature; 1 skipped as a known gap) |
 
 **The dependency rule:** QueryShaper depends on PropertySelectors, never the other way round.
 PropertySelectors knows nothing about filtering, EF Core or DI.
@@ -123,7 +123,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
   - [x] 008.4: accept enum names in `Equals`/`NotEquals` (2026-11-23). Single values and lists now share one parser (`ParseEnumValue`). It accepts the underlying number, a member name (case-sensitive), a numeric string, or comma-separated names for a `[Flags]` enum. Unknown names throw `FilterConditionAndValueNotSupportedException`, the same as undefined numbers.
   - [x] 008 cleanups (2026-11-23). The enum branch's two plain `System.Exception`s now throw `FilterConditionAndValueNotSupportedException` with descriptive messages: a missing value on a non-nullable enum (which also covers `IsEmpty`/`IsNotEmpty` there), and an unsupported value kind (`bool`, `double`, `Guid`, …). `ApplyLogicsFilter` no longer writes every expression to `Console`. QueryShaper now has no plain `System.Exception` throws left. The four in PropertySelectors' arithmetic parser belong to Phase 3's `SelectorParseException`.
   - [x] 009.5: reject a group node that has its own condition (2026-11-23). It was first a runtime check, which couldn't detect `FilterCondition.Equals` (the enum's default). It was then replaced by **decision 011**: `FilterNode` is split into `ConditionNode` and `GroupNode`, so a group can't carry a condition at all. Also checked when a node is built: a group needs at least one child and no nulls, and a condition needs a field. A group with an empty `Filters` list no longer silently acts as a plain filter. The combining loop is shared by the top-level list and groups (`CombineNodes`).
-  - [ ] 009.6: reject `ApplyGrouping([])`; give more than 21 keys a descriptive error.
+  - [x] 009.6: reject `ApplyGrouping([])`; give more than 21 keys a descriptive error (2026-11-23). Both throw `ArgumentException` (param `groupByParameters`) before any expression is built. A `null` list throws `ArgumentNullException`, and a `null` key `ArgumentException`. The limit is now `GroupByKeys.MaxKeys`, with a test that keeps it in sync with the `GroupKeyN` slots.
   - [ ] 009.7: validate `Paginate`/`PaginateAsync` arguments; add `PaginatedList.TotalCount` and `PageSize`.
   - [ ] 010.8: throw for a non-blank base search on an unconfigured type.
   - [ ] 010.9: reject nullable → non-nullable mappings at registration.
