@@ -330,6 +330,8 @@ form. The static form stays where it exists today and is not added anywhere else
    Normalizing to one form would rewrite what a caller saved, for no gain.
 10. **The metadata tree** shows the piped form on every function that accepts it, so a UI can offer
     `Price → Round` the same way it offers `Name → Trim`.
+    - *Deferred (2026-11-24):* the metadata tree lists only properties, not functions, so there is nothing yet to
+      add the piped form to. Moved to the Phase 4 item "Function metadata for UIs", which includes it.
 11. **The new date functions follow the same rule.** The parts (`DT_YEAR` …) and truncations (`DT_DATE` …) have
     one natural subject, so they are written piped first, `Created|$FN_DT_YEAR`, with the static form
     `$FN_DT_YEAR(Created)` as well, matching `DT_ADD*`. Two-date differences are symmetric, like `MATH_MAX`.
