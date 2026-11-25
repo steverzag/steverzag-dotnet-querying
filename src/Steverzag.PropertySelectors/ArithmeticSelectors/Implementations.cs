@@ -73,7 +73,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		public static Expression CreateUnaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector parameter)
 		{
-			var parameterExpr = ExpressionUtils.CreateMemberAccess(target, parameter);
+			var parameterExpr = ExpressionUtils.ResolveArgument(target, parameter);
 
 			if (!ArithmeticUtils.IsNumericType(parameterExpr.Type))
 			{
@@ -99,8 +99,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		public static Expression CreateBinaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector param1, PropertySelector param2)
 		{
-			var paramExpr1 = ExpressionUtils.CreateMemberAccess(target, param1);
-			var paramExpr2 = ExpressionUtils.CreateMemberAccess(target, param2);
+			var paramExpr1 = ExpressionUtils.ResolveArgument(target, param1);
+			var paramExpr2 = ExpressionUtils.ResolveArgument(target, param2);
 
 			if (!ArithmeticUtils.IsNumericType(paramExpr1.Type) || !ArithmeticUtils.IsNumericType(paramExpr2.Type))
 			{

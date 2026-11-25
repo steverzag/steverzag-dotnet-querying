@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringCompare)]
+[SelectorToken(SelectorDefaults.StringCompare, Piped = PipedForm.FirstArgument)]
 internal record StringCompareSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(int);
@@ -22,7 +22,7 @@ internal record StringCompareSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.StringCompare)]
+[SelectorToken(SelectorDefaults.StringCompare, Piped = PipedForm.FirstArgument)]
 internal record StringCompareSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(int);

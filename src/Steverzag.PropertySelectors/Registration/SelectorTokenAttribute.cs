@@ -10,6 +10,10 @@ namespace Steverzag.PropertySelectors.Registration
 	{
 		public string Token { get; }
 
+		public PipedForm Piped { get; set; }
+
+		public string? PipedHint { get; set; }
+
 		public SelectorTokenAttribute(string token)
 		{
 			Token = token;

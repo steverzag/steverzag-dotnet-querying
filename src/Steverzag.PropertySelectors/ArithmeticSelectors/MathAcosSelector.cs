@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathAcos)]
+[SelectorToken(SelectorDefaults.MathAcos, Piped = PipedForm.FirstArgument)]
 internal record MathAcosSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type SelectorType => typeof(double);
@@ -21,7 +21,7 @@ internal record MathAcosSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.MathAcos)]
+[SelectorToken(SelectorDefaults.MathAcos, Piped = PipedForm.FirstArgument)]
 internal record MathAcosSelector : FunctionPropertySelector
 {
 	public override Type SelectorType => typeof(double);

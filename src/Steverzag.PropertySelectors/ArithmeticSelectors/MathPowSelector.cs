@@ -4,7 +4,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors
 {
-	[SelectorToken(SelectorDefaults.MathPower)]
+	[SelectorToken(SelectorDefaults.MathPower, Piped = PipedForm.FirstArgument)]
 	internal record MathPowSelector<T> : FunctionPropertySelector<T>
 	{
 		public override Type? SelectorType => typeof(double);
@@ -32,7 +32,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		}
 	}
 
-	[SelectorToken(SelectorDefaults.MathPower)]
+	[SelectorToken(SelectorDefaults.MathPower, Piped = PipedForm.FirstArgument)]
 	internal record MathPowSelector : FunctionPropertySelector
 	{
 		public override Type? SelectorType => typeof(double);

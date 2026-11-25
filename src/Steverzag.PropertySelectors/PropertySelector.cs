@@ -36,6 +36,7 @@ namespace Steverzag.PropertySelectors
 			var selectorParts = analysis.Parts;
 			PropertySelector<T> result = null!;
 			Type currentIterationType = typeof(T);
+			string? pipedText = null;
 
 			foreach (var selectorPart in selectorParts)
 			{
@@ -45,7 +46,7 @@ namespace Steverzag.PropertySelectors
 
 				if (isFunctionPart)
 				{
-					propertySelector = SelectorRegistry.TryResolveGeneric(selectorPart, currentIterationType, out var registeredSelector)
+					propertySelector = SelectorRegistry.TryResolveGeneric(selectorPart, currentIterationType, pipedText, out var registeredSelector)
 						? registeredSelector
 						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
 				}
@@ -71,6 +72,7 @@ namespace Steverzag.PropertySelectors
 				}
 
 				currentIterationType = propertySelector.SelectorType!;
+				pipedText = pipedText is null ? selectorPart : pipedText + SelectorDefaults.PropertyDelimiter + selectorPart;
 			}
 
 			return result;
@@ -154,6 +156,7 @@ namespace Steverzag.PropertySelectors
 			}
 			var selectorParts = analysis.Parts;
 			PropertySelector result = null!;
+			string? pipedText = null;
 
 			foreach (var selectorPart in selectorParts)
 			{
@@ -163,7 +166,7 @@ namespace Steverzag.PropertySelectors
 
 				if (isFunctionPart)
 				{
-					propertySelector = SelectorRegistry.TryResolveNonGeneric(selectorPart, out var registeredSelector)
+					propertySelector = SelectorRegistry.TryResolveNonGeneric(selectorPart, pipedText, out var registeredSelector)
 						? registeredSelector
 						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
 				}
@@ -187,6 +190,8 @@ namespace Steverzag.PropertySelectors
 					}
 					current.ChildSelector = propertySelector;
 				}
+
+				pipedText = pipedText is null ? selectorPart : pipedText + SelectorDefaults.PropertyDelimiter + selectorPart;
 			}
 
 			return result;

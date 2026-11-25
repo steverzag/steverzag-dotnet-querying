@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathRound)]
+[SelectorToken(SelectorDefaults.MathRound, Piped = PipedForm.FirstArgument)]
 internal record MathRoundSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;
@@ -28,7 +28,7 @@ internal record MathRoundSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.MathRound)]
+[SelectorToken(SelectorDefaults.MathRound, Piped = PipedForm.FirstArgument)]
 internal record MathRoundSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => Parameters[0]?.Type ?? default;

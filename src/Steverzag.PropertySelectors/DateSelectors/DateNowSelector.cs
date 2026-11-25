@@ -2,7 +2,7 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.DateSelectors;
 
-[SelectorToken(SelectorDefaults.DateNow)]
+[SelectorToken(SelectorDefaults.DateNow, Piped = PipedForm.Rejected)]
 internal record DateNowSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(DateTime);
@@ -20,7 +20,7 @@ internal record DateNowSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.DateNow)]
+[SelectorToken(SelectorDefaults.DateNow, Piped = PipedForm.Rejected)]
 internal record DateNowSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(DateTime);

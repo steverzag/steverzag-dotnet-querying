@@ -58,6 +58,11 @@ namespace Steverzag.PropertySelectors
 			return false;
 		}
 
+		public static Expression ResolveArgument(Expression? target, PropertySelector argument) =>
+			argument is PipedValueSelector
+				? target!
+				: CreateMemberAccess(FindRootParameter(target) ?? target, argument);
+
 		public static Expression CreateMemberAccess(Expression? target, PropertySelector selector)
 		{
 			if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target!;
@@ -81,30 +86,25 @@ namespace Steverzag.PropertySelectors
 		/// parameters must be resolved against. Returns null when the expression does not
 		/// originate from a parameter, e.g. a constant or a static member access.
 		/// </summary>
-		public static ParameterExpression? FindRootParameter(Expression? expression)
+		public static ParameterExpression? FindRootParameter(Expression? expression) => expression switch
 		{
-			var current = expression;
+			ParameterExpression parameter => parameter,
+			MemberExpression member => FindRootParameter(member.Expression),
+			// Extension method calls (Select, FirstOrDefault, …) carry the source as the
+			// first argument, instance calls carry it as the object.
+			MethodCallExpression call => FindRootParameter(call.Object) ?? FirstRootParameter(call.Arguments),
+			UnaryExpression unary => FindRootParameter(unary.Operand),
+			BinaryExpression binary => FindRootParameter(binary.Left) ?? FindRootParameter(binary.Right),
+			NewArrayExpression array => FirstRootParameter(array.Expressions),
+			_ => null,
+		};
 
-			while (current is not null)
+		private static ParameterExpression? FirstRootParameter(IEnumerable<Expression> expressions)
+		{
+			foreach (var expression in expressions)
 			{
-				switch (current)
-				{
-					case ParameterExpression parameter:
-						return parameter;
-					case MemberExpression member:
-						current = member.Expression;
-						break;
-					// Extension method calls (Select, FirstOrDefault, …) carry the source as the
-					// first argument, instance calls carry it as the object.
-					case MethodCallExpression call:
-						current = call.Object ?? (call.Arguments.Count > 0 ? call.Arguments[0] : null);
-						break;
-					case UnaryExpression unary:
-						current = unary.Operand;
-						break;
-					default:
-						return null;
-				}
+				if (FindRootParameter(expression) is { } parameter)
+					return parameter;
 			}
 
 			return null;

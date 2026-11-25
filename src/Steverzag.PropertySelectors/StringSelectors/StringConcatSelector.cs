@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringConcat)]
+[SelectorToken(SelectorDefaults.StringConcat, Piped = PipedForm.FirstArgument)]
 internal record StringConcatSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(string);
@@ -35,7 +35,7 @@ internal record StringConcatSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.StringConcat)]
+[SelectorToken(SelectorDefaults.StringConcat, Piped = PipedForm.FirstArgument)]
 internal record StringConcatSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(string);

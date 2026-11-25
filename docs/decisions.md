@@ -235,7 +235,7 @@ anywhere a selector does. It is the first variadic function: one overload for an
 count by hand as `STR_CONCAT` does.
 
 ### 016: When a function takes its subject from the pipe or from an argument (2026-11-24)
-**Status:** open; to be discussed before the Phase 4 grammar freeze
+**Status:** accepted (2026-11-24), as proposed below; to implement (Phase 3)
 **Context:** a function can get the value it operates on in two ways:
 - **Dependent:** the subject is the piped value, and the arguments are the extra inputs.
   `Name|$FN_STR_CONTAINS("x")` → `p.Name.Contains("x")`. The arguments are resolved against the scope root
@@ -270,6 +270,86 @@ are not supported.
    is chosen should fit typed arguments and type-aware overload resolution.
 4. **Migration.** Which existing functions change form, and whether the old form is kept as an alias until the
    grammar is frozen.
+
+**Decision (proposed and accepted 2026-11-24):** option (c) in one direction only. Every function that has a subject accepts the piped
+form. The static form stays where it exists today and is not added anywhere else.
+1. **The rule: the piped value is the first argument.** This is 015's rule applied to every function.
+   `Price|$FN_MATH_ROUND(2)` ≡ `$FN_MATH_ROUND(Price, 2)`, and `Created|$FN_DT_ADDDAYS(3)` ≡
+   `$FN_DT_ADDDAYS(Created, 3)`. A caller who knows the static form knows the piped one: take the first argument
+   out and put it in front of `|`. The two forms build the same expression.
+2. **Which functions gain the piped form:** every function in the static row of the table that has a subject: all of
+   `MATH_*`, `STR_CONCAT`, `STR_COMPARE`, `STR_ISNULLOREMPTY`, `STR_ISNULLORWHITESPACE` and `DT_ADD*`. Symmetric
+   functions are included, even though they have no natural subject, because the rule is mechanical and needs no
+   exceptions: `A|$FN_MATH_MAX(B)` is `Math.Max(A, B)`, and `First|$FN_STR_CONCAT(" ", Last)` is
+   `string.Concat(First, " ", Last)`.
+3. **Which functions reject the piped form:**
+   - functions with no subject: `DT_NOW`, `DT_UTCNOW`, `DT_TODAY`;
+   - the literal constructors `DT_DATETIME`, `DT_DATEONLY`, `DT_TIMEONLY` (017.5), whose argument must be a string
+     literal;
+   - `STR_JOIN`. Its first argument is the separator, so the mechanical rule would make `Tags|$FN_STR_JOIN(", ")`
+     mean `string.Join(Tags, ", ")`. Rejected, not reordered: a special case would break the "take the first
+     argument out" reading.
+
+   The error says the function takes no piped value and shows its static form.
+   - *Implemented as (2026-11-24):* the `[SelectorToken]` attribute declares each function's piped form with a
+     `PipedForm` enum: `Target` (the default, the dependent functions), `FirstArgument` (§2) or `Rejected` (§3), plus
+     an optional `PipedHint` sentence for the rejection message. External selectors default to `Target`, which is
+     the behaviour they had before 016.
+4. **Dependent functions do not gain a static form.** `$FN_STR_TRIM(Name)` stays invalid. At the head of a chain a
+   dependent function takes the root as its subject, and QueryShaper relies on that (grouped `ApplySelect` writes
+   `$FN_AGGR_COUNT` to count the group). With a static form as well, the head would be ambiguous for overloaded
+   functions: on a `string` root, `$FN_STR_SUBSTRING(1, 2)` could be `root.Substring(1, 2)` or a subject `1` with
+   start `2`. Telling them apart needs typed arguments and type-aware overload resolution. This direction can be
+   reconsidered once both exist. The grammar freeze doesn't need it, because adding a form later breaks nothing.
+5. **Arguments resolve against the scope root in both forms.** In the piped form only the subject comes from the
+   pipe. The other arguments resolve the way a dependent function's arguments do (`FindRootParameter`):
+   `Details|$FN_MATH_ROUND(Precision)` reads `p.Precision`, not `p.Details.Precision`. Today a static function chained
+   after a `|` resolves its arguments against the piped value (`ExpressionUtils.CreateMemberAccess(target, …)`). No
+   test covers that, and it disagrees with every dependent function, so it changes.
+6. **How the parser tells the forms apart.** By position, not by argument count: a function that is not the first
+   part of its chain is piped. The chain loops in both implicit operators already know this (`result is null`), and
+   they pass it through `TryResolveGeneric`/`TryResolveNonGeneric`. A piped function gets a placeholder that stands
+   for the piped value as argument 0, so the existing overloads match unchanged.
+7. **Arguments are resolved by one shared helper, `ExpressionUtils.ResolveArgument`** (revised 2026-11-24 while
+   implementing). The placeholder becomes the piped value, and every other argument resolves against the scope root
+   recovered from the target with `FindRootParameter`, the way dependent functions already do it. The overload
+   signature (`Func<Expression, Expression>`) is unchanged, and so are the function files. The static helpers resolve
+   their arguments in only 8 places, all in the math, date and string `Implementations.cs`.
+   - *Originally proposed:* a new overload signature that receives the piped value and the root separately, a
+     one-line change in each of the 61 function files. Dropped because the helper does the same with 8 edits and no
+     mutable state.
+   - *Also rejected:* capturing the piped value in the base class for each build. It puts mutable state in records
+     that may be cached and shared.
+   - *Limit, shared with dependent functions:* the root is recovered from the target, so it is lost when the target
+     doesn't come from a parameter. In `$FN_DT_NOW|$FN_DT_ADDDAYS(Days)`, `Days` is looked up on `DateTime`.
+     Passing the real root down through `PropertyAccess` would fix both kinds, but it is a larger change.
+8. **Typing.** In the generic form the subject's type is the piped type (`currentIterationType`), which is known when
+   the selector is parsed. So `Created|$FN_DT_ADDDAYS(3)` declares its real type (`DateOnly`, `DateTimeOffset`)
+   right away. The static form still waits on typed arguments for that.
+9. **`ToString()` writes the form that was parsed.** Both forms are canonical, and the text round-trips as written.
+   Normalizing to one form would rewrite what a caller saved, for no gain.
+10. **The metadata tree** shows the piped form on every function that accepts it, so a UI can offer
+    `Price → Round` the same way it offers `Name → Trim`.
+11. **The new date functions follow the same rule.** The parts (`DT_YEAR` …) and truncations (`DT_DATE` …) have
+    one natural subject, so they are written piped first, `Created|$FN_DT_YEAR`, with the static form
+    `$FN_DT_YEAR(Created)` as well, matching `DT_ADD*`. Two-date differences are symmetric, like `MATH_MAX`.
+
+**Considered:**
+- **(a) Follow .NET.** It's predictable for .NET developers, but `DT_ADD*` would have to move to the dependent form,
+  breaking `$FN_DT_ADDDAYS(Created, 3)`. And `Math.Round` stays static, so `Price|$FN_MATH_ROUND` would still fail.
+  The caller still needs to know where each .NET method lives.
+- **(b) Dependent for anything with one natural subject.** It reads best, but it moves most of `MATH_*` and
+  `DT_ADD*` to a new form, and "natural subject" is a judgement call the caller has to share (`MATH_POW`? `MATH_LOG`
+  with a base?).
+- **(c) in both directions.** It gives the most freedom, but it needs typed arguments to resolve the head ambiguity
+  (§4), so the grammar freeze would wait on that work. It can be added later without breaking anything.
+
+**Consequence:** a caller can write every function with a subject left to right: `Price|$FN_MATH_ROUND(2)`,
+`Created|$FN_DT_ADDDAYS(3)`, `Reviews.Stars|$FN_AGGR_MAX|$FN_COALESCE(0)`. Nothing that parses today stops parsing,
+except a static function chained after a `|` that relied on resolving its arguments against the piped value (§5),
+which no test covers. Work: the piped flag through the registry, the placeholder argument, a shared argument
+resolver in the static helpers (§7), `ToString()` and the metadata tree, and tests for each function in both forms,
+generic and non-generic. It does not depend on typed function arguments.
 
 ### 017: Literals are written plainly; `$VAL_*:` specifiers are removed (2026-11-24)
 **Status:** accepted; implemented (2026-11-24)

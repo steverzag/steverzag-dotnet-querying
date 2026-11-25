@@ -2,7 +2,7 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringJoin)]
+[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = StringJoinSelector.PipedHint)]
 internal record StringJoinSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(string);
@@ -21,9 +21,11 @@ internal record StringJoinSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.StringJoin)]
+[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = PipedHint)]
 internal record StringJoinSelector : FunctionPropertySelector
 {
+	internal const string PipedHint = "Its first argument is the separator. To join the piped value, pass it as one of the values after the separator.";
+
 	public override Type? SelectorType => typeof(string);
 	public StringJoinSelector() : base(SelectorDefaults.StringJoin) { }
 	public StringJoinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringJoin, parameters) { }

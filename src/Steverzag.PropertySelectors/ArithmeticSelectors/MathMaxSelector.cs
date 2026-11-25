@@ -4,7 +4,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathMax)]
+[SelectorToken(SelectorDefaults.MathMax, Piped = PipedForm.FirstArgument)]
 internal record MathMaxSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => ArithmeticUtils.GetWiderNumericType([.. Parameters.Select(p => p.SelectorType)]);
@@ -22,7 +22,7 @@ internal record MathMaxSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.MathMax)]
+[SelectorToken(SelectorDefaults.MathMax, Piped = PipedForm.FirstArgument)]
 internal record MathMaxSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => ArithmeticUtils.GetWiderNumericType([.. Parameters.Select(p => p.SelectorType)]);

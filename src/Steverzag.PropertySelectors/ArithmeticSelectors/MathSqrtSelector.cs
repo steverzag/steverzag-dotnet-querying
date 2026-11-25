@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathSqrt)]
+[SelectorToken(SelectorDefaults.MathSqrt, Piped = PipedForm.FirstArgument)]
 internal record MathSqrtSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type SelectorType => typeof(double);
@@ -21,7 +21,7 @@ internal record MathSqrtSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.MathSqrt)]
+[SelectorToken(SelectorDefaults.MathSqrt, Piped = PipedForm.FirstArgument)]
 internal record MathSqrtSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(double);

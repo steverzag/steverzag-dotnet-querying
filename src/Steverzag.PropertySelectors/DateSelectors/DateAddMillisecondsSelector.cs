@@ -2,7 +2,7 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.DateSelectors;
 
-[SelectorToken(SelectorDefaults.DateAddMilliseconds)]
+[SelectorToken(SelectorDefaults.DateAddMilliseconds, Piped = PipedForm.FirstArgument)]
 internal record DateAddMillisecondsSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0]?.Type ?? typeof(DateTime) : typeof(DateTime);
@@ -21,7 +21,7 @@ internal record DateAddMillisecondsSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.DateAddMilliseconds)]
+[SelectorToken(SelectorDefaults.DateAddMilliseconds, Piped = PipedForm.FirstArgument)]
 internal record DateAddMillisecondsSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0]?.Type ?? typeof(DateTime) : typeof(DateTime);

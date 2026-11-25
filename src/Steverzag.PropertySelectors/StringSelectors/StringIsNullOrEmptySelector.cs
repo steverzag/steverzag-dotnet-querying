@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringIsNullOrEmpty)]
+[SelectorToken(SelectorDefaults.StringIsNullOrEmpty, Piped = PipedForm.FirstArgument)]
 internal record StringIsNullOrEmptySelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(bool);
@@ -22,7 +22,7 @@ internal record StringIsNullOrEmptySelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.StringIsNullOrEmpty)]
+[SelectorToken(SelectorDefaults.StringIsNullOrEmpty, Piped = PipedForm.FirstArgument)]
 internal record StringIsNullOrEmptySelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(bool);

@@ -5,7 +5,7 @@ using System.Linq.Expressions;
 
 namespace Steverzag.PropertySelectors.DateSelectors;
 
-[SelectorToken(SelectorDefaults.DateTimeLiteral)]
+[SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected)]
 internal record DateTimeLiteralSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(DateTime);
@@ -14,7 +14,7 @@ internal record DateTimeLiteralSelector<T> : FunctionPropertySelector<T>
 	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateTimeLiteral, DateLiterals.ParseDateTime);
 }
 
-[SelectorToken(SelectorDefaults.DateTimeLiteral)]
+[SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected)]
 internal record DateTimeLiteralSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(DateTime);
@@ -23,7 +23,7 @@ internal record DateTimeLiteralSelector : FunctionPropertySelector
 	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateTimeLiteral, DateLiterals.ParseDateTime);
 }
 
-[SelectorToken(SelectorDefaults.DateOnlyLiteral)]
+[SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record DateOnlyLiteralSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(DateOnly);
@@ -32,7 +32,7 @@ internal record DateOnlyLiteralSelector<T> : FunctionPropertySelector<T>
 	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateOnlyLiteral, DateLiterals.ParseDateOnly);
 }
 
-[SelectorToken(SelectorDefaults.DateOnlyLiteral)]
+[SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record DateOnlyLiteralSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(DateOnly);
@@ -41,7 +41,7 @@ internal record DateOnlyLiteralSelector : FunctionPropertySelector
 	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateOnlyLiteral, DateLiterals.ParseDateOnly);
 }
 
-[SelectorToken(SelectorDefaults.TimeOnlyLiteral)]
+[SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record TimeOnlyLiteralSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => typeof(TimeOnly);
@@ -50,7 +50,7 @@ internal record TimeOnlyLiteralSelector<T> : FunctionPropertySelector<T>
 	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.TimeOnlyLiteral, DateLiterals.ParseTimeOnly);
 }
 
-[SelectorToken(SelectorDefaults.TimeOnlyLiteral)]
+[SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record TimeOnlyLiteralSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => typeof(TimeOnly);

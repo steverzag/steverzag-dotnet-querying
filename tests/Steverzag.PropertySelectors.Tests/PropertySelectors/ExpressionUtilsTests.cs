@@ -218,12 +218,64 @@ public class ExpressionUtilsTests
 
     #endregion
 
+    #region FindRootParameter
+
+    public static TheoryData<string> RootedSelectors => new()
+    {
+        "Name",
+        "Phones.Number",
+        "Name|$FN_STR_TRIM",
+        "Nickname|$FN_COALESCE(\"x\")",
+        "$FN_MATH_MAX(5, Id)",
+        "$FN_STR_JOIN(\",\", \"a\", Name)",
+        "Id + 1",
+        "1 + Id",
+    };
+
+    [Theory]
+    [MemberData(nameof(RootedSelectors))]
+    public void FindRootParameter_FindsTheRootUnderAnyOperand(string text)
+    {
+        var param = Expression.Parameter(typeof(TestPerson), "x");
+
+        Assert.Same(param, ExpressionUtils.FindRootParameter(ExpressionUtils.CreateMemberAccess(param, (PropertySelector)text)));
+        Assert.Same(param, ExpressionUtils.FindRootParameter(ExpressionUtils.CreateMemberAccess(param, (PropertySelector<TestPerson>)text)));
+    }
+
+    [Fact]
+    public void FindRootParameter_DoesNotTakeAnInnerLambdaParameter()
+    {
+        var inner = Expression.Parameter(typeof(TestPhone), "p");
+        var lambda = Expression.Lambda(Expression.Property(inner, nameof(TestPhone.Id)), inner);
+
+        Assert.Null(ExpressionUtils.FindRootParameter(lambda));
+        Assert.Null(ExpressionUtils.FindRootParameter(Expression.Constant(1)));
+    }
+
+    [Theory]
+    [InlineData("Nickname|$FN_COALESCE(\"x\")|$FN_STR_CONTAINS(Name)", false)]
+    [InlineData("Nickname|$FN_COALESCE(Name)|$FN_STR_CONTAINS(Name)", true)]
+    public void AFunctionChainedAfterCoalesce_ResolvesItsArgumentsAgainstTheRoot(string text, bool expected)
+    {
+        var param = Expression.Parameter(typeof(TestPerson), "x");
+        var person = new TestPerson { Name = "Ann" };
+
+        foreach (var selector in new[] { (PropertySelector)text, (PropertySelector<TestPerson>)text })
+        {
+            var body = ExpressionUtils.CreateMemberAccess(param, selector);
+            Assert.Equal(expected, Expression.Lambda<Func<TestPerson, bool>>(body, param).Compile()(person));
+        }
+    }
+
+    #endregion
+
     #region Test Helper Classes
 
     private class TestPerson
     {
         public int Id { get; set; }
         public string Name { get; set; } = string.Empty;
+        public string? Nickname { get; set; }
         public List<TestPhone> Phones { get; set; } = [];
     }
 

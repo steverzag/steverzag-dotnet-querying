@@ -39,7 +39,9 @@ namespace Steverzag.PropertySelectors.Registration
 
 		private sealed record SelectorFactories(
 			Func<PropertySelector>? CreateParameterless,
-			Func<List<PropertySelector>, PropertySelector>? CreateWithParameters);
+			Func<List<PropertySelector>, PropertySelector>? CreateWithParameters,
+			PipedForm Piped,
+			string? PipedHint);
 
 		/// <summary>
 		/// Forces the one-time scan of this assembly's selectors. Calling it is optional — the first
@@ -96,7 +98,7 @@ namespace Steverzag.PropertySelectors.Registration
 			}
 		}
 
-		internal static bool TryResolveGeneric(string selectorPart, Type currentIterationType, [NotNullWhen(true)] out PropertySelector? selector)
+		internal static bool TryResolveGeneric(string selectorPart, Type currentIterationType, string? pipedText, [NotNullWhen(true)] out PropertySelector? selector)
 		{
 			selector = null;
 			if (!TryGetEntry(selectorPart, out var entry, out var parameters) || entry.OpenGenericSelectorType is null)
@@ -106,11 +108,13 @@ namespace Steverzag.PropertySelectors.Registration
 				(entry.OpenGenericSelectorType, currentIterationType),
 				static key => BuildFactories(key.OpenGenericType.MakeGenericType(key.ElementType)));
 
-			selector = CreateSelector(selectorPart, parameters, factories);
+			ApplyPipedForm(selectorPart, pipedText, currentIterationType, parameters, factories);
+
+			selector = CreateSelector(selectorPart, parameters, factories, pipedText is not null);
 			return true;
 		}
 
-		internal static bool TryResolveNonGeneric(string selectorPart, [NotNullWhen(true)] out PropertySelector? selector)
+		internal static bool TryResolveNonGeneric(string selectorPart, string? pipedText, [NotNullWhen(true)] out PropertySelector? selector)
 		{
 			selector = null;
 			if (!TryGetEntry(selectorPart, out var entry, out var parameters) || entry.NonGenericSelectorType is null)
@@ -118,8 +122,33 @@ namespace Steverzag.PropertySelectors.Registration
 
 			var factories = NonGenericFactoryCache.GetOrAdd(entry.NonGenericSelectorType, static type => BuildFactories(type));
 
-			selector = CreateSelector(selectorPart, parameters, factories);
+			ApplyPipedForm(selectorPart, pipedText, null, parameters, factories);
+
+			selector = CreateSelector(selectorPart, parameters, factories, pipedText is not null);
 			return true;
+		}
+
+		private static void ApplyPipedForm(string selectorPart, string? pipedText, Type? pipedType, List<PropertySelector> parameters, SelectorFactories factories)
+		{
+			if (pipedText is null)
+				return;
+
+			switch (factories.Piped)
+			{
+				case PipedForm.FirstArgument:
+					parameters.Insert(0, new PipedValueSelector(pipedType, pipedText));
+					break;
+				case PipedForm.Rejected:
+					var name = TokenName(selectorPart);
+					var message = $"{name} takes no piped value, but '{pipedText}' is piped into it. Write it at the start of a chain: '{selectorPart}'.";
+					throw new ArgumentException(factories.PipedHint is null ? message : $"{message} {factories.PipedHint}");
+			}
+		}
+
+		private static string TokenName(string selectorPart)
+		{
+			var parenthesesIndex = selectorPart.IndexOf('(');
+			return parenthesesIndex < 0 ? selectorPart : selectorPart[..parenthesesIndex];
 		}
 
 		private static SelectorFactories BuildFactories(Type closedSelectorType)
@@ -144,10 +173,23 @@ namespace Steverzag.PropertySelectors.Registration
 					Expression.New(parametersConstructor, parametersArgument), parametersArgument).Compile();
 			}
 
-			return new SelectorFactories(createParameterless, createWithParameters);
+			var attribute = closedSelectorType.GetCustomAttribute<SelectorTokenAttribute>();
+
+			return new SelectorFactories(createParameterless, createWithParameters,
+				attribute?.Piped ?? PipedForm.Target, attribute?.PipedHint);
 		}
 
-		private static PropertySelector CreateSelector(string selectorPart, List<PropertySelector> parameters, SelectorFactories factories)
+		private static PropertySelector CreateSelector(string selectorPart, List<PropertySelector> parameters, SelectorFactories factories, bool piped)
+		{
+			var selector = Instantiate(selectorPart, parameters, factories);
+
+			if (selector is IPipeableFunctionSelector function)
+				function.IsPiped = piped;
+
+			return selector;
+		}
+
+		private static PropertySelector Instantiate(string selectorPart, List<PropertySelector> parameters, SelectorFactories factories)
 		{
 			if (parameters.Count > 0)
 			{
@@ -165,8 +207,7 @@ namespace Steverzag.PropertySelectors.Registration
 		{
 			Initialize();
 
-			var parenthesesIndex = selectorPart.IndexOf('(');
-			var name = parenthesesIndex < 0 ? selectorPart : selectorPart[..parenthesesIndex];
+			var name = TokenName(selectorPart);
 
 			if (!Entries.TryGetValue(name, out entry))
 			{

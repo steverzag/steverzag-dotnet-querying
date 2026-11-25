@@ -29,7 +29,7 @@ namespace Steverzag.PropertySelectors.DateSelectors
 					&& ArithmeticUtils.IsNumericType(m.GetParameters()[0].ParameterType))
 				?? throw new InvalidOperationException($"{instanceExpr.Type.Name} does not support the {methodName} function.");
 
-			var amountExpr = ExpressionUtils.CreateMemberAccess(target, amountParameter);
+			var amountExpr = ExpressionUtils.ResolveArgument(target, amountParameter);
 
 			if (!ArithmeticUtils.IsNumericType(amountExpr.Type))
 			{
@@ -53,7 +53,7 @@ namespace Steverzag.PropertySelectors.DateSelectors
 
 		private static Expression CreateDateInstanceExpression(this Expression? target, PropertySelector parameter, string functionName)
 		{
-			var instanceExpr = ExpressionUtils.CreateMemberAccess(target, parameter);
+			var instanceExpr = ExpressionUtils.ResolveArgument(target, parameter);
 
 			if (Nullable.GetUnderlyingType(instanceExpr.Type) is not null)
 			{

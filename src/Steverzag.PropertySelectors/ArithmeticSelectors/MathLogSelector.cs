@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathLog)]
+[SelectorToken(SelectorDefaults.MathLog, Piped = PipedForm.FirstArgument)]
 internal record MathLogSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type SelectorType => typeof(double);
@@ -21,7 +21,7 @@ internal record MathLogSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.MathLog)]
+[SelectorToken(SelectorDefaults.MathLog, Piped = PipedForm.FirstArgument)]
 internal record MathLogSelector : FunctionPropertySelector
 {
 	public override Type SelectorType => typeof(double);

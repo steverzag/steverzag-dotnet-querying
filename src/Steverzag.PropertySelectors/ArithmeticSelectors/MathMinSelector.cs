@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathMin)]
+[SelectorToken(SelectorDefaults.MathMin, Piped = PipedForm.FirstArgument)]
 internal record MathMinSelector<T> : FunctionPropertySelector<T>
 {
 	public override Type? SelectorType => ArithmeticUtils.GetWiderNumericType([.. Parameters.Select(p => p.SelectorType)]);
@@ -21,7 +21,7 @@ internal record MathMinSelector<T> : FunctionPropertySelector<T>
 	}
 }
 
-[SelectorToken(SelectorDefaults.MathMin)]
+[SelectorToken(SelectorDefaults.MathMin, Piped = PipedForm.FirstArgument)]
 internal record MathMinSelector : FunctionPropertySelector
 {
 	public override Type? SelectorType => ArithmeticUtils.GetWiderNumericType([.. Parameters.Select(p => p.SelectorType)]);
