@@ -19,6 +19,7 @@ PropertySelector<Person> city   = "Address.City";                       // p => 
 PropertySelector<Person> avgId  = "Phones.Id|$FN_AGGR_AVG";             // p => p.Phones.Select(x => x.Id).Average()
 PropertySelector<Person> calc   = "(Salary + 100) * 2";                 // arithmetic
 PropertySelector<Person> pow    = SelectorDefaults.MathPower + "(2, 2)";// function with arguments
+PropertySelector<Person> round  = "Salary|$FN_MATH_ROUND(2)";           // piped: Math.Round(p.Salary, 2)
 PropertySelector<Person> lit    = "42";                                 // literal value
 PropertySelector<Person> since  = "$FN_DT_DATEONLY(\"2024-01-01\")";    // date literal
 
@@ -31,7 +32,7 @@ Expression body = avgId.PropertyAccess(parameter);
 |---|---|---|
 | Property path | `Name(.Name)*` | `Address.City` |
 | Pipe / chain | `part\|part\|…`, where each part applies to the previous result | `Phones.Id\|$FN_AGGR_SUM` |
-| Function | `$FN_<NAME>` or `$FN_<NAME>(arg, …)`. Arguments are selectors themselves. | `$FN_STR_SUBSTRING(0, 3)` |
+| Function | `$FN_<NAME>` or `$FN_<NAME>(arg, …)`. Arguments are selectors themselves, resolved against the scope root. A function gets its subject from the pipe or from its first argument; see [Piped and static forms](#piped-and-static-forms). | `$FN_STR_SUBSTRING(0, 3)`, `Price\|$FN_MATH_ROUND(2)` |
 | Number literal | Read with the invariant culture on every machine (decision 017). An integer is `int`, or `long` if it doesn't fit. A `.` or an exponent makes it `double`. The suffix `L` gives `long` and `m` gives `decimal`. A minus sign in front of a number is part of it. A number that doesn't fit its type is rejected. | `55`, `-3`, `1.5`, `1e-3`, `5L`, `9.99m` |
 | Boolean literal | `true` / `false`, in any case. | `true` |
 | String literal | `"quoted string"`. Everything between the quotes is text, including `\| + - * / ( ) ,`. Write a `"` inside as `""`. | `"Hi"`, `"n/a"`, `"say ""hi"""` |
@@ -71,6 +72,55 @@ in SQL (decision 014):
 `AGGR_SUM` and `AGGR_AVG` support the numeric types `int`, `long`, `float`, `double` and `decimal`, and their nullable
 forms. Anything else throws `InvalidOperationException`: `AGGR_AVG` when the selector is parsed, and `AGGR_SUM` when the
 expression is built.
+
+**Math result types.** `ROUND`, `CEILING`, `FLOOR`, `TRUNCATE`, `MAX` and `MIN` use the `Math` overload for the operand
+type when there is one (`MAX` on two `int`s is `Math.Max(int, int)` → `int`; on `int` and `long` it is `long`), and
+`double` otherwise (`CEILING` on an `int` → `double`). **Decimals go through `double`**: EF's SQLite provider can't
+translate `Math` over `decimal`, and the core can't see the provider (decision 006). For money this can lose precision
+(`Math.Round(0.5015m, 3)` is 0.502, but through `double` it is 0.501). The roadmap tracks an opt-in fix. The other math
+functions return `double`, and `SIGN` returns `int`. The declared type always matches what is built. Note that SQL and
+.NET round halves differently: SQLite rounds 4.5 to 5, and .NET's `Math.Round` gives 4 (to even).
+
+## Piped and static forms
+
+A function gets the value it works on, its *subject*, in one of two ways (decision 016):
+
+- **Piped:** the subject is the value before the `|`. `Name|$FN_STR_TRIM`, `Price|$FN_MATH_ROUND(2)`.
+- **Static:** the subject is the first argument, and the function starts the chain. `$FN_MATH_ROUND(Price, 2)`.
+
+**The rule: the piped value is the first argument.** `Price|$FN_MATH_ROUND(2)` and `$FN_MATH_ROUND(Price, 2)` build
+the same expression. To turn one into the other, move the first argument in front of the `|`. Every other argument
+resolves against the scope root in both forms, so `Details.Price|$FN_MATH_ROUND(Digits)` reads `p.Digits`, not
+`p.Details.Digits`.
+
+| Functions | Piped | Static |
+|---|---|---|
+| `AGGR_*`, `ELM_*`, `ORDER_*`, `THEN_ORDER_*`, the instance string functions (`STR_LENGTH`, `TOUPPER`, `TOLOWER`, `TRIM*`, `SUBSTRING`, `INDEXOF`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`), `COALESCE` | ✅ the usual form | ❌ (at the head of a chain the subject is the root itself, e.g. `$FN_AGGR_COUNT` on a group) |
+| every `MATH_*`, `STR_CONCAT`, `STR_COMPARE`, `STR_ISNULLOREMPTY`, `STR_ISNULLORWHITESPACE`, every `DT_ADD*` | ✅ | ✅ |
+| `DT_NOW`, `DT_UTCNOW`, `DT_TODAY`, `DT_DATETIME`, `DT_DATEONLY`, `DT_TIMEONLY`, `STR_JOIN` | ❌ rejected | ✅ the only form |
+
+```csharp
+"Created|$FN_DT_ADDDAYS(3)"                     // p.Created.AddDays(3); declares DateOnly on a DateOnly
+"Name|$FN_STR_TRIM|$FN_STR_CONCAT(\"!\")"        // string.Concat(p.Name.Trim(), "!")
+"Reviews.Stars|$FN_AGGR_MAX|$FN_COALESCE(0)|$FN_MATH_MAX(3)"
+"Price|$FN_MATH_ROUND(2) * 3"                   // inside arithmetic
+```
+
+- **Symmetric functions** (`MATH_MAX`, `MATH_POW`, `STR_CONCAT`, …) follow the same rule: `A|$FN_MATH_MAX(B)` is
+  `Math.Max(A, B)`.
+- **Don't repeat the subject.** `Inner|$FN_MATH_MAX(A, 1)` is `Math.Max(Inner, A, 1)`, which is one argument too many.
+  It's rejected with `ArgumentException`: "…can't be called with 2 arguments besides the piped value… The piped value
+  is its first argument, so 'Inner|$FN_MATH_MAX(…)' means '$FN_MATH_MAX(Inner, …)'."
+- **Functions without a subject reject the pipe** when the selector is parsed: "$FN_DT_NOW takes no piped value, but
+  'Created' is piped into it. Write it at the start of a chain: '$FN_DT_NOW'." `STR_JOIN` is rejected too, because its
+  first argument is the separator, so `Tags|$FN_STR_JOIN(", ")` would mean `string.Join(Tags, ", ")`. Pass the value
+  after the separator instead: `$FN_STR_JOIN(", ", Name, Nickname)`.
+- **Declared type:** in the generic form the subject's type comes from the chain, so a piped function knows it when
+  the selector is parsed (`Day|$FN_DT_ADDDAYS(3)` declares `DateOnly`). The static form often doesn't: arguments have
+  no type yet (roadmap: typed function arguments), so `$FN_MATH_MAX(A, B)` declares no type until it is built.
+- **Limit:** the root is found from the piped value, so it is lost when the chain doesn't start at a property. In
+  `$FN_DT_NOW|$FN_DT_ADDDAYS(Days)`, `Days` is looked up on `DateTime`.
+- `ToString()` writes the form that was parsed.
 
 ## Coalesce: a default for null
 
@@ -123,6 +173,8 @@ normalized, not echoed:
   `true`, `"say ""hi"""`. A double always has a `.` or an exponent (`2.0`, `1E+20`), so it reads back
   as a double.
 - Date literals keep the text they were written with (`$FN_DT_DATEONLY("2025-01-31")`).
+- A function keeps the form it was written in: `Price|$FN_MATH_ROUND(2)` stays piped, and
+  `$FN_MATH_ROUND(Price, 2)` stays static.
 
 ## Extending: custom functions
 
@@ -131,13 +183,22 @@ normalized, not echoed:
 3. Decorate both with `[SelectorToken("$FN_ACME_MYFUNC")]`, using a vendor-scoped name.
 4. At startup, call `SelectorRegistry.RegisterAssembly(typeof(MyFunc<>).Assembly)`.
 
+The attribute's `Piped` property says what a piped value means for the function:
+
+| `Piped =` | Meaning |
+|---|---|
+| `PipedForm.Target` (default) | The piped value is the target the function's overload receives, as for `TRIM` or the aggregates. Functions written before 016 behave this way. |
+| `PipedForm.FirstArgument` | The function takes its subject as argument 0. When piped, a placeholder for the piped value is inserted as argument 0, so the same overloads serve both forms. Resolve every argument with `ExpressionUtils.ResolveArgument(target, argument)`, which turns the placeholder into the piped value and resolves the others against the scope root. |
+| `PipedForm.Rejected` | The function has no subject, and piping into it is an error. An optional `PipedHint` sentence is added to the message. |
+
 Optionally call `SelectorRegistry.Initialize()` at startup, so the one-time assembly scan doesn't
 land on the first request. Duplicate tokens throw.
 
 ## Metadata for UIs
 
 `new PropertiesExplorer<T>().ExplorePropertiesTree(maxDepth)` returns a `SelectorsMetaDataTree`,
-which a front end can use to offer column/field pickers.
+which a front end can use to offer column/field pickers. It lists properties only, not functions; function metadata is
+a roadmap item (Phase 4).
 
 ## Internals map
 

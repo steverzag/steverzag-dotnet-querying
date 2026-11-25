@@ -235,7 +235,7 @@ anywhere a selector does. It is the first variadic function: one overload for an
 count by hand as `STR_CONCAT` does.
 
 ### 016: When a function takes its subject from the pipe or from an argument (2026-11-24)
-**Status:** accepted (2026-11-24), as proposed below; to implement (Phase 3)
+**Status:** accepted and implemented (2026-11-24), as proposed below except §7 (revised) and §10 (deferred)
 **Context:** a function can get the value it operates on in two ways:
 - **Dependent:** the subject is the piped value, and the arguments are the extra inputs.
   `Name|$FN_STR_CONTAINS("x")` → `p.Name.Contains("x")`. The arguments are resolved against the scope root
