@@ -1,43 +1,24 @@
 using Steverzag.PropertySelectors.Registration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Steverzag.PropertySelectors.AggregationSelectors
+namespace Steverzag.PropertySelectors.AggregationSelectors;
+
+[SelectorToken(SelectorDefaults.MinAggregateFunction)]
+public record MinAggregationSelector<T> : FunctionPropertySelector<T>
 {
-	[SelectorToken(SelectorDefaults.MinAggregateFunction)]
-	public record MinAggregationSelector<T> : FunctionPropertySelector<T>, IEnumerableFunctionSelector<T>
-	{
-		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)
-		{
-		}
-		public override void InitializeOverloads()
-		{
-			// Overload with no parameters => Min()
-			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateMinFunction());
-			Overloads.Add(emptyFunctionParameters);
-		}
-		public override Type? InitSelectorTypeToApply()
-		{
-			var elementType = ((IEnumerableFunctionSelector<T>)this).ValidateAndGetEnumerableType(nameof(MinAggregationSelector));
-			return Implementations.LiftedAggregateType(nameof(Enumerable.Min), elementType);
-		}
-	}
+	public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => MinAggregationSelector.Table;
+}
 
-	[SelectorToken(SelectorDefaults.MinAggregateFunction)]
-	public record MinAggregationSelector : FunctionPropertySelector
-	{
-		public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction)
-		{
-		}
+[SelectorToken(SelectorDefaults.MinAggregateFunction)]
+public record MinAggregationSelector : FunctionPropertySelector
+{
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([], (t, _) => Implementations.LiftedAggregateType(nameof(Enumerable.Min), ResultTypes.ElementOf(t)),
+			_ => target => target!.CreateAggregateMinFunction())
+		{ Target = ArgumentConstraint.Collection },
+	];
 
-		public override void InitializeOverloads()
-		{
-			// Overload with no parameters => Min()
-			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateAggregateMinFunction());
-			Overloads.Add(emptyFunctionParameters);
-		}
-	}
+	public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

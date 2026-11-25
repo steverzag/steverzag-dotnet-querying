@@ -6,6 +6,9 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 {
 	internal static class Implementations
 	{
+		internal static Type? OrderedType(Type? target) =>
+			ResultTypes.ElementOf(target) is { } element ? typeof(IOrderedEnumerable<>).MakeGenericType(element) : null;
+
 		internal static MethodCallExpression CreateOrderByAscendingFunction(this Expression target)
 		{
 			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)

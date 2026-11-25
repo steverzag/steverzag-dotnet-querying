@@ -5,55 +5,24 @@ namespace Steverzag.PropertySelectors.StringSelectors;
 [SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = StringJoinSelector.PipedHint)]
 internal record StringJoinSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(string);
 	public StringJoinSelector() : base(SelectorDefaults.StringJoin) { }
 	public StringJoinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringJoin, parameters) { }
-	public override void InitializeOverloads()
-	{
-		// Variadic => string.Join(separator, value0, value1, …): a separator plus at least one value.
-		if (Parameters.Count >= 2)
-		{
-			var valueParameters = StringJoinSelector.CreateValueParameters(Parameters.Count);
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateStringJoinFunction(Parameters[0], [.. Parameters.Skip(1)]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => StringJoinSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = PipedHint)]
+[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = StringJoinSelector.PipedHint)]
 internal record StringJoinSelector : FunctionPropertySelector
 {
 	internal const string PipedHint = "Its first argument is the separator. To join the piped value, pass it as one of the values after the separator.";
 
-	public override Type? SelectorType => typeof(string);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.String, ArgumentConstraint.String], ResultTypes.Fixed(typeof(string)),
+			p => target => target.CreateStringJoinFunction(p[0], [.. p.Skip(1)]))
+		{ Rest = ArgumentConstraint.String },
+	];
+
 	public StringJoinSelector() : base(SelectorDefaults.StringJoin) { }
 	public StringJoinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringJoin, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		// Variadic => string.Join(separator, value0, value1, …): a separator plus at least one value.
-		if (Parameters.Count >= 2)
-		{
-			var valueParameters = CreateValueParameters(Parameters.Count);
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateStringJoinFunction(Parameters[0], [.. Parameters.Skip(1)]));
-			Overloads.Add(selectorOverload);
-		}
-	}
-
-	/// <summary>
-	/// Join takes any number of values, so the overload is described for the parameter count
-	/// actually parsed instead of registering one overload per supported arity.
-	/// </summary>
-	internal static SortedList<int, Type> CreateValueParameters(int count)
-	{
-		var valueParameters = new SortedList<int, Type>(count);
-		for (var i = 0; i < count; i++)
-		{
-			valueParameters.Add(i, typeof(PropertySelector));
-		}
-
-		return valueParameters;
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

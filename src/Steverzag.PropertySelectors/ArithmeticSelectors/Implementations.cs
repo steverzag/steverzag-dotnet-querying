@@ -93,9 +93,9 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			});
 		}
 
-		public static Type? MathResultType(MethodInfo doubleOverload, IEnumerable<PropertySelector> operands)
+		public static Type? MathResultType(MethodInfo doubleOverload, IEnumerable<Type?> operandTypes)
 		{
-			var types = operands.Select(o => o?.Type).ToList();
+			var types = operandTypes.ToList();
 
 			return types.Count == 0 || types.Any(t => t is null)
 				? null

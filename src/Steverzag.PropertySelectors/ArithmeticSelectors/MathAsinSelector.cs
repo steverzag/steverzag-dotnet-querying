@@ -6,36 +6,21 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 [SelectorToken(SelectorDefaults.MathAsin, Piped = PipedForm.FirstArgument)]
 internal record MathAsinSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type SelectorType => typeof(double);
 	public MathAsinSelector() : base(SelectorDefaults.MathAsin) { }
 	public MathAsinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathAsin, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathAsinMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => MathAsinSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.MathAsin, Piped = PipedForm.FirstArgument)]
 internal record MathAsinSelector : FunctionPropertySelector
 {
-	public override Type SelectorType => typeof(double);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.Numeric], ResultTypes.Fixed(typeof(double)),
+			p => target => target.CreateUnaryMathFunction(MethodInfos.MathAsinMethodInfo, p[0])),
+	];
+
 	public MathAsinSelector() : base(SelectorDefaults.MathAsin) { }
 	public MathAsinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathAsin, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathAsinMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

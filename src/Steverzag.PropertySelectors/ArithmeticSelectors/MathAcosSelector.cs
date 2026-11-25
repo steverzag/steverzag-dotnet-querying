@@ -6,37 +6,21 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 [SelectorToken(SelectorDefaults.MathAcos, Piped = PipedForm.FirstArgument)]
 internal record MathAcosSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type SelectorType => typeof(double);
 	public MathAcosSelector() : base(SelectorDefaults.MathAcos) { }
 	public MathAcosSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathAcos, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathAcosMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => MathAcosSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.MathAcos, Piped = PipedForm.FirstArgument)]
 internal record MathAcosSelector : FunctionPropertySelector
 {
-	public override Type SelectorType => typeof(double);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.Numeric], ResultTypes.Fixed(typeof(double)),
+			p => target => target.CreateUnaryMathFunction(MethodInfos.MathAcosMethodInfo, p[0])),
+	];
 
 	public MathAcosSelector() : base(SelectorDefaults.MathAcos) { }
 	public MathAcosSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathAcos, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathAcosMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

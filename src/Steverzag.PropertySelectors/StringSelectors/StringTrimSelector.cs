@@ -6,36 +6,22 @@ namespace Steverzag.PropertySelectors.StringSelectors;
 [SelectorToken(SelectorDefaults.StringTrim)]
 internal record StringTrimSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(string);
 	public StringTrimSelector() : base(SelectorDefaults.StringTrim) { }
 	public StringTrimSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringTrim, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 0)
-		{
-			// Parameterless => target.Trim()
-			var selectorOverload = new FunctionPropertySelectorOverload([],
-				target => target.CreateStringInstanceFunction(MethodInfos.StringTrimMethodInfo));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => StringTrimSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.StringTrim)]
 internal record StringTrimSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(string);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([], ResultTypes.Fixed(typeof(string)),
+			p => target => target.CreateStringInstanceFunction(MethodInfos.StringTrimMethodInfo))
+		{ Target = ArgumentConstraint.String },
+	];
+
 	public StringTrimSelector() : base(SelectorDefaults.StringTrim) { }
 	public StringTrimSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringTrim, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 0)
-		{
-			// Parameterless => target.Trim()
-			var selectorOverload = new FunctionPropertySelectorOverload([],
-				target => target.CreateStringInstanceFunction(MethodInfos.StringTrimMethodInfo));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

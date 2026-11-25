@@ -6,36 +6,21 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 [SelectorToken(SelectorDefaults.MathTan, Piped = PipedForm.FirstArgument)]
 internal record MathTanSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type SelectorType => typeof(double);
 	public MathTanSelector() : base(SelectorDefaults.MathTan) { }
 	public MathTanSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTan, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathTanMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => MathTanSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.MathTan, Piped = PipedForm.FirstArgument)]
 internal record MathTanSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(double);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.Numeric], ResultTypes.Fixed(typeof(double)),
+			p => target => target.CreateUnaryMathFunction(MethodInfos.MathTanMethodInfo, p[0])),
+	];
+
 	public MathTanSelector() : base(SelectorDefaults.MathTan) { }
 	public MathTanSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTan, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathTanMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

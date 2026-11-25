@@ -45,6 +45,9 @@ namespace Steverzag.PropertySelectors.DateSelectors
 			return Expression.Call(instanceExpr, method, amountExpr);
 		}
 
+		public static Type? DateAddResultType(Type? target, IReadOnlyList<Type?> arguments) =>
+			arguments[0] is { } subject ? Nullable.GetUnderlyingType(subject) ?? subject : null;
+
 		public static Expression CreateDateTimeStaticAccess(this Expression? target, string propertyName)
 		{
 			var property = typeof(DateTime).GetProperty(propertyName)!;

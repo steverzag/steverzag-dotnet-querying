@@ -71,16 +71,17 @@ public class PipedRejectionTests
             var exception = Assert.Throws<ArgumentException>(() => parse("Inner|$FN_MATH_MAX(A, 1)"));
             Assert.Equal(
                 "$FN_MATH_MAX can't be called with 2 arguments besides the piped value: 'Inner|$FN_MATH_MAX(A, 1)'. " +
+                "It takes 1 argument besides the piped value. " +
                 "The piped value is its first argument, so 'Inner|$FN_MATH_MAX(…)' means '$FN_MATH_MAX(Inner, …)'.",
                 exception.Message);
         }
     }
 
     [Theory]
-    [InlineData("$FN_MATH_MAX(1)", "$FN_MATH_MAX can't be called with 1 argument: '$FN_MATH_MAX(1)'.")]
-    [InlineData("$FN_MATH_ROUND", "$FN_MATH_ROUND can't be called with no arguments: '$FN_MATH_ROUND'.")]
-    [InlineData("$FN_MATH_ROUND(1, 2, 3)", "$FN_MATH_ROUND can't be called with 3 arguments: '$FN_MATH_ROUND(1, 2, 3)'.")]
-    [InlineData("Name|$FN_STR_TRIM(1)", "$FN_STR_TRIM can't be called with 1 argument: '$FN_STR_TRIM(1)'.")]
+    [InlineData("$FN_MATH_MAX(1)", "$FN_MATH_MAX can't be called with 1 argument: '$FN_MATH_MAX(1)'. It takes 2 arguments.")]
+    [InlineData("$FN_MATH_ROUND", "$FN_MATH_ROUND can't be called with no arguments: '$FN_MATH_ROUND'. It takes 1 or 2 arguments.")]
+    [InlineData("$FN_MATH_ROUND(1, 2, 3)", "$FN_MATH_ROUND can't be called with 3 arguments: '$FN_MATH_ROUND(1, 2, 3)'. It takes 1 or 2 arguments.")]
+    [InlineData("Name|$FN_STR_TRIM(1)", "$FN_STR_TRIM can't be called with 1 argument: '$FN_STR_TRIM(1)'. It takes no arguments.")]
     public void WrongArgumentCount_SaysWhatWasWritten(string text, string expected)
     {
         foreach (var parse in BothParsers)

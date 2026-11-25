@@ -6,36 +6,21 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 [SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument)]
 internal record MathTruncateSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => Implementations.MathResultType(MethodInfos.MathTruncateMethodInfo, Parameters.Take(1));
 	public MathTruncateSelector() : base(SelectorDefaults.MathTruncate) { }
 	public MathTruncateSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTruncate, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathTruncateMethodInfo, Parameters[0], matchOperandType: true));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => MathTruncateSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument)]
 internal record MathTruncateSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => Implementations.MathResultType(MethodInfos.MathTruncateMethodInfo, Parameters.Take(1));
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.Numeric], (_, a) => Implementations.MathResultType(MethodInfos.MathTruncateMethodInfo, a),
+			p => target => target.CreateUnaryMathFunction(MethodInfos.MathTruncateMethodInfo, p[0], matchOperandType: true)),
+	];
+
 	public MathTruncateSelector() : base(SelectorDefaults.MathTruncate) { }
 	public MathTruncateSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTruncate, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathTruncateMethodInfo, Parameters[0], matchOperandType: true));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

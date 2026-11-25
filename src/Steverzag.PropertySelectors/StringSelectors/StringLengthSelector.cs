@@ -5,36 +5,21 @@ namespace Steverzag.PropertySelectors.StringSelectors;
 [SelectorToken(SelectorDefaults.StringLength)]
 internal record StringLengthSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(int);
 	public StringLengthSelector() : base(SelectorDefaults.StringLength) { }
 	public StringLengthSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringLength, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 0)
-		{
-			// Parameterless => target.Length
-			var selectorOverload = new FunctionPropertySelectorOverload([],
-				target => target.CreateStringLengthAccess());
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => StringLengthSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.StringLength)]
 internal record StringLengthSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(int);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([], ResultTypes.Fixed(typeof(int)), _ => target => target.CreateStringLengthAccess())
+		{ Target = ArgumentConstraint.String },
+	];
+
 	public StringLengthSelector() : base(SelectorDefaults.StringLength) { }
 	public StringLengthSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringLength, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 0)
-		{
-			// Parameterless => target.Length
-			var selectorOverload = new FunctionPropertySelectorOverload([],
-				target => target.CreateStringLengthAccess());
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

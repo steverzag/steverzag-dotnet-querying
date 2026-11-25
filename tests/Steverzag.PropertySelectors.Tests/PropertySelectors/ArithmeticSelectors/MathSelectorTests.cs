@@ -321,12 +321,13 @@ public class MathSelectorTests
     }
 
     [Fact]
-    public void MathSqrt_WithNonNumericParameter_ThrowsInvalidOperationExceptionOnBuild()
+    public void MathSqrt_WithNonNumericParameter_IsRejectedWhenParsedInTheGenericForm()
     {
-        // The numeric check happens lazily when the expression is built, not at parse time.
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathSqrt}(Name)";
+        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"{SelectorDefaults.MathSqrt}(Name)");
+        Assert.Equal("$FN_MATH_SQRT: argument 1 ('Name') must be a number, not a String: '$FN_MATH_SQRT(Name)'.", exception.Message);
 
-        Assert.Throws<InvalidOperationException>(() => Evaluate<double>(selector, new TestItem()));
+        PropertySelector nonGeneric = $"{SelectorDefaults.MathSqrt}(Name)";
+        Assert.Throws<InvalidOperationException>(() => Evaluate<double>(nonGeneric, new TestItem()));
     }
 
     [Fact]

@@ -1,69 +1,27 @@
-﻿using Steverzag.PropertySelectors.OrderingSelectors;
 using Steverzag.PropertySelectors.Registration;
 
-namespace Steverzag.PropertySelectors.OrderingSelectors
+namespace Steverzag.PropertySelectors.OrderingSelectors;
+
+[SelectorToken(SelectorDefaults.OrderDescending, Arguments = ArgumentScope.TargetElement)]
+public record OrderByDescendingSelector<T> : OrderingFunctionSelector<T>
 {
-	[SelectorToken(SelectorDefaults.OrderDescending, Arguments = ArgumentScope.TargetElement)]
-	public record OrderByDescendingSelector<T> : OrderingFunctionSelector<T>
-	{
-		public OrderByDescendingSelector() : base(SelectorDefaults.OrderDescending)
-		{
-		}
-		public OrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderDescending, parameters)
-		{
-		}
-		public override void InitializeOverloads()
-		{
-			if (Parameters.Count == 0)
-			{
-				// Overload with no parameters => OrderByDescending()
-				var emptyFunctionParameters = new FunctionPropertySelectorOverload([], target => target.CreateOrderByDescendingFunction());
-				Overloads.Add(emptyFunctionParameters);
-			}
-			else if (Parameters.Count == 1)
-			{
-				// Overload with one parameters => OrderByDescending(property_selector)
-				var valueParamType = typeof(PropertySelector);
-				var valueParameters = new SortedList<int, Type>
-				{
-					{ 0, valueParamType }
-				};
-				var valueFunctionParameters = new FunctionPropertySelectorOverload(valueParameters, target => target.CreateOrderByDescendingFunction(Parameters[0]));
-				Overloads.Add(valueFunctionParameters);
-			}
-		}
-	}
-	[SelectorToken(SelectorDefaults.OrderDescending, Arguments = ArgumentScope.TargetElement)]
-	public record OrderByDescendingSelector : FunctionPropertySelector
-	{
-		public OrderByDescendingSelector() : base(SelectorDefaults.OrderDescending)
-		{
-		}
+	public OrderByDescendingSelector() : base(SelectorDefaults.OrderDescending) { }
+	public OrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderDescending, parameters) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => OrderByDescendingSelector.Table;
+}
 
-		public OrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderDescending, parameters)
-		{
-		}
+[SelectorToken(SelectorDefaults.OrderDescending, Arguments = ArgumentScope.TargetElement)]
+public record OrderByDescendingSelector : FunctionPropertySelector
+{
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([], (t, _) => Implementations.OrderedType(t), _ => target => target!.CreateOrderByDescendingFunction())
+		{ Target = ArgumentConstraint.Collection },
+		new([ArgumentConstraint.Any], (t, _) => Implementations.OrderedType(t), p => target => target!.CreateOrderByDescendingFunction(p[0]))
+		{ Target = ArgumentConstraint.Collection },
+	];
 
-		public override void InitializeOverloads()
-		{
-			if (Parameters.Count == 0)
-			{
-				// Overload with no parameters => OrderByDescending()
-				var emptyFunctionParameters = new FunctionPropertySelectorOverload([], target => target.CreateOrderByDescendingFunction());
-				Overloads.Add(emptyFunctionParameters);
-			}
-			else if (Parameters.Count == 1)
-			{
-				// Overload with one parameters => OrderByDescending(property_selector)
-				var valueParamType = typeof(PropertySelector);
-				var valueParameters = new SortedList<int, Type>
-				{
-					{ 0, valueParamType }
-				};
-
-				var valueFunctionParameters = new FunctionPropertySelectorOverload(valueParameters, target => target.CreateOrderByDescendingFunction(Parameters[0]));
-				Overloads.Add(valueFunctionParameters);
-			}
-		}
-	}
+	public OrderByDescendingSelector() : base(SelectorDefaults.OrderDescending) { }
+	public OrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderDescending, parameters) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

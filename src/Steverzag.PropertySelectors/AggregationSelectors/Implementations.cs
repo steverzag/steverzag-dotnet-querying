@@ -71,8 +71,8 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 				? typeof(Nullable<>).MakeGenericType(elementType)
 				: elementType;
 
-		internal static Type LiftedAggregateType(string methodName, Type elementType)
-			=> GetAggregateMethod(methodName, LiftedElementType(elementType)).ReturnType;
+		internal static Type? LiftedAggregateType(string methodName, Type? elementType)
+			=> elementType is null ? null : GetAggregateMethod(methodName, LiftedElementType(elementType)).ReturnType;
 
 		private static readonly ConcurrentDictionary<(string Name, Type ElementType), MethodInfo> _aggregateMethods = new();
 

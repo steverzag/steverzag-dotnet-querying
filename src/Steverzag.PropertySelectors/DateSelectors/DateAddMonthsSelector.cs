@@ -5,38 +5,21 @@ namespace Steverzag.PropertySelectors.DateSelectors;
 [SelectorToken(SelectorDefaults.DateAddMonths, Piped = PipedForm.FirstArgument)]
 internal record DateAddMonthsSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
 	public DateAddMonthsSelector() : base(SelectorDefaults.DateAddMonths) { }
 	public DateAddMonthsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddMonths, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 2)
-		{
-			// Overload with two parameters => AddMonths(source, amount)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) }, { 1, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateDateAddFunction("AddMonths", Parameters[0], Parameters[1]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => DateAddMonthsSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.DateAddMonths, Piped = PipedForm.FirstArgument)]
 internal record DateAddMonthsSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.DateLike, ArgumentConstraint.Numeric], Implementations.DateAddResultType,
+			p => target => target.CreateDateAddFunction("AddMonths", p[0], p[1])),
+	];
+
 	public DateAddMonthsSelector() : base(SelectorDefaults.DateAddMonths) { }
 	public DateAddMonthsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddMonths, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 2)
-		{
-			// Overload with two parameters => AddMonths(source, amount)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) }, { 1, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateDateAddFunction("AddMonths", Parameters[0], Parameters[1]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

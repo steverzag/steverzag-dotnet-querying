@@ -5,38 +5,21 @@ namespace Steverzag.PropertySelectors.DateSelectors;
 [SelectorToken(SelectorDefaults.DateAddMinutes, Piped = PipedForm.FirstArgument)]
 internal record DateAddMinutesSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
 	public DateAddMinutesSelector() : base(SelectorDefaults.DateAddMinutes) { }
 	public DateAddMinutesSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddMinutes, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 2)
-		{
-			// Overload with two parameters => AddMinutes(source, amount)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) }, { 1, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateDateAddFunction("AddMinutes", Parameters[0], Parameters[1]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => DateAddMinutesSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.DateAddMinutes, Piped = PipedForm.FirstArgument)]
 internal record DateAddMinutesSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.DateLike, ArgumentConstraint.Numeric], Implementations.DateAddResultType,
+			p => target => target.CreateDateAddFunction("AddMinutes", p[0], p[1])),
+	];
+
 	public DateAddMinutesSelector() : base(SelectorDefaults.DateAddMinutes) { }
 	public DateAddMinutesSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddMinutes, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 2)
-		{
-			// Overload with two parameters => AddMinutes(source, amount)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) }, { 1, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateDateAddFunction("AddMinutes", Parameters[0], Parameters[1]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

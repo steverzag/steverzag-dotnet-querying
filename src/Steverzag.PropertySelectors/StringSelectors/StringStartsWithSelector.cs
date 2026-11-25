@@ -6,38 +6,22 @@ namespace Steverzag.PropertySelectors.StringSelectors;
 [SelectorToken(SelectorDefaults.StringStartsWith)]
 internal record StringStartsWithSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(bool);
 	public StringStartsWithSelector() : base(SelectorDefaults.StringStartsWith) { }
 	public StringStartsWithSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringStartsWith, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			// Overload with one parameter => target.StartsWith(searchValue)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateStringInstanceFunction(MethodInfos.StringStartsWithMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => StringStartsWithSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.StringStartsWith)]
 internal record StringStartsWithSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(bool);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.String], ResultTypes.Fixed(typeof(bool)),
+			p => target => target.CreateStringInstanceFunction(MethodInfos.StringStartsWithMethodInfo, p[0]))
+		{ Target = ArgumentConstraint.String },
+	];
+
 	public StringStartsWithSelector() : base(SelectorDefaults.StringStartsWith) { }
 	public StringStartsWithSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringStartsWith, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			// Overload with one parameter => target.StartsWith(searchValue)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateStringInstanceFunction(MethodInfos.StringStartsWithMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

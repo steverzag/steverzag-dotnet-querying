@@ -201,7 +201,47 @@ normalized, not echoed:
 1. Inherit `FunctionPropertySelector<T>` (and the non-generic `FunctionPropertySelector`).
 2. Expose public constructors `()` and `(List<PropertySelector>)`.
 3. Decorate both with `[SelectorToken("$FN_ACME_MYFUNC")]`, using a vendor-scoped name.
-4. At startup, call `SelectorRegistry.RegisterAssembly(typeof(MyFunc<>).Assembly)`.
+4. Declare the overloads in one static table and override `Signatures` in both records to return it (decision 019).
+5. At startup, call `SelectorRegistry.RegisterAssembly(typeof(MyFunc<>).Assembly)`.
+
+```csharp
+internal static readonly IReadOnlyList<FunctionSignature> Table =
+[
+    // $FN_ACME_CLAMP(value, max)
+    new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric],
+        (target, args) => args[0],                          // declared type, from the argument types
+        p => target => Clamp(ExpressionUtils.ResolveArgument(target, p[0]),
+                             ExpressionUtils.ResolveArgument(target, p[1]))),
+    // $FN_ACME_CLAMP(value, min, max)
+    new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric, ArgumentConstraint.Numeric], …),
+];
+```
+
+A signature has:
+- **Parameter constraints:** `Any`, `Numeric`, `Integer`, `String`, `Bool`, `DateLike`, `Collection`, `Of(type)`, and
+  the literal-only `StringLiteral` and `IntegerLiteral`. A nullable type matches like its underlying type.
+- **`Target`** (default `Any`): what the piped value must be, for functions that work on it (`Collection` for the
+  aggregates, `String` for `TRIM`).
+- **`Rest`** (optional): the constraint for any number of extra arguments, as in `COALESCE` and `STR_JOIN`.
+- **A result rule** `(targetType, argumentTypes) → Type?`. Either type may be `null` when it isn't known yet; return
+  `null` then rather than guess.
+- **`Bind`**, which receives the arguments and returns the behaviour. It runs when the overload is resolved, so it can
+  also validate them, and an exception thrown there is a parse error.
+
+**Overload resolution.** Signatures are matched by argument count, then by constraint. If more than one fits, the
+one that is no worse for any argument and better for at least one wins: an exact type beats an implicit conversion
+(C#'s implicit numeric conversions, or membership of a kind), which beats `Any`. A tie is an error that names the
+candidates. Resolution happens when the selector is parsed if the known types settle it, and otherwise when the
+expression is built (the non-generic form with an untyped argument).
+
+**Error messages.** A wrong count says which counts are accepted ("$FN_MATH_ROUND can't be called with 3 arguments:
+'$FN_MATH_ROUND(1, 2, 3)'. It takes 1 or 2 arguments."). A wrong type names the argument, what it is, and what was
+expected ("$FN_MATH_SQRT: argument 1 ('Name') must be a number, not a String: '$FN_MATH_SQRT(Name)'."), the piped
+value ("the piped value 'Name' must be a number") or the target ("$FN_AGGR_SUM must be applied to a collection, not a
+String"). Count errors are `ArgumentException`s and type errors are `InvalidOperationException`s.
+
+A function that doesn't override `Signatures` keeps the older model: it overrides `InitializeOverloads` and adds the
+overload for the count it was given. Its declared type is whatever it sets itself.
 
 The attribute's `Piped` property says what a piped value means for the function:
 

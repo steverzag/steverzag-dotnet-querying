@@ -46,12 +46,12 @@ public class StringSelectorTests
     }
 
     [Fact]
-    public void StringLength_OnNonStringProperty_ThrowsInvalidOperationExceptionOnBuild()
+    public void StringLength_OnNonStringProperty_IsRejected()
     {
-        PropertySelector<TestItem> selector = $"Id{Delimiter}{SelectorDefaults.StringLength}";
+        Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"Id{Delimiter}{SelectorDefaults.StringLength}");
 
-        // The type check happens lazily when the expression is built, not at parse time.
-        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(selector, new TestItem { Id = 1 }));
+        PropertySelector nonGeneric = $"Id{Delimiter}{SelectorDefaults.StringLength}";
+        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(nonGeneric, new TestItem { Id = 1 }));
     }
 
     [Fact]
@@ -65,12 +65,14 @@ public class StringSelectorTests
     }
 
     [Fact]
-    public void StringLength_WithoutTarget_ThrowsInvalidOperationExceptionOnBuild()
+    public void StringLength_WithoutTarget_IsRejected()
     {
         // Applied to the root item itself, which is not a string.
-        PropertySelector<TestItem> selector = SelectorDefaults.StringLength;
+        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)SelectorDefaults.StringLength);
+        Assert.Equal("$FN_STR_LENGTH must be applied to a string, not a TestItem: '$FN_STR_LENGTH'.", exception.Message);
 
-        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(selector, new TestItem()));
+        PropertySelector nonGeneric = SelectorDefaults.StringLength;
+        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(nonGeneric, new TestItem()));
     }
 
     // ── Casing ──────────────────────────────────────────────────────────────
@@ -339,11 +341,13 @@ public class StringSelectorTests
     }
 
     [Fact]
-    public void StringIsNullOrEmpty_WithNonStringParameter_ThrowsInvalidOperationExceptionOnBuild()
+    public void StringIsNullOrEmpty_WithNonStringParameter_IsRejected()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringIsNullOrEmpty}(Id)";
+        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"{SelectorDefaults.StringIsNullOrEmpty}(Id)");
+        Assert.Equal("$FN_STR_ISNULLOREMPTY: argument 1 ('Id') must be a string, not an Int32: '$FN_STR_ISNULLOREMPTY(Id)'.", exception.Message);
 
-        Assert.Throws<InvalidOperationException>(() => Evaluate<bool>(selector, new TestItem { Id = 1 }));
+        PropertySelector nonGeneric = $"{SelectorDefaults.StringIsNullOrEmpty}(Id)";
+        Assert.Throws<InvalidOperationException>(() => Evaluate<bool>(nonGeneric, new TestItem { Id = 1 }));
     }
 
     // ── Compare ─────────────────────────────────────────────────────────────
@@ -425,11 +429,13 @@ public class StringSelectorTests
     }
 
     [Fact]
-    public void StringJoin_WithNonStringValue_ThrowsInvalidOperationExceptionOnBuild()
+    public void StringJoin_WithNonStringValue_IsRejected()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}(\"-\", Name, Id)";
+        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"{SelectorDefaults.StringJoin}(\"-\", Name, Id)");
+        Assert.Equal("$FN_STR_JOIN: argument 3 ('Id') must be a string, not an Int32: '$FN_STR_JOIN(\"-\", Name, Id)'.", exception.Message);
 
-        Assert.Throws<InvalidOperationException>(() => Evaluate<string>(selector, new TestItem { Id = 1 }));
+        PropertySelector nonGeneric = $"{SelectorDefaults.StringJoin}(\"-\", Name, Id)";
+        Assert.Throws<InvalidOperationException>(() => Evaluate<string>(nonGeneric, new TestItem { Id = 1 }));
     }
 
     [Fact]

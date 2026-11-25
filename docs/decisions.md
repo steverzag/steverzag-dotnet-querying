@@ -486,3 +486,53 @@ static forms (tests check declared = built for each). `ElementAt` reads its inde
 interface, because the literal is now the generic record. External selectors default to `ArgumentScope.Root`, which
 matches `ResolveArgument`. A selector that resolves arguments elsewhere must declare its scope, or its arguments are
 typed against the wrong type and may be rejected when parsed.
+
+### 019: Function overloads are declared in signature tables and resolved by type (2026-11-25)
+**Status:** accepted; implemented (2026-11-25)
+**Context:** each function built only the overload for the argument count it was given (`InitializeOverloads`
+branched on `Parameters.Count`), and every parameter was declared as `typeof(PropertySelector)`. So nothing could
+list a function's overloads (Phase 4 metadata), type errors surfaced only at build time from helper-specific checks,
+and two overloads with the same count couldn't coexist. That last point is needed for a static form of the dependent
+functions (016.4), a `DT_ADD` taking a `TimeSpan`, date differences, and possibly `STR_CONTAINS(char)`. No built-in
+function has same-count overloads yet. Each function also computed its declared type by hand, separately from what it
+builds, and that drift had already caused several bugs.
+
+**Decision:**
+1. **Each function declares all its overloads up front** in a static table of `FunctionSignature`s, shared by the
+   generic and non-generic records. A signature has parameter constraints, an optional `Target` constraint (for
+   functions that work on the piped value), an optional variadic `Rest`, a result-type rule
+   `(targetType, argumentTypes) → Type?`, and `Bind`, which turns the arguments into the behaviour. `Bind` runs when
+   the overload is resolved, so it can also validate (the date literals parse their text there).
+2. **Constraints are kinds, not exact types:** `Any`, `Numeric`, `Integer`, `String`, `Bool`, `DateLike`,
+   `Collection`, `Of(type)`, and the literal-only `StringLiteral` and `IntegerLiteral`. A nullable type matches like
+   its underlying type.
+3. **Resolution:** by count first (no match → `ArgumentException`, now saying which counts are accepted), then by
+   constraints (no match → `InvalidOperationException` naming the argument, its type and what was expected). If one
+   candidate is left, it wins. Otherwise the C#-like rule applies: for each argument, an exact match beats an implicit
+   one (a C# implicit numeric conversion, or membership of a kind), which beats `Any`. The candidate that is no worse
+   anywhere and better somewhere wins. A remaining tie is an `InvalidOperationException` that names the candidates,
+   never "first declared wins".
+4. **When it runs:** when the selector is parsed if the known types settle it; otherwise, when the expression is
+   built, from the built argument types (the non-generic form, with candidates that constrain an untyped argument
+   differently). An unknown type doesn't defer resolution where every candidate has the same constraint.
+5. **The declared type comes from the table's result rule**, so it can't drift from the behaviour. The per-function
+   `SelectorType` and `InitSelectorTypeToApply` overrides are gone.
+6. **The build-time checks in the `Implementations` helpers stay** as a backstop until the tables are trusted, and
+   for the non-generic form.
+7. **Functions without a table keep count matching.** `InitializeOverloads` is now virtual with an empty default, so
+   external selectors written for the old model still work.
+
+**Considered:**
+- **Constraints on the existing count-based overloads.** A smaller change per file, but it keeps the duplicated
+  generic/non-generic overload code and the hand-written declared types.
+- **Binding against .NET method groups** (`Math.Round`, `string.Substring`) with a binder. The smallest change for the
+  math, string and date functions, but it doesn't cover LINQ, the aggregates, `COALESCE` or custom functions. It also
+  works against deliberate deviations from .NET (decimals go through `double` because SQLite can't translate them).
+- **Deferring** until the first same-count overload is needed. Nothing breaks today, but the Phase 4 metadata and the
+  016.4 static form both wait on it.
+
+**Consequence:** in the generic form, type errors are reported when the selector is parsed, with messages that name
+the argument, the piped value or the target. Every built-in function's declared type is its built type. Writing the
+tables found three more declared-type bugs: ordering (`IOrderedQueryable` vs `IOrderedEnumerable`), generic
+`ElementAt` (the collection type instead of the element), and `DT_ADD*` on a nullable subject. A custom function
+declares a table by overriding `Signatures`. The tables are the input for the function metadata (Phase 4).

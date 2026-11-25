@@ -230,13 +230,15 @@ public class ElementSelectorTests
     }
 
     [Fact]
-    public void ElementAtIndex_WithNonIntegerIndex_ThrowsInvalidOperationExceptionOnBuild()
+    public void ElementAtIndex_WithNonIntegerIndex_IsRejectedWhenParsed()
     {
         // The index has to be an integer literal: it is read off the selector to build the
         // Skip() constant, so a property reference cannot supply it.
-        PropertySelector<TestOrder> selector = $"Lines{Delimiter}{SelectorDefaults.ElementAtIndex}(Code)";
+        var text = $"Lines{Delimiter}{SelectorDefaults.ElementAtIndex}(Code)";
 
-        Assert.Throws<InvalidOperationException>(() => Evaluate<TestLine>(selector, SampleOrder()));
+        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestOrder>)text);
+        Assert.Equal("$FN_ELM_ATINDEX: argument 1 ('Code') must be an integer literal: '$FN_ELM_ATINDEX(Code)'.", exception.Message);
+        Assert.Throws<InvalidOperationException>(() => (PropertySelector)text);
     }
 
     [Fact]

@@ -8,55 +8,55 @@ namespace Steverzag.PropertySelectors.DateSelectors;
 [SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected)]
 internal record DateTimeLiteralSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(DateTime);
 	public DateTimeLiteralSelector() : base(SelectorDefaults.DateTimeLiteral) { }
 	public DateTimeLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateTimeLiteral, parameters) { }
-	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateTimeLiteral, DateLiterals.ParseDateTime);
+	protected override IReadOnlyList<FunctionSignature> Signatures => DateTimeLiteralSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected)]
 internal record DateTimeLiteralSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(DateTime);
+	internal static readonly IReadOnlyList<FunctionSignature> Table = [DateLiterals.Signature(SelectorDefaults.DateTimeLiteral, DateLiterals.ParseDateTime)];
+
 	public DateTimeLiteralSelector() : base(SelectorDefaults.DateTimeLiteral) { }
 	public DateTimeLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateTimeLiteral, parameters) { }
-	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateTimeLiteral, DateLiterals.ParseDateTime);
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
 [SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record DateOnlyLiteralSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(DateOnly);
 	public DateOnlyLiteralSelector() : base(SelectorDefaults.DateOnlyLiteral) { }
 	public DateOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateOnlyLiteral, parameters) { }
-	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateOnlyLiteral, DateLiterals.ParseDateOnly);
+	protected override IReadOnlyList<FunctionSignature> Signatures => DateOnlyLiteralSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record DateOnlyLiteralSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(DateOnly);
+	internal static readonly IReadOnlyList<FunctionSignature> Table = [DateLiterals.Signature(SelectorDefaults.DateOnlyLiteral, DateLiterals.ParseDateOnly)];
+
 	public DateOnlyLiteralSelector() : base(SelectorDefaults.DateOnlyLiteral) { }
 	public DateOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateOnlyLiteral, parameters) { }
-	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.DateOnlyLiteral, DateLiterals.ParseDateOnly);
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
 [SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record TimeOnlyLiteralSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(TimeOnly);
 	public TimeOnlyLiteralSelector() : base(SelectorDefaults.TimeOnlyLiteral) { }
 	public TimeOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.TimeOnlyLiteral, parameters) { }
-	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.TimeOnlyLiteral, DateLiterals.ParseTimeOnly);
+	protected override IReadOnlyList<FunctionSignature> Signatures => TimeOnlyLiteralSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected)]
 internal record TimeOnlyLiteralSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(TimeOnly);
+	internal static readonly IReadOnlyList<FunctionSignature> Table = [DateLiterals.Signature(SelectorDefaults.TimeOnlyLiteral, DateLiterals.ParseTimeOnly)];
+
 	public TimeOnlyLiteralSelector() : base(SelectorDefaults.TimeOnlyLiteral) { }
 	public TimeOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.TimeOnlyLiteral, parameters) { }
-	public override void InitializeOverloads() => DateLiterals.AddOverload(Overloads, Parameters, SelectorDefaults.TimeOnlyLiteral, DateLiterals.ParseTimeOnly);
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
 internal static class DateLiterals
@@ -65,26 +65,21 @@ internal static class DateLiterals
 	internal static DateOnly ParseDateOnly(string text) => DateOnly.Parse(text, CultureInfo.InvariantCulture);
 	internal static TimeOnly ParseTimeOnly(string text) => TimeOnly.Parse(text, CultureInfo.InvariantCulture);
 
-	internal static void AddOverload<TValue>(List<FunctionPropertySelectorOverload> overloads, IReadOnlyList<PropertySelector> parameters,
-		string token, Func<string, TValue> parse)
-	{
-		if (parameters.Count != 1)
-			return;
-
-		if (parameters[0] is not IStringLiteralSelector literal)
-			throw new ArgumentException($"{token} takes one quoted string, e.g. {token}(\"2024-01-15\"), not '{parameters[0]}'.");
-
-		TValue value;
-		try
+	internal static FunctionSignature Signature<TValue>(string token, Func<string, TValue> parse) =>
+		new([ArgumentConstraint.StringLiteral], ResultTypes.Fixed(typeof(TValue)), parameters =>
 		{
-			value = parse(literal.Value);
-		}
-		catch (FormatException e)
-		{
-			throw new ArgumentException($"Invalid {token} literal \"{literal.Value}\": {e.Message}", e);
-		}
+			var literal = (IStringLiteralSelector)parameters[0];
 
-		var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-		overloads.Add(new FunctionPropertySelectorOverload(valueParameters, _ => Expression.Constant(value, typeof(TValue))));
-	}
+			TValue value;
+			try
+			{
+				value = parse(literal.Value);
+			}
+			catch (FormatException e)
+			{
+				throw new ArgumentException($"Invalid {token} literal \"{literal.Value}\": {e.Message}", e);
+			}
+
+			return _ => Expression.Constant(value, typeof(TValue));
+		});
 }

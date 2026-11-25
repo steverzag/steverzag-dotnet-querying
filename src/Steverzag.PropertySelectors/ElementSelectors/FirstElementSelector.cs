@@ -1,42 +1,24 @@
 using Steverzag.PropertySelectors.Registration;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
-namespace Steverzag.PropertySelectors.ElementSelectors
+namespace Steverzag.PropertySelectors.ElementSelectors;
+
+[SelectorToken(SelectorDefaults.ElementFirst)]
+public record FirstElementSelector<T> : ElementFunctionSelector<T>
 {
-	[SelectorToken(SelectorDefaults.ElementFirst)]
-	public record FirstElementSelector <T>: ElementFunctionSelector<T>
-	{
-		public FirstElementSelector() : base(SelectorDefaults.ElementFirst)
-		{
-		}
+	public FirstElementSelector() : base(SelectorDefaults.ElementFirst) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => FirstElementSelector.Table;
+}
 
-		public override void InitializeOverloads()
-		{
-			// Overload with no parameters => First()
-			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateElementFirstOrDefaultFunction());
-			Overloads.Add(emptyFunctionParameters);
-		}
-	}
-	[SelectorToken(SelectorDefaults.ElementFirst)]
-	public record FirstElementSelector : FunctionPropertySelector
-	{
-		public FirstElementSelector() : base(SelectorDefaults.ElementFirst)
-		{
-		}
+[SelectorToken(SelectorDefaults.ElementFirst)]
+public record FirstElementSelector : FunctionPropertySelector
+{
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([], (t, _) => ResultTypes.ElementOf(t), _ => target => target!.CreateElementFirstOrDefaultFunction())
+		{ Target = ArgumentConstraint.Collection },
+	];
 
-		public FirstElementSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementFirst, parameters)
-		{
-		}
-
-		public override void InitializeOverloads()
-		{
-			// Overload with no parameters => First()
-			var emptyFunctionParameters = new FunctionPropertySelectorOverload([], (target) => target.CreateElementFirstOrDefaultFunction());
-			Overloads.Add(emptyFunctionParameters);
-		}
-	}
+	public FirstElementSelector() : base(SelectorDefaults.ElementFirst) { }
+	public FirstElementSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementFirst, parameters) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

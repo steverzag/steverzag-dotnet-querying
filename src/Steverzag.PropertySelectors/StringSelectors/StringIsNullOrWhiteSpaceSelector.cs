@@ -6,38 +6,21 @@ namespace Steverzag.PropertySelectors.StringSelectors;
 [SelectorToken(SelectorDefaults.StringIsNullOrWhiteSpace, Piped = PipedForm.FirstArgument)]
 internal record StringIsNullOrWhiteSpaceSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(bool);
 	public StringIsNullOrWhiteSpaceSelector() : base(SelectorDefaults.StringIsNullOrWhiteSpace) { }
 	public StringIsNullOrWhiteSpaceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringIsNullOrWhiteSpace, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			// Overload with one parameter => string.IsNullOrWhiteSpace(value)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateStringStaticFunction(MethodInfos.StringIsNullOrWhiteSpaceMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => StringIsNullOrWhiteSpaceSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.StringIsNullOrWhiteSpace, Piped = PipedForm.FirstArgument)]
 internal record StringIsNullOrWhiteSpaceSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(bool);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.String], ResultTypes.Fixed(typeof(bool)),
+			p => target => target.CreateStringStaticFunction(MethodInfos.StringIsNullOrWhiteSpaceMethodInfo, p[0])),
+	];
+
 	public StringIsNullOrWhiteSpaceSelector() : base(SelectorDefaults.StringIsNullOrWhiteSpace) { }
 	public StringIsNullOrWhiteSpaceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringIsNullOrWhiteSpace, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 1)
-		{
-			// Overload with one parameter => string.IsNullOrWhiteSpace(value)
-			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
-			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters,
-				target => target.CreateStringStaticFunction(MethodInfos.StringIsNullOrWhiteSpaceMethodInfo, Parameters[0]));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

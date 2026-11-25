@@ -5,36 +5,20 @@ namespace Steverzag.PropertySelectors.DateSelectors;
 [SelectorToken(SelectorDefaults.DateToday, Piped = PipedForm.Rejected)]
 internal record DateTodaySelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => typeof(DateTime);
 	public DateTodaySelector() : base(SelectorDefaults.DateToday) { }
 	public DateTodaySelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateToday, parameters) { }
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 0)
-		{
-			// Parameterless => DateTime.Today
-			var selectorOverload = new FunctionPropertySelectorOverload([],
-				target => target.CreateDateTimeStaticAccess("Today"));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => DateTodaySelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.DateToday, Piped = PipedForm.Rejected)]
 internal record DateTodaySelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => typeof(DateTime);
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([], ResultTypes.Fixed(typeof(DateTime)), _ => target => target.CreateDateTimeStaticAccess("Today")),
+	];
+
 	public DateTodaySelector() : base(SelectorDefaults.DateToday) { }
 	public DateTodaySelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateToday, parameters) { }
-
-	public override void InitializeOverloads()
-	{
-		if (Parameters.Count == 0)
-		{
-			// Parameterless => DateTime.Today
-			var selectorOverload = new FunctionPropertySelectorOverload([],
-				target => target.CreateDateTimeStaticAccess("Today"));
-			Overloads.Add(selectorOverload);
-		}
-	}
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

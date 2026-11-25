@@ -1,64 +1,26 @@
-﻿
 using Steverzag.PropertySelectors.Registration;
 using Steverzag.PropertySelectors.SelectorImplementations;
 
-namespace Steverzag.PropertySelectors.ArithmeticSelectors
+namespace Steverzag.PropertySelectors.ArithmeticSelectors;
+
+[SelectorToken(SelectorDefaults.MathPower, Piped = PipedForm.FirstArgument)]
+internal record MathPowSelector<T> : FunctionPropertySelector<T>
 {
-	[SelectorToken(SelectorDefaults.MathPower, Piped = PipedForm.FirstArgument)]
-	internal record MathPowSelector<T> : FunctionPropertySelector<T>
-	{
-		public override Type? SelectorType => typeof(double);
-		public MathPowSelector() : base(SelectorDefaults.MathPower)
-		{
-		}
-		public MathPowSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathPower, parameters)
-		{
-		}
-		public override void InitializeOverloads()
-		{
-			if (Parameters.Count == 2)
-			{
-				// Overload with two parameter => Max(number1, number2)
-				var valueParamType = typeof(PropertySelector);
-				var valueParameters = new SortedList<int, Type>
-				{
-					{ 0, valueParamType },
-					{ 1, valueParamType }
-				};
-				var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-					target => target.CreateBinaryMathFunction(MethodInfos.MathPowerMethodInfo, Parameters[0], Parameters[1]));
-				Overloads.Add(selectorOverload);
-			}
-		}
-	}
+	public MathPowSelector() : base(SelectorDefaults.MathPower) { }
+	public MathPowSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathPower, parameters) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => MathPowSelector.Table;
+}
 
-	[SelectorToken(SelectorDefaults.MathPower, Piped = PipedForm.FirstArgument)]
-	internal record MathPowSelector : FunctionPropertySelector
-	{
-		public override Type? SelectorType => typeof(double);
-		public MathPowSelector() : base(SelectorDefaults.MathPower)
-		{
-		}
-		public MathPowSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathPower, parameters)
-		{
-		}
+[SelectorToken(SelectorDefaults.MathPower, Piped = PipedForm.FirstArgument)]
+internal record MathPowSelector : FunctionPropertySelector
+{
+	internal static readonly IReadOnlyList<FunctionSignature> Table =
+	[
+		new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric], ResultTypes.Fixed(typeof(double)),
+			p => target => target.CreateBinaryMathFunction(MethodInfos.MathPowerMethodInfo, p[0], p[1])),
+	];
 
-		public override void InitializeOverloads()
-		{
-			if (Parameters.Count == 2)
-			{
-				// Overload with two parameter => Max(number1, number2)
-				var valueParamType = typeof(PropertySelector);
-				var valueParameters = new SortedList<int, Type>
-				{
-					{ 0, valueParamType },
-					{ 1, valueParamType }
-				};
-
-				var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-					target => target.CreateBinaryMathFunction(MethodInfos.MathPowerMethodInfo, Parameters[0], Parameters[1]));
-				Overloads.Add(selectorOverload);
-			}
-		}
-	}
+	public MathPowSelector() : base(SelectorDefaults.MathPower) { }
+	public MathPowSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathPower, parameters) { }
+	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
 }

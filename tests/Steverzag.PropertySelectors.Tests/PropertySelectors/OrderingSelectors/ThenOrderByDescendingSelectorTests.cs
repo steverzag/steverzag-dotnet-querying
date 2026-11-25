@@ -198,7 +198,8 @@ public class ThenOrderByDescendingSelectorTests
         PropertySelector<TestOrder> selector =
             $"Lines{Delimiter}{SelectorDefaults.OrderAscending}(Name){Delimiter}{SelectorDefaults.ThenOrderByDescending}(Amount)";
 
-        Assert.Equal(typeof(IOrderedQueryable<TestLine>), selector.Type);
+        Assert.Equal(typeof(IOrderedEnumerable<TestLine>), selector.Type);
+        Assert.Equal(ExpressionUtils.CreateMemberAccess(System.Linq.Expressions.Expression.Parameter(typeof(TestOrder), "o"), selector).Type, selector.Type);
     }
 
     [Fact]
