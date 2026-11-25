@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.OrderingSelectors;
 
 namespace Steverzag.PropertySelectors.OrderingSelectors
 {
-	[SelectorToken(SelectorDefaults.ThenOrderByDescending)]
+	[SelectorToken(SelectorDefaults.ThenOrderByDescending, Arguments = ArgumentScope.TargetElement)]
 	public record ThenOrderByDescendingSelector<T> : OrderingFunctionSelector<T>
 	{
 		public ThenOrderByDescendingSelector() : base(SelectorDefaults.ThenOrderByDescending)
@@ -33,7 +33,7 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 			}
 		}
 	}
-	[SelectorToken(SelectorDefaults.ThenOrderByDescending)]
+	[SelectorToken(SelectorDefaults.ThenOrderByDescending, Arguments = ArgumentScope.TargetElement)]
 	public record ThenOrderByDescendingSelector : FunctionPropertySelector
 	{
 		public ThenOrderByDescendingSelector() : base(SelectorDefaults.ThenOrderByDescending)

@@ -132,11 +132,13 @@ public class CoalesceSelectorTests
     }
 
     [Fact]
-    public void PropertyFallback_DeclaredTypeIsUnknownUntilBuilt()
+    public void PropertyFallback_DeclaresTheBuiltType_InTheGenericForm()
     {
         PropertySelector<TestItem> selector = $"LastUpdated|{Coalesce}(Created)";
 
-        Assert.Null(selector.Type);
+        Assert.Equal(typeof(DateTime), selector.Type);
+        Assert.Equal(BuiltType(selector), selector.Type);
+        Assert.Null(((PropertySelector)$"LastUpdated|{Coalesce}(Created)").Type);
     }
 
     // ── Several operands ───────────────────────────────────────────────────
@@ -285,11 +287,12 @@ public class CoalesceSelectorTests
     }
 
     [Fact]
-    public void MismatchedPropertyFallback_IsRejectedWhenBuilt()
+    public void MismatchedPropertyFallback_IsRejectedWhenParsed_InTheGenericForm()
     {
-        PropertySelector<TestItem> selector = $"LastUpdated|{Coalesce}(Name)";
+        Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"LastUpdated|{Coalesce}(Name)");
 
-        Assert.Throws<InvalidOperationException>(() => Build(selector, out _));
+        PropertySelector nonGeneric = $"LastUpdated|{Coalesce}(Name)";
+        Assert.Throws<InvalidOperationException>(() => Build(nonGeneric, out _));
     }
 
     [Fact]

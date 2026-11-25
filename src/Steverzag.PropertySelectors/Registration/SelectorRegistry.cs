@@ -2,6 +2,7 @@ using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.ExceptionServices;
 
 namespace Steverzag.PropertySelectors.Registration
 {
@@ -30,6 +31,7 @@ namespace Steverzag.PropertySelectors.Registration
 
 		private static readonly ConcurrentDictionary<(Type OpenGenericType, Type ElementType), SelectorFactories> GenericFactoryCache = new();
 		private static readonly ConcurrentDictionary<Type, SelectorFactories> NonGenericFactoryCache = new();
+		private static readonly ConcurrentDictionary<Type, Func<string, PropertySelector>> GenericArgumentParserCache = new();
 
 		private static readonly Lazy<bool> OwnAssemblyScan = new(() =>
 		{
@@ -41,7 +43,8 @@ namespace Steverzag.PropertySelectors.Registration
 			Func<PropertySelector>? CreateParameterless,
 			Func<List<PropertySelector>, PropertySelector>? CreateWithParameters,
 			PipedForm Piped,
-			string? PipedHint);
+			string? PipedHint,
+			ArgumentScope Arguments);
 
 		/// <summary>
 		/// Forces the one-time scan of this assembly's selectors. Calling it is optional — the first
@@ -98,29 +101,54 @@ namespace Steverzag.PropertySelectors.Registration
 			}
 		}
 
-		internal static bool TryResolveGeneric(string selectorPart, Type currentIterationType, string? pipedText, [NotNullWhen(true)] out PropertySelector? selector)
+		internal static bool TryResolveGeneric(string selectorPart, Type currentIterationType, Type rootType, string? pipedText, [NotNullWhen(true)] out PropertySelector? selector)
 		{
 			selector = null;
-			if (!TryGetEntry(selectorPart, out var entry, out var parameters) || entry.OpenGenericSelectorType is null)
+			if (!TryGetEntry(selectorPart, out var entry) || entry.OpenGenericSelectorType is null)
 				return false;
 
 			var factories = GenericFactoryCache.GetOrAdd(
 				(entry.OpenGenericSelectorType, currentIterationType),
 				static key => BuildFactories(key.OpenGenericType.MakeGenericType(key.ElementType)));
 
+			var argumentScopeType = factories.Arguments switch
+			{
+				ArgumentScope.TargetElement => ExpressionUtils.TryGetEnumerableElementType(currentIterationType, out var elementType) ? elementType : null,
+				_ => rootType,
+			};
+
+			ExceptionDispatchInfo? argumentError = null;
+			var parameters = argumentScopeType is null
+				? ParseParameters(selectorPart, ParseNonGeneric)
+				: ParseParameters(selectorPart, text =>
+				{
+					try
+					{
+						return GenericArgumentParser(argumentScopeType)(text);
+					}
+					catch (Exception e)
+					{
+						argumentError ??= ExceptionDispatchInfo.Capture(e);
+						return ParseNonGeneric(text);
+					}
+				});
+
 			ApplyPipedForm(selectorPart, pipedText, currentIterationType, parameters, factories);
 
 			selector = CreateSelector(selectorPart, parameters, factories, pipedText is not null);
+			argumentError?.Throw();
 			return true;
 		}
 
 		internal static bool TryResolveNonGeneric(string selectorPart, string? pipedText, [NotNullWhen(true)] out PropertySelector? selector)
 		{
 			selector = null;
-			if (!TryGetEntry(selectorPart, out var entry, out var parameters) || entry.NonGenericSelectorType is null)
+			if (!TryGetEntry(selectorPart, out var entry) || entry.NonGenericSelectorType is null)
 				return false;
 
 			var factories = NonGenericFactoryCache.GetOrAdd(entry.NonGenericSelectorType, static type => BuildFactories(type));
+
+			var parameters = ParseParameters(selectorPart, ParseNonGeneric);
 
 			ApplyPipedForm(selectorPart, pipedText, null, parameters, factories);
 
@@ -176,7 +204,7 @@ namespace Steverzag.PropertySelectors.Registration
 			var attribute = closedSelectorType.GetCustomAttribute<SelectorTokenAttribute>();
 
 			return new SelectorFactories(createParameterless, createWithParameters,
-				attribute?.Piped ?? PipedForm.Target, attribute?.PipedHint);
+				attribute?.Piped ?? PipedForm.Target, attribute?.PipedHint, attribute?.Arguments ?? ArgumentScope.Root);
 		}
 
 		private static PropertySelector CreateSelector(string selectorPart, List<PropertySelector> parameters, SelectorFactories factories, bool piped)
@@ -203,21 +231,29 @@ namespace Steverzag.PropertySelectors.Registration
 				: throw new NotSupportedException($"The function '{selectorPart}' is not supported without parameters.");
 		}
 
-		private static bool TryGetEntry(string selectorPart, [NotNullWhen(true)] out SelectorRegistration? entry, out List<PropertySelector> parameters)
+		private static bool TryGetEntry(string selectorPart, [NotNullWhen(true)] out SelectorRegistration? entry)
 		{
 			Initialize();
 
-			var name = TokenName(selectorPart);
-
-			if (!Entries.TryGetValue(name, out entry))
-			{
-				parameters = [];
-				return false;
-			}
-
-			PropertySelectorUtils.TryGetParameters(selectorPart, out parameters);
-			return true;
+			return Entries.TryGetValue(TokenName(selectorPart), out entry);
 		}
+
+		private static List<PropertySelector> ParseParameters(string selectorPart, Func<string, PropertySelector> parse)
+		{
+			PropertySelectorUtils.TryGetParameters(selectorPart, parse, out var parameters);
+			return parameters;
+		}
+
+		private static PropertySelector ParseNonGeneric(string text) => (PropertySelector)text;
+
+		private static PropertySelector ParseGeneric<TScope>(string text) => (PropertySelector<TScope>)text;
+
+		private static readonly MethodInfo ParseGenericMethod =
+			typeof(SelectorRegistry).GetMethod(nameof(ParseGeneric), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+		private static Func<string, PropertySelector> GenericArgumentParser(Type scopeType) =>
+			GenericArgumentParserCache.GetOrAdd(scopeType, static type =>
+				ParseGenericMethod.MakeGenericMethod(type).CreateDelegate<Func<string, PropertySelector>>());
 
 		private static Type? MergeSlot(string token, Type? existing, Type? incoming)
 		{

@@ -438,3 +438,51 @@ rewritten (`$VAL_INT:5` → `5`, `$VAL_STR:x` → `"x"`, `$VAL_DATETIME:…` →
 `$VAL_DATE:…` → `$FN_DT_DATEONLY("…")`, `$VAL_TIME:…` → `$FN_DT_TIMEONLY("…")`). A bare number now
 means the same on every machine. The tests that pin `$VAL_` forms (mainly `ValueSelectorTests`, `SelectorDefaultsTests`
 and `DateSelectorTests`) are rewritten to the new forms.
+
+### 018: Function arguments are typed when the selector is parsed (2026-11-25)
+**Status:** accepted; implemented (2026-11-25)
+**Context:** every function argument was parsed in the non-generic form (`TryGetParameters` cast each one to
+`PropertySelector`), so in the generic form a property argument had no type until the expression was built. Effects:
+`$FN_DT_ADDDAYS(Day, 3)` declared `DateTime` while building `DateOnly` (and `DateTimeOffset` on a `DateTimeOffset`);
+`COALESCE` with a property fallback declared `null`, so a function chained after it failed in the generic form;
+`MATH_MAX`/`MATH_MIN` with a property argument declared `null`. It also blocks type-aware overload resolution and
+function metadata (Phase 4). Arguments don't all resolve against the same type: most functions resolve them against
+the scope root (`ExpressionUtils.ResolveArgument`), while the ordering functions resolve them against the element of
+their target inside a lambda.
+
+**Decision:**
+1. **In the generic form, arguments are parsed in the generic form against their scope type.** The registry parses
+   each argument as `PropertySelector<TScope>` through a delegate cached per scope type. Nested arguments,
+   arithmetic and literals inside an argument are typed by the same code that types the rest of the generic form.
+2. **Each function declares its argument scope** on `[SelectorToken]`: `Arguments = ArgumentScope.Root` (the
+   default) or `ArgumentScope.TargetElement` (the four ordering functions). The scope root is the generic form's
+   `T`, which `TryResolveGeneric` now receives next to the piped type. Inside an ordering argument the element
+   becomes the root for anything nested in it. If the target of a `TargetElement` function isn't a collection, its
+   arguments are parsed untyped, as before.
+3. **The non-generic form is unchanged.** It has no root type, so its property arguments stay untyped until the
+   expression is built. `ToGeneric<T>()` reparses the text and types them.
+4. **Errors move earlier in the generic form.** An unknown property inside an argument fails when the selector is
+   parsed (`InvalidOperationException`, "Property 'X' was not found on type 'T'"), like the head of a generic chain
+   already did. A coalesce mismatch with a property fallback is also rejected then.
+5. **Structural errors come first.** If typing an argument fails, the function is still built from the untyped
+   argument, so the argument-count and piped-form checks run and report their own messages. Only if the function is
+   valid is the argument error rethrown. Without this, `Inner|$FN_MATH_MAX(A, 1)` would report that `A` isn't on the
+   root, which hides the real mistake (the subject repeated as an argument).
+6. **No guessed types.** `DT_ADD*` declared `Parameters[0].Type ?? typeof(DateTime)`. It now declares the
+   subject's type or `null`, so the declared type is never wrong.
+7. **Type-aware overload resolution is a separate step.** Overloads still match by argument count. Typed arguments
+   are its prerequisite.
+
+**Considered:**
+- **Probe-building** each argument against `Expression.Parameter(scopeType)` and reading `.Type`. It's exact by
+  construction and a small change, but it builds expression trees while parsing, and stores the type next to the
+  argument instead of in it, so the argument is still an untyped selector.
+- **A separate type-inference pass.** It doesn't build anything, but it duplicates the builder's rules, and that
+  drift has already caused three bugs in Phase 3 (aggregates, math, arithmetic).
+- **Leaving arguments untyped** and only removing the `DateTime` guess. Fixes one bug and blocks the rest.
+
+**Consequence:** in the generic form every built-in function declares the type it builds, in both the piped and
+static forms (tests check declared = built for each). `ElementAt` reads its index through an `IIntegerLiteralSelector`
+interface, because the literal is now the generic record. External selectors default to `ArgumentScope.Root`, which
+matches `ResolveArgument`. A selector that resolves arguments elsewhere must declare its scope, or its arguments are
+typed against the wrong type and may be rejected when parsed.

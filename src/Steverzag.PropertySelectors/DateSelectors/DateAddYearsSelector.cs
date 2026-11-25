@@ -5,7 +5,7 @@ namespace Steverzag.PropertySelectors.DateSelectors;
 [SelectorToken(SelectorDefaults.DateAddYears, Piped = PipedForm.FirstArgument)]
 internal record DateAddYearsSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0]?.Type ?? typeof(DateTime) : typeof(DateTime);
+	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
 	public DateAddYearsSelector() : base(SelectorDefaults.DateAddYears) { }
 	public DateAddYearsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddYears, parameters) { }
 	public override void InitializeOverloads()
@@ -24,7 +24,7 @@ internal record DateAddYearsSelector<T> : FunctionPropertySelector<T>
 [SelectorToken(SelectorDefaults.DateAddYears, Piped = PipedForm.FirstArgument)]
 internal record DateAddYearsSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0]?.Type ?? typeof(DateTime) : typeof(DateTime);
+	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
 	public DateAddYearsSelector() : base(SelectorDefaults.DateAddYears) { }
 	public DateAddYearsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddYears, parameters) { }
 

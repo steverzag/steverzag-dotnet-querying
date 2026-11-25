@@ -5,7 +5,7 @@ namespace Steverzag.PropertySelectors.DateSelectors;
 [SelectorToken(SelectorDefaults.DateAddDays, Piped = PipedForm.FirstArgument)]
 internal record DateAddDaysSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0]?.Type ?? typeof(DateTime) : typeof(DateTime);
+	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
 	public DateAddDaysSelector() : base(SelectorDefaults.DateAddDays) { }
 	public DateAddDaysSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddDays, parameters) { }
 	public override void InitializeOverloads()
@@ -24,7 +24,7 @@ internal record DateAddDaysSelector<T> : FunctionPropertySelector<T>
 [SelectorToken(SelectorDefaults.DateAddDays, Piped = PipedForm.FirstArgument)]
 internal record DateAddDaysSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0]?.Type ?? typeof(DateTime) : typeof(DateTime);
+	public override Type? SelectorType => Parameters.Count > 0 ? Parameters[0].Type : null;
 	public DateAddDaysSelector() : base(SelectorDefaults.DateAddDays) { }
 	public DateAddDaysSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddDays, parameters) { }
 

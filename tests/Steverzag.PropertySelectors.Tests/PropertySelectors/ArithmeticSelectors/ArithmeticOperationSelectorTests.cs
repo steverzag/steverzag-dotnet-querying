@@ -115,6 +115,9 @@ public class ArithmeticOperationSelectorTests
         "Name|$FN_STR_LENGTH * 2",
         "Quantity|$FN_MATH_MAX(1L) + 1",
         "Price|$FN_MATH_ROUND(2) * 3",
+        "$FN_MATH_ROUND(Quantity) + 1",
+        "Quantity|$FN_MATH_MAX(Views) + 1",
+        "$FN_MATH_MAX(Quantity, Views) * Price",
     };
 
     [Theory]
@@ -131,11 +134,9 @@ public class ArithmeticOperationSelectorTests
     [Fact]
     public void ArithmeticSelector_DeclaresNoType_WhenAnOperandTypeIsUnknown()
     {
-        // Non-generic properties, and property arguments of a function, have no type until the expression is built.
+        // Non-generic properties, and their function arguments, have no type until the expression is built.
         Assert.Null(((PropertySelector)"Quantity + 1").Type);
         Assert.Null(((PropertySelector)"$FN_MATH_ROUND(Quantity) + 1").Type);
-        Assert.Null(((PropertySelector<TypedItem>)"$FN_MATH_ROUND(Quantity) + 1").Type);
-        Assert.Null(((PropertySelector<TypedItem>)"Quantity|$FN_MATH_MAX(Views) + 1").Type);
     }
 
     [Fact]

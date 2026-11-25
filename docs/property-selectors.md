@@ -82,10 +82,23 @@ functions return `double`, and `SIGN` returns `int`. Note that SQL and .NET roun
 4.5 to 5, and .NET's `Math.Round` gives 4 (to even).
 
 **Declared type (`Type`).** A selector's declared type is either the type of the expression it builds, or `null` when
-that can't be known until the expression is built. It is never a different type. It is `null` when it depends on a
-type that isn't known yet: a property in the non-generic form, or a property argument of a function (roadmap: typed
-function arguments). So `$FN_MATH_MAX(Amount, 5.0)` and `Quantity|$FN_MATH_MAX(Views)` declare no type, while
-`Quantity|$FN_MATH_MAX(10)` declares `int`.
+that can't be known until the expression is built. It is never a different type. In the generic form it is known
+when the selector is parsed, function arguments included (decision 018): `$FN_MATH_MAX(Amount, 5.0)` declares `double`
+and `Quantity|$FN_MATH_MAX(Views)` declares `long` on a `long` `Views`. In the non-generic form a property has no type
+until the expression is built, so anything that depends on one declares `null`. `ToGeneric<T>()` reparses the text
+and gives you the types.
+
+**Typed function arguments (decision 018).** In the generic form, each argument is parsed in the generic form against
+its scope type:
+- **The scope root** for almost every function. In `PropertySelector<Order>`, the `Views` in `Quantity|$FN_MATH_MAX(Views)` is read on
+  `Order`, the same place it is resolved when the expression is built.
+- **The element of the target** for the ordering functions. In `Lines|$FN_ORDER_ASC(Weight)`, `Weight` is read on a
+  line. Functions nested inside that argument resolve against the line too.
+
+So an unknown property inside an argument fails **when the selector is parsed** in the generic form ("Property
+'Missing' was not found on type 'Order'"). In the non-generic form it still fails when the expression is built.
+Structural errors are reported first: a wrong argument count or a rejected pipe gives its own message even if an
+argument also names an unknown property.
 
 ## Piped and static forms
 
@@ -122,8 +135,9 @@ resolves against the scope root in both forms, so `Details.Price|$FN_MATH_ROUND(
   first argument is the separator, so `Tags|$FN_STR_JOIN(", ")` would mean `string.Join(Tags, ", ")`. Pass the value
   after the separator instead: `$FN_STR_JOIN(", ", Name, Nickname)`.
 - **Declared type:** in the generic form the subject's type comes from the chain, so a piped function knows it when
-  the selector is parsed (`Day|$FN_DT_ADDDAYS(3)` declares `DateOnly`). The static form often doesn't: arguments have
-  no type yet (roadmap: typed function arguments), so `$FN_MATH_MAX(A, B)` declares no type until it is built.
+  the selector is parsed (`Day|$FN_DT_ADDDAYS(3)` declares `DateOnly`). Since decision 018 the static form does too,
+  because its arguments are typed: `$FN_DT_ADDDAYS(Day, 3)` declares `DateOnly`, and `$FN_MATH_MAX(A, B)` the wider
+  of the two types.
 - **Limit:** the root is found from the piped value, so it is lost when the chain doesn't start at a property. In
   `$FN_DT_NOW|$FN_DT_ADDDAYS(Days)`, `Days` is looked up on `DateTime`.
 - `ToString()` writes the form that was parsed.
@@ -147,11 +161,11 @@ PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";     
   operand is.
 - Collections can't be coalesced, and the function needs a piped value: `$FN_COALESCE(a, 0)` at the head of a chain
   is rejected.
-- **Declared type (`Type`) when the selector is parsed:** exact when every fallback is a literal. With a property
-  fallback, arguments have no type yet, so `Type` is `null` until the expression is built. A string subject is the
-  exception: it declares `string`. Code that builds the expression first, such as the QueryShaper mapper, still checks
-  the result type. A function chained after a value-type coalesce with a property fallback (`DeletedAt|$FN_COALESCE(CreatedAt)|…`)
-  can't be resolved in the generic form yet (roadmap: typed function arguments).
+- **Declared type (`Type`) when the selector is parsed:** exact in the generic form, property fallbacks included
+  (decision 018), so a function can be chained after it (`DeletedAt|$FN_COALESCE(CreatedAt)|$FN_DT_ADDDAYS(1)`). The
+  rules above are also checked then, so `LastUpdated|$FN_COALESCE(Name)` is rejected when parsed. In the non-generic
+  form a property fallback has no type until the expression is built, except that a string subject declares
+  `string`. Code that builds the expression first, such as the QueryShaper mapper, still checks the result type.
 - Coalesce works inside arithmetic (`A|$FN_COALESCE(0) + 1`). A quoted default can hold any character, with `"`
   written as `""` (`Nickname|$FN_COALESCE("n/a")`), and a date default is a date literal
   (`DeletedAt|$FN_COALESCE($FN_DT_DATETIME("2024-01-01"))`).
@@ -196,6 +210,14 @@ The attribute's `Piped` property says what a piped value means for the function:
 | `PipedForm.Target` (default) | The piped value is the target the function's overload receives, as for `TRIM` or the aggregates. Functions written before 016 behave this way. |
 | `PipedForm.FirstArgument` | The function takes its subject as argument 0. When piped, a placeholder for the piped value is inserted as argument 0, so the same overloads serve both forms. Resolve every argument with `ExpressionUtils.ResolveArgument(target, argument)`, which turns the placeholder into the piped value and resolves the others against the scope root. |
 | `PipedForm.Rejected` | The function has no subject, and piping into it is an error. An optional `PipedHint` sentence is added to the message. |
+
+The `Arguments` property says what the arguments are typed against in the generic form (decision 018). It must match
+where the function resolves them when the expression is built:
+
+| `Arguments =` | Meaning |
+|---|---|
+| `ArgumentScope.Root` (default) | The scope root, which is what `ExpressionUtils.ResolveArgument` uses. |
+| `ArgumentScope.TargetElement` | The element type of the function's target, for functions that build a lambda over the elements (the ordering functions). If the target isn't a collection, the arguments stay untyped. |
 
 Optionally call `SelectorRegistry.Initialize()` at startup, so the one-time assembly scan doesn't
 land on the first request. Duplicate tokens throw.

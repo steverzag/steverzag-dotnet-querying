@@ -34,7 +34,7 @@ namespace Steverzag.PropertySelectors
 			return arithmeticOperationSelector;
 		}
 
-		internal static bool TryGetParameters(string selector, out List<PropertySelector> parameters)
+		internal static bool TryGetParameters(string selector, Func<string, PropertySelector> parse, out List<PropertySelector> parameters)
 		{
 			var startingParenthesesIndex = selector.IndexOf('(');
 			if (startingParenthesesIndex is -1)
@@ -71,7 +71,7 @@ namespace Steverzag.PropertySelectors
 					var parameter = innerParameters[parameterStartIndex..i].Trim();
 					if (!string.IsNullOrEmpty(parameter))
 					{
-						var propertySelector = (PropertySelector)parameter;
+						var propertySelector = parse(parameter);
 						result.Add(propertySelector);
 					}
 					parameterStartIndex = i + 1;
@@ -81,7 +81,7 @@ namespace Steverzag.PropertySelectors
 			var lastParameter = innerParameters[parameterStartIndex..].Trim();
 			if (!string.IsNullOrEmpty(lastParameter))
 			{
-				var propertySelector = (PropertySelector)lastParameter;
+				var propertySelector = parse(lastParameter);
 				result.Add(propertySelector);
 			}
 

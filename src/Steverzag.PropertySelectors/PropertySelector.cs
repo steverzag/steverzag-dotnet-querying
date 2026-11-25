@@ -46,7 +46,7 @@ namespace Steverzag.PropertySelectors
 
 				if (isFunctionPart)
 				{
-					propertySelector = SelectorRegistry.TryResolveGeneric(selectorPart, currentIterationType, pipedText, out var registeredSelector)
+					propertySelector = SelectorRegistry.TryResolveGeneric(selectorPart, currentIterationType, typeof(T), pipedText, out var registeredSelector)
 						? registeredSelector
 						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
 				}

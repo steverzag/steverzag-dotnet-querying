@@ -14,6 +14,8 @@ namespace Steverzag.PropertySelectors.Registration
 
 		public string? PipedHint { get; set; }
 
+		public ArgumentScope Arguments { get; set; }
+
 		public SelectorTokenAttribute(string token)
 		{
 			Token = token;

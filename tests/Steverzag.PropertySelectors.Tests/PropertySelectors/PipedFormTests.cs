@@ -122,22 +122,16 @@ public class PipedFormTests
     [MemberData(nameof(UnaryMath))]
     [MemberData(nameof(WithArguments))]
     [MemberData(nameof(InContext))]
-    public void PipedForm_DeclaresTheTypeItBuilds(string piped, string _)
+    public void BothForms_DeclareTheTypeTheyBuild(string piped, string @static)
     {
-        var selector = (PropertySelector<Product>)piped;
+        foreach (var text in new[] { piped, @static })
+        {
+            var selector = (PropertySelector<Product>)text;
 
-        if (UnknownUntilBuilt.Contains(piped))
-            Assert.Null(selector.Type);
-        else
+            Assert.NotNull(selector.Type);
             Assert.Equal(Body(selector).Type, selector.Type);
+        }
     }
-
-    // MAX/MIN widen over every argument, and a property argument has no type until built (typed function arguments).
-    private static readonly HashSet<string> UnknownUntilBuilt =
-    [
-        "Quantity|$FN_MATH_MIN(Digits)",
-        "Price|$FN_MATH_MAX(Ratio)",
-    ];
 
     [Theory]
     [InlineData("Price|$FN_MATH_ROUND(2)", 12.35)]

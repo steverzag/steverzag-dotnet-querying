@@ -179,13 +179,11 @@ public class MathSelectorTests
     }
 
     [Fact]
-    public void MathCeiling_WithPropertyParameter_ReportsNoTypeButStillEvaluates()
+    public void MathCeiling_WithPropertyParameter_DeclaresItsType()
     {
-        // Parameters are always parsed as non-generic selectors, which carry no SelectorType
-        // for a plain property path, so the parameter-derived SelectorType degrades to null.
         PropertySelector<TestItem> selector = $"{SelectorDefaults.MathCeiling}(Value)";
 
-        Assert.Null(selector.Type);
+        Assert.Equal(typeof(double), selector.Type);
         Assert.Equal(2d, Evaluate<double>(selector, new TestItem { Value = 1.2 }));
     }
 
@@ -281,12 +279,12 @@ public class MathSelectorTests
     }
 
     [Fact]
-    public void MathMax_WithAPropertyArgument_DeclaresNoTypeUntilBuilt()
+    public void MathMax_WithAPropertyArgument_DeclaresTheWiderType()
     {
-        // The property argument has no type when parsed, and the wider type depends on it.
         PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}(Amount, 5.0)";
 
-        Assert.Null(selector.Type);
+        Assert.Equal(typeof(double), selector.Type);
+        Assert.Null(((PropertySelector)$"{SelectorDefaults.MathMax}(Amount, 5.0)").Type);
         Assert.Equal(5d, Evaluate<double>(selector, new TestItem { Amount = 2 }));
     }
 

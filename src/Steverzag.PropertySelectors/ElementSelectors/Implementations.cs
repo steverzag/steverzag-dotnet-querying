@@ -43,7 +43,7 @@ namespace Steverzag.PropertySelectors.ElementSelectors
 
 			int? indexValue = null;
 
-			if(index is IntegerValueSelector intIndexSelector)
+			if (index is IIntegerLiteralSelector intIndexSelector)
 			{
 				indexValue = intIndexSelector.Value;
 			}
