@@ -227,6 +227,8 @@ namespace Steverzag.PropertySelectors.Registration
 				: throw new SelectorParseException($"{TokenName(selectorPart)} needs arguments.", selectorPart, 0, TokenName(selectorPart));
 		}
 
+		internal static bool IsRegistered(string token) => TryGetEntry(token, out _);
+
 		private static bool TryGetEntry(string selectorPart, [NotNullWhen(true)] out SelectorRegistration? entry)
 		{
 			Initialize();

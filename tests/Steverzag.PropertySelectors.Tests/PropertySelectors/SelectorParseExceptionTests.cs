@@ -37,11 +37,11 @@ public class SelectorParseExceptionTests
     {
         var exception = Generic("Lines|Missing");
 
-        Assert.Equal("Property 'Missing' was not found on type 'Order'.", exception.Detail);
+        Assert.Equal("Property 'Missing' was not found on type 'Line'.", exception.Detail);
         Assert.Equal("Lines|Missing", exception.Selector);
         Assert.Equal(6, exception.Position);
         Assert.Equal("Missing", exception.Token);
-        Assert.Equal("Property 'Missing' was not found on type 'Order'. Position 6 in 'Lines|Missing'.", exception.Message);
+        Assert.Equal("Property 'Missing' was not found on type 'Line'. Position 6 in 'Lines|Missing'.", exception.Message);
     }
 
     [Fact]

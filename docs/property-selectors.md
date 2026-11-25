@@ -31,7 +31,7 @@ Expression body = avgId.PropertyAccess(parameter);
 | Construct | Form | Example |
 |---|---|---|
 | Property path | `Name(.Name)*`. Any public property works, including members of value types, so date parts are plain paths. On a nullable struct, a member that `Nullable<T>` doesn't have is read from `T` and the result is lifted to nullable: `Deleted.Year` is `int?`, and it's null when `Deleted` is (it builds `x.Deleted == null ? null : (int?)x.Deleted.Value.Year`). `Value` and `HasValue` keep their usual meaning. | `Address.City`, `Created.Year`, `Deleted.Year` |
-| Pipe / chain | `part\|part\|…`, where each part applies to the previous result | `Phones.Id\|$FN_AGGR_SUM` |
+| Pipe / chain | `part\|part\|…`. A pipe separates two selectors. Each part applies to the previous result: it's resolved against the piped value's type exactly as if that type were the root. A property after a function goes after a pipe, because `.` is only for navigation inside a path. See [Dot and pipe](#dot-and-pipe). | `Phones.Id\|$FN_AGGR_SUM`, `Phones\|$FN_ELM_FIRST\|Number`, `Created\|$FN_DT_ADDDAYS(3)\|Year` |
 | Function | `$FN_<NAME>` or `$FN_<NAME>(arg, …)`. Arguments are selectors themselves, resolved against the scope root. A function gets its subject from the pipe or from its first argument; see [Piped and static forms](#piped-and-static-forms). | `$FN_STR_SUBSTRING(0, 3)`, `Price\|$FN_MATH_ROUND(2)` |
 | Number literal | Read with the invariant culture on every machine (decision 017). An integer is `int`, or `long` if it doesn't fit. A `.` or an exponent makes it `double`. The suffix `L` gives `long` and `m` gives `decimal`. A minus sign in front of a number is part of it. A number that doesn't fit its type is rejected. | `55`, `-3`, `1.5`, `1e-3`, `5L`, `9.99m` |
 | Boolean literal | `true` / `false`, in any case. | `true` |
@@ -44,6 +44,24 @@ Expression body = avgId.PropertyAccess(parameter);
 Values typed by end users should travel as filter values (QueryShaper's `SearchValue`), not inside selector text.
 
 All tokens are constants on `SelectorDefaults`. Prefer those constants to string literals in your code.
+
+### Dot and pipe
+
+`.` and `|` mean different things (decision 022):
+
+- **`.` navigates** inside one property selector: `Address.City`, `Phones.Number`, `Created.Year`. It's plain member
+  access, with projection over collections and lifting over nullable structs, so it always translates.
+- **`|` separates two selectors.** You need it wherever the next step isn't a member of the previous one: a function
+  (`Phones|$FN_AGGR_COUNT`), or a property after a function (`Phones|$FN_ELM_FIRST|Number`,
+  `Created|$FN_DT_ADDDAYS(3)|Year`, `Nickname|$FN_COALESCE(Name)|Length`).
+- **A selector after `|` is resolved against the piped value**, exactly as it would be against a root of that type.
+  So `Address|City` builds the same as `Address.City`, and a collection piped into a property projects:
+  `Phones|Number` builds `Phones.Number`. Both are allowed, but `.` is the preferred way to write navigation.
+- **`.` after a function is rejected**, and the message shows the piped form. `$FN_ELM_FIRST.Number` gives
+  "A member can't follow a function with '.'. Write it after a pipe: '$FN_ELM_FIRST|Number'.", and
+  `$FN_DT_ADDDAYS(3).Year` gives the same message with `'$FN_DT_ADDDAYS(3)|Year'`.
+- Function **arguments** follow a different rule: they resolve against the scope root, not the piped value
+  (see [Piped and static forms](#piped-and-static-forms)).
 
 ## Function catalog
 
@@ -196,7 +214,7 @@ Anything wrong with the selector text is a `SelectorParseException`, which deriv
 | `Message` | `Detail` plus "Position N in '…'.", with the token added when `Detail` doesn't already name it. |
 
 ```
-"Lines|Missing"                              → Property 'Missing' was not found on type 'Order'. Position 6 in 'Lines|Missing'.
+"Lines|Missing"                              → Property 'Missing' was not found on type 'Line'. Position 6 in 'Lines|Missing'.
 "$FN_MATH_MAX(Amount, $FN_MATH_SQRT(Missing))" → position 35, inside the nested argument
 "Amount * 2 3"                               → Unexpected '3': an operator is missing before it. Position 11 in 'Amount * 2 3'.
 "Name|$FN_NOPE(1)"                           → Unknown function '$FN_NOPE'. Position 5 in 'Name|$FN_NOPE(1)'.

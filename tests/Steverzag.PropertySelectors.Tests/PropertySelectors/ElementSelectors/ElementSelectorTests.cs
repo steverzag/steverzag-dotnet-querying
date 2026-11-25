@@ -88,8 +88,6 @@ public class ElementSelectorTests
     [Fact]
     public void ElementFirst_ChainedWithAProperty_ReadsThePropertyOfTheElement()
     {
-        // Only the non-generic operator supports this chain today — see
-        // ElementFirst_ChainedWithAProperty_OnGenericSelector_ThrowsBecausePlainPartsResolveAgainstTheRoot.
         PropertySelector selector = $"Lines{Delimiter}{SelectorDefaults.ElementFirst}{Delimiter}Name";
 
         var result = Evaluate<string>(selector, SampleOrder());
@@ -98,18 +96,12 @@ public class ElementSelectorTests
     }
 
     [Fact]
-    public void ElementFirst_ChainedWithAProperty_OnGenericSelector_ThrowsBecausePlainPartsResolveAgainstTheRoot()
+    public void ElementFirst_ChainedWithAProperty_OnGenericSelector_ReadsThePropertyOfTheElement()
     {
-        // Known limitation of the generic operator: it threads the running element type into
-        // the registry for function parts, but a plain property part is always built as
-        // PropertySelector<T> against the ROOT type, so "Name" is looked up on TestOrder
-        // instead of on the TestLine the preceding function returned.
-        var exception = Assert.Throws<SelectorParseException>(() =>
-        {
-            PropertySelector<TestOrder> selector = $"Lines{Delimiter}{SelectorDefaults.ElementFirst}{Delimiter}Name";
-        });
+        PropertySelector<TestOrder> selector = $"Lines{Delimiter}{SelectorDefaults.ElementFirst}{Delimiter}Name";
 
-        Assert.Contains(nameof(TestOrder), exception.Message);
+        Assert.Equal(typeof(string), selector.Type);
+        Assert.Equal("first", Evaluate<string>(selector, SampleOrder()));
     }
 
     [Fact]

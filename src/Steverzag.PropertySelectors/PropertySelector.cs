@@ -53,7 +53,7 @@ namespace Steverzag.PropertySelectors
 
 					return ValueSelectorFactory.TryCreate<T>(selectorPart, out var valueSelector)
 						? valueSelector
-						: new PropertySelector<T>(selectorPart);
+						: PropertySelectorUtils.CreatePropertySegment(selectorPart, currentIterationType);
 				});
 
 				if (result is null)

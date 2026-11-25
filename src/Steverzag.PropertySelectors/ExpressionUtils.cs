@@ -129,7 +129,10 @@ namespace Steverzag.PropertySelectors
 						return CreateLiftedMemberAccess(current, parts, i);
 
 					if (!TryGetGroupingTypes(target.Type, out var _, out var groupElementType) || groupElementType is null)
-						throw Extensions.TypesExtensions.PropertyNotFound(part, current.Type, string.Join('.', parts), parts.Take(i).Sum(p => p.Length + 1), e);
+					{
+						if (i != index || !TryGetEnumerableElementType(target.Type, out groupElementType) || groupElementType is null)
+							throw Extensions.TypesExtensions.PropertyNotFound(part, current.Type, string.Join('.', parts), parts.Take(i).Sum(p => p.Length + 1), e);
+					}
 
 					var param = Expression.Parameter(groupElementType, "y");
 					var innerAccess = CreateMemberAccessRec(param, parts, index);

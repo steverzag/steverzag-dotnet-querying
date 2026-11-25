@@ -593,3 +593,38 @@ argument error) or `FormatException`; converting only syntax errors (callers wou
 compared exact messages now compare `Detail`. Build-time errors other than an unknown property, which only the
 non-generic form can hit, stay `InvalidOperationException`; making them `SelectorParseException`s too is a possible
 follow-up. A lone `"` used to be read as a property name and is now an unterminated string.
+
+### 022: A pipe separates selectors; the selector after it resolves against the piped value (2026-11-25)
+**Status:** accepted; implemented (2026-11-25)
+**Context:** the two forms disagreed on a property after a pipe. The non-generic form built each part on the
+expression so far, so `Created|$FN_DT_ADDDAYS(3)|Year` gave `x.Created.AddDays(3).Year`. The generic form created
+every property part as `PropertySelector<T>`, so it looked the property up on the root type: "Property 'Year' was
+not found on type 'Item'". That has been true since the generic form was added (`5e831bb`, 2026-05-24), and it has
+failed outright since `GetPropertyType` started throwing (`a8c7538`, 2026-06-07). A test pinned it as a known
+limitation (`ElementSelectorTests`), and another pinned its message (`SelectorParseExceptionTests`, "'Missing' was
+not found on type 'Order'" for `Lines|Missing`). `.` after a function was rejected with a generic message.
+`Phones|Number` failed in both forms: the generic form when it parsed the selector, the non-generic form when it
+built the expression.
+**Decision:**
+1. **`.` navigates inside one property selector**: member access, with projection over collections and lifting
+   over nullable structs. **`|` separates two selectors.** It exists because a function isn't a member of the value
+   before it (`Phones|$FN_AGGR_COUNT`), and a property after a function isn't part of a path
+   (`Phones|$FN_ELM_FIRST|Id`). The model was reviewed and kept. It keeps navigation, which always translates,
+   apart from operations, and it needs no method-call syntax.
+2. **A selector after `|` is resolved against the piped value's type, exactly as if that type were the root.** In
+   the generic form, a property part is a `PropertySelector<TPiped>`, created through a delegate cached per type.
+   If the piped type isn't known when the selector is parsed, the part is untyped and resolved when the expression
+   is built.
+3. Because of rule 2, `Address|City` is allowed and builds the same as `Address.City`. A collection piped into a
+   property projects: `Phones|Number` builds `Phones.Number` in both forms. `.` is the preferred way to write
+   navigation. Allowing these only turns errors into results, so nothing that worked before changes.
+4. `.` after a function (`$FN_ELM_FIRST.Number`, `$FN_DT_ADDDAYS(3).Year`) is rejected with a
+   `SelectorParseException` that points at the `.` and shows the piped form.
+5. Function arguments are unaffected: they still resolve against the scope root (016), or against the element for
+   the ordering functions (018).
+Rejected: allowing `.` after a function as well. It would give two spellings for the same step and mix navigation
+with operations. It could still be added at the Phase 4 grammar freeze without breaking anything. Also rejected:
+refusing a member after a function, which would remove chains that worked in the non-generic form.
+**Consequence:** `Lines|Missing` now reports the element type ("not found on type 'Line'"). The two tests that
+pinned the old behaviour were rewritten. In the non-generic form, an unknown property in a later part is reported
+when the expression is built, with a position relative to that part (021.4).

@@ -1,5 +1,8 @@
 ﻿using Steverzag.PropertySelectors.ArithmeticSelectors;
 using Steverzag.PropertySelectors.Extensions;
+using Steverzag.PropertySelectors.Registration;
+using System.Collections.Concurrent;
+using System.Reflection;
 
 namespace Steverzag.PropertySelectors
 {
@@ -49,11 +52,37 @@ namespace Steverzag.PropertySelectors
 			}
 		}
 
+		private static readonly ConcurrentDictionary<Type, Func<string, PropertySelector>> PropertySegmentFactories = new();
+
+		private static readonly MethodInfo CreateTypedPropertySegmentMethod =
+			typeof(PropertySelectorUtils).GetMethod(nameof(CreateTypedPropertySegment), BindingFlags.NonPublic | BindingFlags.Static)!;
+
+		private static PropertySelector CreateTypedPropertySegment<TScope>(string selectorPart) => new PropertySelector<TScope>(selectorPart);
+
+		internal static PropertySelector CreatePropertySegment(string selectorPart, Type? pipedType)
+		{
+			if (pipedType is null)
+				return new PropertySelector(selectorPart);
+
+			var factory = PropertySegmentFactories.GetOrAdd(pipedType, static type =>
+				CreateTypedPropertySegmentMethod.MakeGenericMethod(type).CreateDelegate<Func<string, PropertySelector>>());
+
+			return factory(selectorPart);
+		}
+
 		internal static SelectorParseException UnknownFunction(string selectorPart)
 		{
 			var name = FunctionName(selectorPart);
+
+			var dot = name.IndexOf('.');
+			if (dot > 0 && SelectorRegistry.IsRegistered(name[..dot]))
+				return MemberAfterFunction(selectorPart, name[..dot], name[(dot + 1)..], dot);
+
 			return new SelectorParseException($"Unknown function '{name}'.", selectorPart, 0, name);
 		}
+
+		internal static SelectorParseException MemberAfterFunction(string selectorPart, string function, string member, int dotPosition)
+			=> new($"A member can't follow a function with '.'. Write it after a pipe: '{function}{SelectorDefaults.PropertyDelimiter}{member}'.", selectorPart, dotPosition, ".");
 
 		internal static string FunctionName(string selectorPart)
 		{
@@ -75,6 +104,9 @@ namespace Steverzag.PropertySelectors
 				throw new SelectorParseException("Unbalanced parentheses: 1 unclosed '('.", selector, startingParenthesesIndex, "(");
 
 			var trailing = selector[(endingParenthesesIndex + 1)..];
+			if (trailing.StartsWith('.') && trailing.Length > 1)
+				throw MemberAfterFunction(selector, selector[..(endingParenthesesIndex + 1)], trailing[1..].Trim(), endingParenthesesIndex + 1);
+
 			if (!string.IsNullOrWhiteSpace(trailing))
 				throw new SelectorParseException($"Unexpected '{trailing.Trim()}' after the closing ')'.", selector, endingParenthesesIndex + 1 + (trailing.Length - trailing.TrimStart().Length), trailing.Trim());
 
