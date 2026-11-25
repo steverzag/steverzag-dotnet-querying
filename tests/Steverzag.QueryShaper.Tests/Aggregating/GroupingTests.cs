@@ -214,6 +214,28 @@ namespace Steverzag.QueryShaper.Tests.Aggregating
 			Assert.Equal(SeedData.Mid.Price, Assert.IsType<decimal>(Value(inactive, priceAvg)));
 		}
 
+		[Fact]
+		public void CountDistinctPerGroup()
+		{
+			const string distinctCategories = "Category.Name|" + SelectorDefaults.CountDistinctAggregateFunction;
+			var results = Grouped([nameof(Product.IsActive)], [Key0, distinctCategories]);
+
+			// Active rows are Hammer (Tools), Shovel and Rake (Garden).
+			Assert.Equal(2, Value(GroupWhere(results, Key0, true), distinctCategories));
+			Assert.Equal(1, Value(GroupWhere(results, Key0, false), distinctCategories));
+		}
+
+		[Fact]
+		public void CountDistinctPerGroup_SkipsNulls()
+		{
+			// Garden's NullableQuantity values are null (Shovel) and 200 (Rake).
+			const string distinctQuantities = "NullableQuantity|" + SelectorDefaults.CountDistinctAggregateFunction;
+			var results = Grouped(["Category.Name"], [Key0, distinctQuantities]);
+
+			Assert.Equal(1, Value(GroupWhere(results, Key0, "Garden"), distinctQuantities));
+			Assert.Equal(2, Value(GroupWhere(results, Key0, "Tools"), distinctQuantities));
+		}
+
 		// ---- computed keys and nested collections
 
 		[Fact]

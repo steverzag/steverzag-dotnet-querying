@@ -36,6 +36,24 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 			return result;
 		}
 
+		internal static MethodCallExpression CreateAggregateCountDistinctFunction(this Expression target)
+		{
+			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType) || elementType is null)
+			{
+				throw new InvalidOperationException("Target is not an enumerable type.");
+			}
+
+			if (!elementType.IsValueType || Nullable.GetUnderlyingType(elementType) is not null)
+			{
+				var item = Expression.Parameter(elementType, "x");
+				var notNull = Expression.Lambda(Expression.NotEqual(item, Expression.Constant(null, elementType)), item);
+				target = Expression.Call(MethodInfos.WhereMethodInfo.MakeGenericMethod(elementType), target, notNull);
+			}
+
+			var distinct = Expression.Call(MethodInfos.DistinctMethodInfo.MakeGenericMethod(elementType), target);
+			return Expression.Call(MethodInfos.CountMethodInfo.MakeGenericMethod(elementType), distinct);
+		}
+
 		internal static MethodCallExpression CreateAggregateSumFunction(this Expression target)
 			=> CallAggregate(target, nameof(Enumerable.Sum));
 

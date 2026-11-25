@@ -49,7 +49,7 @@ All tokens are constants on `SelectorDefaults`. Prefer those constants to string
 
 | Family | Tokens |
 |---|---|
-| Aggregation | `AGGR_COUNT`, `AGGR_LONG_COUNT`, `AGGR_SUM`, `AGGR_AVG`, `AGGR_MIN`, `AGGR_MAX` (`AGGR_COUNTDISTINCT` is declared but not implemented) |
+| Aggregation | `AGGR_COUNT`, `AGGR_LONG_COUNT`, `AGGR_COUNTDISTINCT`, `AGGR_SUM`, `AGGR_AVG`, `AGGR_MIN`, `AGGR_MAX` |
 | Element | `ELM_FIRST`, `ELM_LAST`, `ELM_ATINDEX` |
 | Ordering | `ORDER_ASC`, `ORDER_DESC`, `THEN_ORDER_ASC`, `THEN_ORDER_DESC` |
 | Math | `MATH_CEILING`, `FLOOR`, `ROUND`, `TRUNCATE`, `SIGN`, `POW`, `SQRT`, `EXP`, `LOG`, `LOG10`, `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATAN`, `ATAN2`, `MAX`, `MIN` |
@@ -64,6 +64,7 @@ in SQL (decision 014):
 
 | Function | Element type → result |
 |---|---|
+| `AGGR_COUNT`, `AGGR_COUNTDISTINCT` | `int` (`AGGR_LONG_COUNT`: `long`). `AGGR_COUNTDISTINCT` counts distinct **non-null** values, like SQL's `COUNT(DISTINCT x)`, so `[1, null, 1, 2]` gives 2 in memory and in SQL (decision 020). |
 | `AGGR_SUM` | the element type: `int` → `int`, `decimal?` → `decimal?`, … An empty collection sums to 0. |
 | `AGGR_MIN`, `AGGR_MAX` | the nullable element type: `int` → `int?`, `decimal?` → `decimal?`, … |
 | `AGGR_AVG` | `int`, `long`, `double` → `double?`; `float` → `float?`; `decimal` → `decimal?` (nullable elements give the same) |

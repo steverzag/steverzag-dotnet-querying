@@ -536,3 +536,23 @@ the argument, the piped value or the target. Every built-in function's declared 
 tables found three more declared-type bugs: ordering (`IOrderedQueryable` vs `IOrderedEnumerable`), generic
 `ElementAt` (the collection type instead of the element), and `DT_ADD*` on a nullable subject. A custom function
 declares a table by overriding `Signatures`. The tables are the input for the function metadata (Phase 4).
+
+### 020: `AGGR_COUNTDISTINCT` counts distinct non-null values; `SyntheticFunction` is removed (2026-11-25)
+**Status:** accepted; implemented (2026-11-25)
+**Context:** `$FN_AGGR_COUNTDISTINCT` was declared in `SelectorDefaults` with no selector behind it. The natural
+expression, `x.Distinct().Count()`, counts `null` as one value. EF Core translates it in two ways. Over a group it
+emits `COUNT(DISTINCT x)`, which skips `NULL`, so the same selector gave 2 in memory and 1 on SQLite for
+`[null, 200]`. Over a navigation it runs a `DISTINCT` subquery. `SyntheticFunction` was an empty internal record that
+nothing used, in the misspelt `SyntheticFuncions` folder.
+**Decision:** `AGGR_COUNTDISTINCT` takes no arguments, applies to a collection, returns `int`, and counts **distinct
+non-null values**, like SQL's `COUNT(DISTINCT x)`. When the element type can be null it builds
+`x.Where(e => e != null).Distinct().Count()`. For other element types it builds `x.Distinct().Count()`. Distinct
+values on a projection are written with the projection (`Reviews.Stars|$FN_AGGR_COUNTDISTINCT`), so there is no form
+that takes a selector argument. `SyntheticFunction` and its folder are deleted for now, because the stub had no design
+behind it. The feature itself is wanted: synthetic (composed) functions are planned for later, and the open questions
+are listed in the roadmap (Phase 6, "Synthetic functions"). The stub can be recovered from `f98d935`.
+Rejected: keeping .NET's semantics (null counts once). Grouped queries would disagree with memory on every provider,
+because `COUNT(DISTINCT)` skipping nulls is standard SQL.
+**Consequence:** in memory, `COUNTDISTINCT` differs from `Distinct().Count()` for nullable elements. That is
+documented in `property-selectors.md`. Tests cover both selector forms, nullable values and references, the
+per-row and grouped SQLite paths, and declared type = built type.

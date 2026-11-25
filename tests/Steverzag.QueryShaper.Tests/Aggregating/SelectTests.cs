@@ -48,6 +48,27 @@ namespace Steverzag.QueryShaper.Tests.Aggregating
 		}
 
 		[Fact]
+		public void CountDistinctOverACollection()
+		{
+			const string distinctStars = "Reviews.Stars|" + SelectorDefaults.CountDistinctAggregateFunction;
+
+			var rows = Select([distinctStars]);
+
+			Assert.Equal([2, 1, 0, 2], rows.Select(r => Value(r, distinctStars)));
+		}
+
+		[Fact]
+		public void CountDistinctOverACollection_SkipsNulls()
+		{
+			// Measurements: [1, null] | [2] | [] | [1, 2]
+			const string distinctMeasurements = "Measurements|" + SelectorDefaults.CountDistinctAggregateFunction;
+
+			var rows = Select([distinctMeasurements]);
+
+			Assert.Equal([1, 1, 0, 2], rows.Select(r => Value(r, distinctMeasurements)));
+		}
+
+		[Fact]
 		public void ValuesAreLabelledWithTheFullSelector()
 		{
 			var rows = Select([nameof(Product.Name), ReviewCount, MaxStars]);

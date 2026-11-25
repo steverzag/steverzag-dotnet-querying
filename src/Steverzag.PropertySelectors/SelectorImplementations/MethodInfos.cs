@@ -26,6 +26,11 @@ namespace Steverzag.PropertySelectors.SelectorImplementations
 				.First(m => m.Name == "Count" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo LongCountMethodInfo = typeof(Enumerable).GetMethods()
 				.First(m => m.Name == "LongCount" && m.GetParameters().Length == 1);
+		internal readonly static MethodInfo WhereMethodInfo = typeof(Enumerable).GetMethods()
+				.First(m => m.Name == "Where" && m.GetParameters().Length == 2
+					&& m.GetParameters()[1].ParameterType.GetGenericArguments().Length == 2);
+		internal readonly static MethodInfo DistinctMethodInfo = typeof(Enumerable).GetMethods()
+				.First(m => m.Name == "Distinct" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo MathPowerMethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Pow" && m.GetParameters().Length == 2);
 		internal readonly static MethodInfo MathCeilingMethodInfo = typeof(Math).GetMethods()

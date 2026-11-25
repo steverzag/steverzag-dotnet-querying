@@ -172,6 +172,79 @@ public class AggregationSelectorTests
         Assert.Equal(3L, Evaluate<long>(selector, SampleOrder()));
     }
 
+    // ── CountDistinct ───────────────────────────────────────────────────────
+
+    [Fact]
+    public void CountDistinct_CountsEachValueOnce()
+    {
+        PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+
+        var result = Evaluate<int>(selector, new TestOrder { Numbers = [10, 20, 10, 30, 20] });
+
+        Assert.Equal(typeof(int), selector.Type);
+        Assert.Equal(3, result);
+    }
+
+    [Fact]
+    public void CountDistinct_OnProjectedCollection_CountsDistinctValues()
+    {
+        PropertySelector<TestOrder> selector = $"Lines.Amount{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+        var order = new TestOrder { Lines = [new() { Amount = 5 }, new() { Amount = 5 }, new() { Amount = 7 }] };
+
+        Assert.Equal(2, Evaluate<int>(selector, order));
+    }
+
+    [Fact]
+    public void CountDistinct_SkipsNulls()
+    {
+        // Like SQL's COUNT(DISTINCT x), so the in-memory and translated results agree.
+        PropertySelector<TestOrder> selector = $"NullableInts{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+
+        Assert.Equal(3, Evaluate<int>(selector, new TestOrder { NullableInts = [1, null, 2, null, 1, 4] }));
+        Assert.Equal(0, Evaluate<int>(selector, new TestOrder { NullableInts = [null, null] }));
+    }
+
+    [Fact]
+    public void CountDistinct_SkipsNullReferences()
+    {
+        PropertySelector<TestOrder> selector = $"Names{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+
+        Assert.Equal(2, Evaluate<int>(selector, new TestOrder { Names = ["a", null!, "b", "a"] }));
+    }
+
+    [Fact]
+    public void CountDistinct_OnEmptyCollection_ReturnsZero()
+    {
+        PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+
+        Assert.Equal(0, Evaluate<int>(selector, new TestOrder()));
+    }
+
+    [Fact]
+    public void CountDistinct_OnNonGenericSelector_CountsEachValueOnce()
+    {
+        PropertySelector selector = $"Numbers{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+
+        Assert.Equal(3, Evaluate<int>(selector, new TestOrder { Numbers = [10, 20, 10, 30] }));
+    }
+
+    [Fact]
+    public void CountDistinct_IsNotMistakenForCount()
+    {
+        PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+
+        Assert.Equal($"Numbers{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}", selector.ToString());
+    }
+
+    [Fact]
+    public void CountDistinct_OnNonEnumerableProperty_ThrowsInvalidOperationExceptionAtParseTime()
+    {
+        Assert.Throws<InvalidOperationException>(() =>
+        {
+            PropertySelector<TestOrder> selector = $"Code{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
+        });
+    }
+
     // ── Sum ─────────────────────────────────────────────────────────────────
 
     [Fact]

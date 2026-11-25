@@ -218,6 +218,7 @@ public class SignatureResolutionTests
     [Theory]
     [InlineData("Lines.Weight|$FN_AGGR_COUNT")]
     [InlineData("Lines.Weight|$FN_AGGR_LONG_COUNT")]
+    [InlineData("Lines.Weight|$FN_AGGR_COUNTDISTINCT")]
     [InlineData("Lines.Weight|$FN_AGGR_SUM")]
     [InlineData("Lines.Weight|$FN_AGGR_AVG")]
     [InlineData("Lines.Weight|$FN_AGGR_MIN")]
