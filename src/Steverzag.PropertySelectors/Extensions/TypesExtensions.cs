@@ -27,10 +27,7 @@ public static class TypesExtensions
 
 		Type currentType = rootType;
 
-		// This stores the OUTERMOST collection type only
-		// so nested collections behave like SelectMany()
-		Type? outerCollectionType = null;
-
+		var projected = false;
 		var segmentOffset = 0;
 		var lifted = false;
 		foreach (var propertyName in propertyPath.Split('.'))
@@ -38,13 +35,9 @@ public static class TypesExtensions
 			var offset = segmentOffset;
 			segmentOffset += propertyName.Length + 1;
 
-			if (TryGetCollectionInfo(currentType, out var itemType, out var collectionType))
+			if (ExpressionUtils.TryGetEnumerableElementType(currentType, out var itemType) && itemType is not null)
 			{
-				// Preserve only the first collection encountered
-				if (outerCollectionType is null)
-					outerCollectionType = collectionType;
-
-				// Continue traversal using the inner type
+				projected = true;
 				currentType = itemType;
 			}
 
@@ -75,70 +68,12 @@ public static class TypesExtensions
 		if (lifted)
 			currentType = ExpressionUtils.LiftToNullable(currentType);
 
-		// Final unwrap if result itself is still a collection
-		if (outerCollectionType is not null && TryGetCollectionInfo(currentType, out var finalItemType, out _))
-		{
+		if (!projected)
+			return currentType;
+
+		if (ExpressionUtils.TryGetEnumerableElementType(currentType, out var finalItemType) && finalItemType is not null)
 			currentType = finalItemType;
-		}
-		// Final unwrap if result itself is still a collection
-		//if (TryGetCollectionInfo(currentType, out var finalItemType, out _))
-		//{
-		//	currentType = finalItemType;
-		//}
 
-		// Rebuild only using the OUTERMOST collection type
-		if (outerCollectionType is not null)
-		{
-			currentType = outerCollectionType.MakeGenericType(currentType);
-		}
-
-		return currentType;
-	}
-
-	private static bool TryGetCollectionInfo(
-		Type type,
-		[NotNullWhen(true)] out Type? itemType,
-		[NotNullWhen(true)] out Type? collectionType)
-	{
-		itemType = null;
-		collectionType = null;
-
-		if (type == typeof(string))
-			return false;
-
-		// Direct generic collections
-		if (type.IsGenericType &&
-			typeof(IEnumerable).IsAssignableFrom(type))
-		{
-			var args = type.GetGenericArguments();
-
-			if (args.Length == 1)
-			{
-				itemType = args[0];
-				collectionType = type.GetGenericTypeDefinition();
-				return true;
-			}
-		}
-
-		// Interface fallback
-		var enumerableInterface = type
-			.GetInterfaces()
-			.FirstOrDefault(i =>
-				i.IsGenericType &&
-				i.GetGenericTypeDefinition() == typeof(IEnumerable<>));
-
-		if (enumerableInterface != null)
-		{
-			itemType = enumerableInterface.GetGenericArguments()[0];
-
-			if (type.IsGenericType)
-				collectionType = type.GetGenericTypeDefinition();
-			else
-				collectionType = typeof(IEnumerable<>);
-
-			return true;
-		}
-
-		return false;
+		return typeof(IEnumerable<>).MakeGenericType(currentType);
 	}
 }

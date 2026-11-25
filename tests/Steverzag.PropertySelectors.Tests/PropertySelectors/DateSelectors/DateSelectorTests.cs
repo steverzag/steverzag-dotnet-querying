@@ -381,7 +381,7 @@ public class DateSelectorTests
         var body = ExpressionUtils.CreateMemberAccess(parameter, nonGeneric);
         var result = Expression.Lambda<Func<Parent, IEnumerable<int?>>>(body, parameter).Compile()(parent);
 
-        Assert.Equal(typeof(int?), generic.SelectorType!.GetGenericArguments()[0]);
+        Assert.Equal(typeof(IEnumerable<int?>), generic.SelectorType);
         Assert.Equal([2024, null], result);
     }
 
