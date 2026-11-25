@@ -34,7 +34,6 @@ public class MathSelectorTests
         return lambda(item);
     }
 
-    private const string DoubleValue = SelectorDefaults.DoubleValueSpecifier + SelectorDefaults.ValuePrefix;
 
     // ── Powers and roots ────────────────────────────────────────────────────
 
@@ -118,7 +117,7 @@ public class MathSelectorTests
     [Fact]
     public void MathCeiling_WithFractionalValue_RoundsUp()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathCeiling}({DoubleValue}1.2)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathCeiling}(1.2)";
 
         Assert.Equal(2d, Evaluate<double>(selector, new TestItem()));
     }
@@ -126,7 +125,7 @@ public class MathSelectorTests
     [Fact]
     public void MathFloor_WithFractionalValue_RoundsDown()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathFloor}({DoubleValue}1.8)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathFloor}(1.8)";
 
         Assert.Equal(1d, Evaluate<double>(selector, new TestItem()));
     }
@@ -134,7 +133,7 @@ public class MathSelectorTests
     [Fact]
     public void MathTruncate_WithFractionalValue_DropsTheFraction()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathTruncate}({DoubleValue}-1.9)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathTruncate}(-1.9)";
 
         Assert.Equal(-1d, Evaluate<double>(selector, new TestItem()));
     }
@@ -146,7 +145,7 @@ public class MathSelectorTests
     public void MathRound_WithSingleParameter_UsesBankersRounding(string payload, double expected)
     {
         // Math.Round(double) rounds midpoints to the nearest even number.
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathRound}({DoubleValue}{payload})";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathRound}({payload})";
 
         Assert.Equal(expected, Evaluate<double>(selector, new TestItem()));
     }
@@ -154,7 +153,7 @@ public class MathSelectorTests
     [Fact]
     public void MathRound_WithDigitsParameter_RoundsToThatManyDigits()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathRound}({DoubleValue}1.2345, 2)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathRound}(1.2345, 2)";
 
         Assert.Equal(1.23d, Evaluate<double>(selector, new TestItem()));
     }
@@ -187,11 +186,11 @@ public class MathSelectorTests
 
     [Theory]
     [InlineData("-4.5", -1)]
-    [InlineData("0", 0)]
+    [InlineData("0.0", 0)]
     [InlineData("4.5", 1)]
     public void MathSign_ReturnsTheSignAsInteger(string payload, int expected)
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathSign}({DoubleValue}{payload})";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathSign}({payload})";
 
         Assert.Equal(typeof(int), selector.Type);
         Assert.Equal(expected, Evaluate<int>(selector, new TestItem()));
@@ -261,7 +260,7 @@ public class MathSelectorTests
     [Fact]
     public void MathMax_WithTwoLiterals_ReturnsTheLarger()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}({DoubleValue}2, {DoubleValue}5)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}(2.0, 5.0)";
 
         Assert.Equal(5d, Evaluate<double>(selector, new TestItem()));
     }
@@ -269,7 +268,7 @@ public class MathSelectorTests
     [Fact]
     public void MathMin_WithTwoLiterals_ReturnsTheSmaller()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMin}({DoubleValue}2, {DoubleValue}5)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMin}(2.0, 5.0)";
 
         Assert.Equal(2d, Evaluate<double>(selector, new TestItem()));
     }
@@ -277,7 +276,7 @@ public class MathSelectorTests
     [Fact]
     public void MathMax_SetsSelectorTypeToTheWiderParameterType()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}(Amount, {DoubleValue}5)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}(Amount, 5.0)";
 
         Assert.Equal(typeof(double), selector.Type);
         Assert.Equal(5d, Evaluate<double>(selector, new TestItem { Amount = 2 }));

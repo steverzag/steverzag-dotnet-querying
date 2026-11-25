@@ -74,7 +74,10 @@ public class SelectorToStringTests
             "Quantity * -LongValue",
             "Numbers|$FN_AGGR_MAX + Quantity",
             "First|$FN_COALESCE(Second) + 1",
-            "Quantity * $VAL_DOUBLE:1.5",
+            "Quantity * -2",
+            "Quantity * 1.5m",
+            "Quantity * 1.5",
+            "-2.5 * Quantity - 1",
             "$FN_MATH_POW(Quantity + LongValue, Quantity)",
         ];
 
@@ -98,11 +101,11 @@ public class SelectorToStringTests
     [InlineData("Name|$FN_STR_REPLACE(\"l\",\"-\")", "Name|$FN_STR_REPLACE(\"l\", \"-\")")]
     [InlineData("(Quantity * LongValue) + Quantity", "Quantity * LongValue + Quantity")]
     [InlineData("\"n/a\"", "\"n/a\"")]
-    [InlineData("$VAL_STR:n/a", "\"n/a\"")]
-    [InlineData("$VAL_STR:say \"hi\"", "$VAL_STR:say \"hi\"")]
-    [InlineData("$VAL_INT:42", "42")]
-    [InlineData("$VAL_INT:-5", "$VAL_INT:-5")]
-    [InlineData("$VAL_BOOL:True", "true")]
+    [InlineData("TRUE", "true")]
+    [InlineData("2.50", "2.5")]
+    [InlineData("5l", "5L")]
+    [InlineData("1e3", "1000.0")]
+    [InlineData("Quantity * -(2)", "Quantity * -2")]
     public void EquivalentText_IsNormalized(string selector, string expected)
     {
         Assert.Equal(expected, ((PropertySelector<TestItem>)selector).ToString());
@@ -121,6 +124,10 @@ public class SelectorToStringTests
     [InlineData("Quantity - -LongValue")]
     [InlineData("-(-Quantity)")]
     [InlineData("Name|$FN_STR_INDEXOF(\"l\") + Inner.Value")]
+    [InlineData("-1.5 * Quantity + 2.5")]
+    [InlineData("-(Quantity - 1.5) / 2.0")]
+    [InlineData("LongValue * 3L - 1")]
+    [InlineData("Nickname|$FN_COALESCE(\"say \"\"hi\"\", (a|b)\")")]
     public void ReparsingTheText_GivesTheSameValue(string selector)
     {
         foreach (var generic in new[] { true, false })

@@ -1,10 +1,3 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Steverzag.PropertySelectors.ValueSelectors
 {
 	internal record IntegerValueSelector<T> : PropertySelector<T>
@@ -12,17 +5,11 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 		public int Value { get; set; }
 		public override Type? SelectorType { get; init; } = typeof(int);
 
-		public IntegerValueSelector(int value) : base(SelectorDefaults.IntegerValueSpecifier + SelectorDefaults.ValuePrefix + value.ToString(CultureInfo.InvariantCulture))
+		public IntegerValueSelector(int value) : base(SelectorLiteral.Format(value))
 		{
 			Value = value;
-
-			PropertyAccess = (_) =>
-			{
-				return Implementations.CreateIntConstantAccesor(value);
-			};
+			PropertyAccess = (_) => Implementations.CreateConstantAccessor(value);
 		}
-
-		protected override string SegmentToString() => Implementations.FormatIntLiteral(Value, PlainValue);
 	}
 
 	internal record IntegerValueSelector : PropertySelector
@@ -30,16 +17,10 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 		public int Value { get; set; }
 		public override Type? SelectorType { get; init; } = typeof(int);
 
-		public IntegerValueSelector(int value) : base(SelectorDefaults.IntegerValueSpecifier + SelectorDefaults.ValuePrefix + value.ToString(CultureInfo.InvariantCulture))
+		public IntegerValueSelector(int value) : base(SelectorLiteral.Format(value))
 		{
 			Value = value;
-
-			PropertyAccess = (_) =>
-			{
-				return Implementations.CreateIntConstantAccesor(value);
-			};
+			PropertyAccess = (_) => Implementations.CreateConstantAccessor(value);
 		}
-
-		protected override string SegmentToString() => Implementations.FormatIntLiteral(Value, PlainValue);
 	}
 }

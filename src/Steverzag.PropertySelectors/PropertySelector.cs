@@ -40,7 +40,6 @@ namespace Steverzag.PropertySelectors
 			foreach (var selectorPart in selectorParts)
 			{
 				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.FunctionStart);
-				var isSpecifierPart = selectorPart.StartsWith(SelectorDefaults.SpecifierStart);
 
 				PropertySelector propertySelector;
 
@@ -159,7 +158,6 @@ namespace Steverzag.PropertySelectors
 			foreach (var selectorPart in selectorParts)
 			{
 				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.FunctionStart);
-				var isSpecifierPart = selectorPart.StartsWith(SelectorDefaults.SpecifierStart);
 
 				PropertySelector propertySelector;
 
@@ -168,14 +166,6 @@ namespace Steverzag.PropertySelectors
 					propertySelector = SelectorRegistry.TryResolveNonGeneric(selectorPart, out var registeredSelector)
 						? registeredSelector
 						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
-				}
-				else if (isSpecifierPart)
-				{
-					propertySelector = selectorPart switch
-					{
-						//SelectorDefaults.OrderDescending => new OrderBy(),
-						_ => throw new NotSupportedException($"The specifier '{selectorPart}' is not supported.")
-					};
 				}
 				else if (ValueSelectorFactory.TryCreate(selectorPart, out var valueSelector))
 				{

@@ -9,10 +9,7 @@ namespace Steverzag.PropertySelectors
 		public const string PropertyDelimiter = "|";
 		public const string ComplexSelectorStart = "$";
 		public const string FunctionStart = ComplexSelectorStart + "FN_";
-		public const string SpecifierStart = ComplexSelectorStart + "SPEC_";
-		public const string ValueStart = ComplexSelectorStart + "VAL_";
 		public const string ArithmeticStart = ComplexSelectorStart + "ARITH_";
-		public const string ValuePrefix = ":";
 
 
 		public const string CountAggregateFunction = FunctionStart + "AGGR_COUNT";
@@ -80,16 +77,12 @@ namespace Steverzag.PropertySelectors
 		public const string DateNow = FunctionStart + "DT_NOW";
 		public const string DateUtcNow = FunctionStart + "DT_UTCNOW";
 		public const string DateToday = FunctionStart + "DT_TODAY";
+		public const string DateTimeLiteral = FunctionStart + "DT_DATETIME";
+		public const string DateOnlyLiteral = FunctionStart + "DT_DATEONLY";
+		public const string TimeOnlyLiteral = FunctionStart + "DT_TIMEONLY";
 
 		public const string Coalesce = FunctionStart + "COALESCE";
 
-		public const string IntegerValueSpecifier = ValueStart + "INT";
-		public const string DoubleValueSpecifier = ValueStart + "DOUBLE";
-		public const string BooleanValueSpecifier = ValueStart + "BOOL";
-		public const string StringValueSpecifier = ValueStart + "STR";
-		public const string DateTimeValueSpecifier = ValueStart + "DATETIME";
-		public const string DateOnlyValueSpecifier = ValueStart + "DATE";
-		public const string TimeOnlyValueSpecifier = ValueStart + "TIME";
 
 		public const string ArithmeticOperation = ArithmeticStart + "OPERATION";
 		public const string ArithmeticOperationEncloser = "::";

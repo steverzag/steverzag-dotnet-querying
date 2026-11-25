@@ -272,7 +272,7 @@ are not supported.
    grammar is frozen.
 
 ### 017: Literals are written plainly; `$VAL_*:` specifiers are removed (2026-11-24)
-**Status:** accepted; not implemented yet
+**Status:** accepted; implemented (2026-11-24)
 **Context:** a literal can be written in two ways. The original form is a specifier, `$VAL_INT:5` or
 `$VAL_DATETIME:2024-01-01T00:00:00`. Bare literals (`5`, `1.5`, `true`, `"text"`) came later, and the two now coexist.
 Fixing `ToString()` (Phase 3) showed what the specifier form costs:
@@ -302,10 +302,12 @@ and a date-time and a date-only value would look the same.
    text need no change: a doubled quote closes the literal and reopens it at once, so the characters inside stay
    skipped. Only the literal's value has to turn `""` into `"`.
 5. **Dates and times are constructor functions taking one quoted string**: `$FN_DT_DATETIME("2024-01-01T08:30:00")`,
-   `$FN_DT_DATE("2024-01-01")` and `$FN_DT_TIME("08:30")`. The string is read with the invariant culture, the same way
-   the `$VAL_` forms are read today. The argument must be a string literal, and it is checked when the selector is
-   parsed, so a bad date fails then and not when the expression is built. The result is a constant, like any other
-   literal.
+   `$FN_DT_DATEONLY("2024-01-01")` and `$FN_DT_TIMEONLY("08:30")`. They are named after the .NET types, not
+   `DT_DATE`/`DT_TIME`, so that those names stay free for the parts of a date (§9: `DT_DATE` as `DateTime.Date`). The
+   string is read with the invariant culture, and a date-time keeps its kind (`DateTimeStyles.RoundtripKind`: a
+   trailing `Z` stays UTC instead of being converted to local time). The argument must be a string literal, and it is
+   checked when the selector is parsed, so a bad date fails then and not when the expression is built. The result is
+   a constant, like any other literal.
 6. **`$VAL_*:` is removed, with no alias.** That means `ValueStart`, `ValuePrefix`, the seven value specifiers, and
    the code paths that treat a `$VAL_` value as opaque. `SpecifierStart` and the non-generic parser's unused specifier
    branch go too, which settles D5.
@@ -314,6 +316,19 @@ and a date-time and a date-only value would look the same.
 8. **The library formats literals for callers.** A public helper (name to be chosen, e.g.
    `SelectorLiteral.Format(object)`) turns a .NET value into its literal text, so .NET code that builds selectors never
    writes quoting or date formatting by hand. `ToString()` uses the same code.
+9. **Dates and times are a function family, and the goal is a broad catalog.** The three constructors are the first
+   step. The family should end up covering most of what callers do with dates in .NET, under the `DT_` prefix:
+   - **Construct:** `DT_DATETIME`, `DT_DATEONLY`, `DT_TIMEONLY` (this decision).
+   - **Current time:** `DT_NOW`, `DT_UTCNOW`, `DT_TODAY` (they exist).
+   - **Add:** `DT_ADDYEARS` … `DT_ADDMILLISECONDS` (they exist; their form, piped or static, waits for 016).
+   - **Parts:** `DT_YEAR`, `DT_MONTH`, `DT_DAY`, `DT_HOUR`, `DT_MINUTE`, `DT_SECOND`, `DT_MILLISECOND`,
+     `DT_DAYOFWEEK`, `DT_DAYOFYEAR`.
+   - **Truncate and convert:** `DT_DATE` (`DateTime.Date`), `DT_TIMEOFDAY`, `DT_TODATEONLY`, `DT_TOTIMEONLY`.
+   - **Differences:** days, hours and so on between two dates.
+
+   Each function should work on `DateTime`, `DateOnly` and `TimeOnly` wherever .NET has the member, and must
+   translate to SQL. Differences need care: the core can't reference EF Core (006), and providers translate
+   `(a - b).TotalDays` differently. The list is a target, not a contract, and it grows on the roadmap.
 
 **Considered:**
 - **Keep `$VAL_` and give its value an end** (stop at the operand's boundary). Rejected: each new context, such as
@@ -337,6 +352,7 @@ and a date-time and a date-only value would look the same.
   to track escapes. Doubling needs neither.
 
 **Consequence:** a breaking change in the selector grammar, made before any release. Selectors using `$VAL_` must be
-rewritten (`$VAL_INT:5` → `5`, `$VAL_STR:x` → `"x"`, `$VAL_DATETIME:…` → `$FN_DT_DATETIME("…")`). A bare number now
+rewritten (`$VAL_INT:5` → `5`, `$VAL_STR:x` → `"x"`, `$VAL_DATETIME:…` → `$FN_DT_DATETIME("…")`,
+`$VAL_DATE:…` → `$FN_DT_DATEONLY("…")`, `$VAL_TIME:…` → `$FN_DT_TIMEONLY("…")`). A bare number now
 means the same on every machine. The tests that pin `$VAL_` forms (mainly `ValueSelectorTests`, `SelectorDefaultsTests`
 and `DateSelectorTests`) are rewritten to the new forms.

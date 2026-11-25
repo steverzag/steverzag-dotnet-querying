@@ -13,10 +13,6 @@ public class ValueSelectorTests
         public string Name { get; set; } = string.Empty;
     }
 
-    /// <summary>
-    /// Value selectors ignore the target expression entirely, so a null target is enough
-    /// to build their body. Also asserts the body really is a constant.
-    /// </summary>
     private static ConstantExpression BuildConstant(PropertySelector selector)
     {
         var body = selector.PropertyAccess(null);
@@ -27,6 +23,20 @@ public class ValueSelectorTests
     {
         var body = selector.PropertyAccess(null);
         return Expression.Lambda<Func<TResult>>(body).Compile()();
+    }
+
+    private static object? EvaluateBoxed(PropertySelector selector)
+    {
+        var body = Expression.Convert(selector.PropertyAccess(null), typeof(object));
+        return Expression.Lambda<Func<object?>>(body).Compile()();
+    }
+
+    private static void InCulture(string culture, Action action)
+    {
+        var previous = CultureInfo.CurrentCulture;
+        CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(culture);
+        try { action(); }
+        finally { CultureInfo.CurrentCulture = previous; }
     }
 
     // ── Integer ─────────────────────────────────────────────────────────────
@@ -58,24 +68,35 @@ public class ValueSelectorTests
     }
 
     [Theory]
-    [InlineData(0)]
-    [InlineData(-7)]
-    [InlineData(int.MaxValue)]
-    [InlineData(int.MinValue)]
-    public void IntegerValueSelector_WithEdgeValues_KeepsValue(int value)
+    [InlineData(0, "0")]
+    [InlineData(-7, "-7")]
+    [InlineData(int.MaxValue, "2147483647")]
+    [InlineData(int.MinValue, "-2147483648")]
+    public void IntegerValueSelector_PlainValueIsTheBareLiteral(int value, string expected)
     {
         var selector = new IntegerValueSelector(value);
 
         Assert.Equal(value, Evaluate<int>(selector));
-        Assert.Equal($"{SelectorDefaults.IntegerValueSpecifier}{SelectorDefaults.ValuePrefix}{value}", selector.PlainValue);
+        Assert.Equal(expected, selector.PlainValue);
     }
 
-    [Fact]
-    public void IntegerValueSelector_SetsPlainValueWithSpecifierAndPrefix()
-    {
-        var selector = new IntegerValueSelector(42);
+    // ── Long ────────────────────────────────────────────────────────────────
 
-        Assert.Equal($"{SelectorDefaults.IntegerValueSpecifier}{SelectorDefaults.ValuePrefix}42", selector.PlainValue);
+    [Fact]
+    public void LongValueSelector_ProducesLongConstant_InBothForms()
+    {
+        Assert.Equal(typeof(long), BuildConstant(new LongValueSelector(5)).Type);
+        Assert.Equal(typeof(long), BuildConstant(new LongValueSelector<TestItem>(5)).Type);
+        Assert.Equal(5L, Evaluate<long>(new LongValueSelector(5)));
+    }
+
+    [Theory]
+    [InlineData(5L, "5L")]
+    [InlineData(-5L, "-5L")]
+    [InlineData(long.MaxValue, "9223372036854775807L")]
+    public void LongValueSelector_PlainValueHasTheSuffix(long value, string expected)
+    {
+        Assert.Equal(expected, new LongValueSelector(value).PlainValue);
     }
 
     // ── Double ──────────────────────────────────────────────────────────────
@@ -106,38 +127,48 @@ public class ValueSelectorTests
     }
 
     [Theory]
-    [InlineData(0d)]
-    [InlineData(-2.25d)]
-    [InlineData(double.MaxValue)]
-    [InlineData(double.Epsilon)]
-    public void DoubleValueSelector_WithEdgeValues_KeepsValue(double value)
+    [InlineData(1.5, "1.5")]
+    [InlineData(2d, "2.0")]
+    [InlineData(-2.25, "-2.25")]
+    [InlineData(1e20, "1E+20")]
+    public void DoubleValueSelector_PlainValueIsInvariantAndAlwaysReadsAsADouble(double value, string expected)
     {
-        var selector = new DoubleValueSelector(value);
-
-        Assert.Equal(value, Evaluate<double>(selector));
-    }
-
-    [Fact]
-    public void DoubleValueSelector_SetsPlainValueUsingInvariantCulture()
-    {
-        var selector = new DoubleValueSelector(1.5);
-
-        // Invariant so the emitted plain value parses back the same way on any machine.
-        Assert.Equal($"{SelectorDefaults.DoubleValueSpecifier}{SelectorDefaults.ValuePrefix}1.5", selector.PlainValue);
+        InCulture("es-ES", () => Assert.Equal(expected, new DoubleValueSelector(value).PlainValue));
     }
 
     [Theory]
     [InlineData(1.5)]
     [InlineData(-2.25)]
     [InlineData(0.1)]
+    [InlineData(2d)]
     [InlineData(double.MaxValue)]
+    [InlineData(double.Epsilon)]
     public void DoubleValueSelector_PlainValueRoundTripsThroughParsing(double value)
     {
-        var selector = new DoubleValueSelector(value);
+        PropertySelector reparsed = new DoubleValueSelector(value).PlainValue;
 
-        PropertySelector reparsed = selector.PlainValue;
-
+        Assert.IsType<DoubleValueSelector>(reparsed);
         Assert.Equal(value, Evaluate<double>(reparsed));
+    }
+
+    // ── Decimal ─────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void DecimalValueSelector_ProducesDecimalConstant_InBothForms()
+    {
+        Assert.Equal(typeof(decimal), BuildConstant(new DecimalValueSelector(1.5m)).Type);
+        Assert.Equal(typeof(decimal), BuildConstant(new DecimalValueSelector<TestItem>(1.5m)).Type);
+        Assert.Equal(1.5m, Evaluate<decimal>(new DecimalValueSelector(1.5m)));
+    }
+
+    [Fact]
+    public void DecimalValueSelector_PlainValueHasTheSuffixAndKeepsTheScale()
+    {
+        InCulture("es-ES", () =>
+        {
+            Assert.Equal("1.50m", new DecimalValueSelector(1.50m).PlainValue);
+            Assert.Equal("-3m", new DecimalValueSelector(-3m).PlainValue);
+        });
     }
 
     // ── Boolean ─────────────────────────────────────────────────────────────
@@ -164,18 +195,18 @@ public class ValueSelectorTests
     {
         var selector = new BooleanValueSelector<TestItem>(value);
 
-        var constant = BuildConstant(selector);
+        BuildConstant(selector);
 
         Assert.Equal(typeof(bool), selector.SelectorType);
         Assert.Equal(value, Evaluate<bool>(selector));
     }
 
-    [Fact]
-    public void BooleanValueSelector_SetsPlainValueWithSpecifierAndPrefix()
+    [Theory]
+    [InlineData(true, "true")]
+    [InlineData(false, "false")]
+    public void BooleanValueSelector_PlainValueIsLowercase(bool value, string expected)
     {
-        var selector = new BooleanValueSelector(true);
-
-        Assert.Equal($"{SelectorDefaults.BooleanValueSpecifier}{SelectorDefaults.ValuePrefix}True", selector.PlainValue);
+        Assert.Equal(expected, new BooleanValueSelector(value).PlainValue);
     }
 
     // ── String ──────────────────────────────────────────────────────────────
@@ -205,193 +236,17 @@ public class ValueSelectorTests
         Assert.Equal("hello", Evaluate<string>(selector));
     }
 
-    [Fact]
-    public void StringValueSelector_WithEmptyValue_ProducesEmptyConstant()
+    [Theory]
+    [InlineData("hello", "\"hello\"")]
+    [InlineData("", "\"\"")]
+    [InlineData("say \"hi\"", "\"say \"\"hi\"\"\"")]
+    [InlineData("a|b, (c)", "\"a|b, (c)\"")]
+    public void StringValueSelector_PlainValueIsQuotedWithDoubledQuotes(string value, string expected)
     {
-        var selector = new StringValueSelector(string.Empty);
+        var selector = new StringValueSelector(value);
 
-        Assert.Equal(string.Empty, Evaluate<string>(selector));
-        Assert.Equal($"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}", selector.PlainValue);
-    }
-
-    [Fact]
-    public void StringValueSelector_WithNullValue_KeepsStringTypedConstant()
-    {
-        // Implementations.CreateStringConstantAccesor passes typeof(string) explicitly so a
-        // null value still yields a string-typed constant instead of an untyped null.
-        var selector = new StringValueSelector(null!);
-
-        var constant = BuildConstant(selector);
-
-        Assert.Equal(typeof(string), constant.Type);
-        Assert.Null(constant.Value);
-        Assert.Null(Evaluate<string>(selector));
-    }
-
-    [Fact]
-    public void StringValueSelector_SetsPlainValueWithSpecifierAndPrefix()
-    {
-        var selector = new StringValueSelector("hello");
-
-        Assert.Equal($"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}hello", selector.PlainValue);
-    }
-
-    // ── DateTime ────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void DateTimeValueSelector_NonGeneric_ProducesDateTimeConstant()
-    {
-        var value = new DateTime(2024, 1, 15, 10, 30, 0);
-        var selector = new DateTimeValueSelector(value);
-
-        var constant = BuildConstant(selector);
-
-        Assert.Equal(typeof(DateTime), selector.SelectorType);
-        Assert.Equal(typeof(DateTime), constant.Type);
-        Assert.Equal(value, selector.Value);
-        Assert.Equal(value, Evaluate<DateTime>(selector));
-    }
-
-    [Fact]
-    public void DateTimeValueSelector_Generic_ProducesDateTimeConstant()
-    {
-        var value = new DateTime(2024, 1, 15, 10, 30, 0);
-        var selector = new DateTimeValueSelector<TestItem>(value);
-
-        var constant = BuildConstant(selector);
-
-        Assert.Equal(typeof(DateTime), selector.SelectorType);
-        Assert.Equal(value, Evaluate<DateTime>(selector));
-    }
-
-    [Fact]
-    public void DateTimeValueSelector_SetsPlainValueWithRoundTripFormat()
-    {
-        var value = new DateTime(2024, 1, 15, 10, 30, 0);
-        var selector = new DateTimeValueSelector(value);
-
-        Assert.Equal(
-            $"{SelectorDefaults.DateTimeValueSpecifier}{SelectorDefaults.ValuePrefix}2024-01-15T10:30:00.0000000",
-            selector.PlainValue);
-    }
-
-    [Fact]
-    public void DateTimeValueSelector_WithUtcKind_KeepsKindInPlainValueAndConstant()
-    {
-        var value = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
-        var selector = new DateTimeValueSelector(value);
-
-        Assert.EndsWith("2024-01-15T10:30:00.0000000Z", selector.PlainValue);
-        Assert.Equal(DateTimeKind.Utc, Evaluate<DateTime>(selector).Kind);
-    }
-
-    [Fact]
-    public void DateTimeValueSelector_PlainValueIsInvariantAndRoundTrips()
-    {
-        var value = new DateTime(2024, 12, 31, 23, 59, 59, 999);
-        var selector = new DateTimeValueSelector(value);
-
-        var payload = selector.PlainValue[(SelectorDefaults.DateTimeValueSpecifier.Length + SelectorDefaults.ValuePrefix.Length)..];
-
-        Assert.Equal(value, DateTime.Parse(payload, CultureInfo.InvariantCulture));
-    }
-
-    // ── DateOnly ────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void DateOnlyValueSelector_NonGeneric_ProducesDateOnlyConstant()
-    {
-        var value = new DateOnly(2024, 1, 15);
-        var selector = new DateOnlyValueSelector(value);
-
-        var constant = BuildConstant(selector);
-
-        Assert.Equal(typeof(DateOnly), selector.SelectorType);
-        Assert.Equal(typeof(DateOnly), constant.Type);
-        Assert.Equal(value, selector.Value);
-        Assert.Equal(value, Evaluate<DateOnly>(selector));
-    }
-
-    [Fact]
-    public void DateOnlyValueSelector_Generic_ProducesDateOnlyConstant()
-    {
-        var value = new DateOnly(2024, 1, 15);
-        var selector = new DateOnlyValueSelector<TestItem>(value);
-
-        var constant = BuildConstant(selector);
-
-        Assert.Equal(typeof(DateOnly), selector.SelectorType);
-        Assert.Equal(value, Evaluate<DateOnly>(selector));
-    }
-
-    [Fact]
-    public void DateOnlyValueSelector_SetsPlainValueWithRoundTripFormat()
-    {
-        var selector = new DateOnlyValueSelector(new DateOnly(2024, 1, 15));
-
-        Assert.Equal(
-            $"{SelectorDefaults.DateOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}2024-01-15",
-            selector.PlainValue);
-    }
-
-    [Fact]
-    public void DateOnlyValueSelector_PlainValueIsInvariantAndRoundTrips()
-    {
-        var value = new DateOnly(2024, 12, 31);
-        var selector = new DateOnlyValueSelector(value);
-
-        var payload = selector.PlainValue[(SelectorDefaults.DateOnlyValueSpecifier.Length + SelectorDefaults.ValuePrefix.Length)..];
-
-        Assert.Equal(value, DateOnly.Parse(payload, CultureInfo.InvariantCulture));
-    }
-
-    // ── TimeOnly ────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void TimeOnlyValueSelector_NonGeneric_ProducesTimeOnlyConstant()
-    {
-        var value = new TimeOnly(10, 30, 15);
-        var selector = new TimeOnlyValueSelector(value);
-
-        var constant = BuildConstant(selector);
-
-        Assert.Equal(typeof(TimeOnly), selector.SelectorType);
-        Assert.Equal(typeof(TimeOnly), constant.Type);
-        Assert.Equal(value, selector.Value);
-        Assert.Equal(value, Evaluate<TimeOnly>(selector));
-    }
-
-    [Fact]
-    public void TimeOnlyValueSelector_Generic_ProducesTimeOnlyConstant()
-    {
-        var value = new TimeOnly(10, 30, 15);
-        var selector = new TimeOnlyValueSelector<TestItem>(value);
-
-        var constant = BuildConstant(selector);
-
-        Assert.Equal(typeof(TimeOnly), selector.SelectorType);
-        Assert.Equal(value, Evaluate<TimeOnly>(selector));
-    }
-
-    [Fact]
-    public void TimeOnlyValueSelector_SetsPlainValueWithRoundTripFormat()
-    {
-        var selector = new TimeOnlyValueSelector(new TimeOnly(10, 30, 15));
-
-        Assert.Equal(
-            $"{SelectorDefaults.TimeOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}10:30:15.0000000",
-            selector.PlainValue);
-    }
-
-    [Fact]
-    public void TimeOnlyValueSelector_PlainValueIsInvariantAndRoundTrips()
-    {
-        var value = new TimeOnly(23, 59, 59, 999);
-        var selector = new TimeOnlyValueSelector(value);
-
-        var payload = selector.PlainValue[(SelectorDefaults.TimeOnlyValueSpecifier.Length + SelectorDefaults.ValuePrefix.Length)..];
-
-        Assert.Equal(value, TimeOnly.Parse(payload, CultureInfo.InvariantCulture));
+        Assert.Equal(expected, selector.PlainValue);
+        Assert.Equal(expected, selector.ToString());
     }
 
     // ── Shared behaviour ────────────────────────────────────────────────────
@@ -405,7 +260,6 @@ public class ValueSelectorTests
         var withTarget = selector.PropertyAccess(parameter);
         var withoutTarget = selector.PropertyAccess(null);
 
-        // Both bodies are the same constant, so the lambda never touches the parameter.
         var lambda = Expression.Lambda<Func<TestItem, int>>(withTarget, parameter).Compile();
 
         Assert.Equal(7, lambda(new TestItem { Id = 99 }));
@@ -415,8 +269,6 @@ public class ValueSelectorTests
     [Fact]
     public void GenericValueSelector_DoesNotResolveTheValueAsAPropertyOfT()
     {
-        // SelectorType is initialized by the record before the base constructor runs, so the
-        // base never tries to resolve the literal as a member of TestItem.
         var selector = new IntegerValueSelector<TestItem>(42);
 
         Assert.Equal(typeof(int), selector.SelectorType);
@@ -425,20 +277,9 @@ public class ValueSelectorTests
     }
 
     [Fact]
-    public void ValueSelectors_ToString_IsTheSelectorText()
-    {
-        var selector = new StringValueSelector("hello");
-
-        Assert.Equal("\"hello\"", selector.ToString());
-        Assert.Equal($"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}hello", selector.PlainValue);
-    }
-
-    [Fact]
     public void ValueSelectors_WithSameValue_AreNotRecordEqual()
     {
-        // The synthesized record equality includes the PropertyAccess delegate, and every
-        // instance builds a fresh closure, so two selectors of the same value never compare
-        // equal. Compare PlainValue when identity of the selector is what matters.
+        // Record equality includes the PropertyAccess closure, which is new per instance.
         var first = new IntegerValueSelector(42);
         var second = new IntegerValueSelector(42);
 
@@ -447,230 +288,123 @@ public class ValueSelectorTests
         Assert.Equal(first, first);
     }
 
-    // ── Parsing: literals reaching the value selectors ──────────────────────
+    // ── Parsing: bare literals ──────────────────────────────────────────────
 
-    [Fact]
-    public void Parse_BareIntegerLiteral_CreatesIntegerValueSelector()
+    [Theory]
+    [InlineData("42", typeof(int), 42)]
+    [InlineData("0", typeof(int), 0)]
+    [InlineData("2147483647", typeof(int), int.MaxValue)]
+    [InlineData("2147483648", typeof(long), 2147483648L)]
+    [InlineData("5L", typeof(long), 5L)]
+    [InlineData("5l", typeof(long), 5L)]
+    [InlineData("1.5", typeof(double), 1.5)]
+    [InlineData("2.0", typeof(double), 2.0)]
+    [InlineData("1e3", typeof(double), 1000.0)]
+    [InlineData("1E+20", typeof(double), 1e20)]
+    [InlineData("2.5e-3", typeof(double), 0.0025)]
+    [InlineData("true", typeof(bool), true)]
+    [InlineData("True", typeof(bool), true)]
+    [InlineData("FALSE", typeof(bool), false)]
+    public void Parse_BareLiteral_InBothForms(string text, Type expectedType, object expected)
     {
-        PropertySelector<TestItem> selector = "42";
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
 
-        Assert.IsType<IntegerValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(int), selector.SelectorType);
-        Assert.Equal(42, Evaluate<int>(selector));
-    }
-
-    [Fact]
-    public void Parse_BareDoubleLiteral_CreatesDoubleValueSelector()
-    {
-        // Bare numeric literals are parsed with the current culture, so the literal is
-        // formatted the same way to keep the test culture independent.
-        PropertySelector<TestItem> selector = 1.5.ToString(CultureInfo.CurrentCulture);
-
-        Assert.IsType<DoubleValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(double), selector.SelectorType);
-        Assert.Equal(1.5, Evaluate<double>(selector));
-    }
-
-    [Fact]
-    public void Parse_BareBooleanLiteral_CreatesBooleanValueSelector()
-    {
-        PropertySelector<TestItem> selector = "true";
-
-        Assert.IsType<BooleanValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(bool), selector.SelectorType);
-        Assert.True(Evaluate<bool>(selector));
-    }
-
-    [Fact]
-    public void Parse_QuotedLiteral_CreatesStringValueSelectorWithoutQuotes()
-    {
-        PropertySelector<TestItem> selector = "\"hello\"";
-
-        Assert.IsType<StringValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(string), selector.SelectorType);
-        Assert.Equal("hello", Evaluate<string>(selector));
-    }
-
-    [Fact]
-    public void Parse_DateTimeValueSpecifier_CreatesDateTimeValueSelector()
-    {
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.DateTimeValueSpecifier}{SelectorDefaults.ValuePrefix}2024-01-15T10:30:00";
-
-        Assert.IsType<DateTimeValueSelector<TestItem>>(selector);
-        Assert.Equal(new DateTime(2024, 1, 15, 10, 30, 0), Evaluate<DateTime>(selector));
-    }
-
-    [Fact]
-    public void Parse_DateOnlyValueSpecifier_CreatesDateOnlyValueSelector()
-    {
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.DateOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}2024-01-15";
-
-        Assert.IsType<DateOnlyValueSelector<TestItem>>(selector);
-        Assert.Equal(new DateOnly(2024, 1, 15), Evaluate<DateOnly>(selector));
-    }
-
-    [Fact]
-    public void Parse_TimeOnlyValueSpecifier_CreatesTimeOnlyValueSelector()
-    {
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.TimeOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}10:30:15";
-
-        Assert.IsType<TimeOnlyValueSelector<TestItem>>(selector);
-        Assert.Equal(new TimeOnly(10, 30, 15), Evaluate<TimeOnly>(selector));
-    }
-
-    [Fact]
-    public void Parse_NonGeneric_DateOnlyValueSpecifier_CreatesDateOnlyValueSelector()
-    {
-        PropertySelector selector =
-            $"{SelectorDefaults.DateOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}2024-01-15";
-
-        Assert.IsType<DateOnlyValueSelector>(selector);
-        Assert.Equal(new DateOnly(2024, 1, 15), Evaluate<DateOnly>(selector));
-    }
-
-    [Fact]
-    public void Parse_StringValueSpecifier_CreatesStringValueSelector()
-    {
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}hello";
-
-        Assert.IsType<StringValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(string), selector.SelectorType);
-        Assert.Equal("hello", Evaluate<string>(selector));
-    }
-
-    [Fact]
-    public void Parse_StringValueSpecifier_WithEmptyPayload_CreatesEmptyStringSelector()
-    {
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}";
-
-        Assert.IsType<StringValueSelector<TestItem>>(selector);
-        Assert.Equal(string.Empty, Evaluate<string>(selector));
-    }
-
-    [Fact]
-    public void Parse_StringValueSpecifier_KeepsPayloadVerbatim()
-    {
-        // The payload is opaque: characters that are structural elsewhere (dashes, colons,
-        // dots) must survive untouched instead of being read as arithmetic or member access.
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}a-b.c:d";
-
-        Assert.Equal("a-b.c:d", Evaluate<string>(selector));
-        Assert.Null(selector.ChildSelector);
-    }
-
-    [Fact]
-    public void Parse_IntegerValueSpecifier_CreatesIntegerValueSelector()
-    {
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.IntegerValueSpecifier}{SelectorDefaults.ValuePrefix}42";
-
-        Assert.IsType<IntegerValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(int), selector.SelectorType);
-        Assert.Equal(42, Evaluate<int>(selector));
-    }
-
-    [Fact]
-    public void Parse_IntegerValueSpecifier_WithNegativePayload_CreatesIntegerValueSelector()
-    {
-        // The leading dash would look like subtraction on a bare literal; the specifier
-        // makes the payload opaque so it stays a negative constant.
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.IntegerValueSpecifier}{SelectorDefaults.ValuePrefix}-7";
-
-        Assert.IsType<IntegerValueSelector<TestItem>>(selector);
-        Assert.Equal(-7, Evaluate<int>(selector));
-    }
-
-    [Fact]
-    public void Parse_DoubleValueSpecifier_CreatesDoubleValueSelector()
-    {
-        // The payload is read with the invariant culture, so the decimal point is fixed.
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.DoubleValueSpecifier}{SelectorDefaults.ValuePrefix}1.5";
-
-        Assert.IsType<DoubleValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(double), selector.SelectorType);
-        Assert.Equal(1.5, Evaluate<double>(selector));
+        Assert.Equal(expectedType, generic.SelectorType);
+        Assert.Equal(expectedType, nonGeneric.SelectorType);
+        Assert.Equal(expected, EvaluateBoxed(generic));
+        Assert.Equal(expected, EvaluateBoxed(nonGeneric));
     }
 
     [Theory]
-    [InlineData("true", true)]
-    [InlineData("false", false)]
-    [InlineData("True", true)]
-    public void Parse_BooleanValueSpecifier_CreatesBooleanValueSelector(string payload, bool expected)
+    [InlineData("1.5m", "1.5")]
+    [InlineData("1.50M", "1.50")]
+    [InlineData("3m", "3")]
+    [InlineData("79228162514264337593543950335m", "79228162514264337593543950335")]
+    public void Parse_DecimalLiteral_IsExact(string text, string expected)
     {
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.BooleanValueSpecifier}{SelectorDefaults.ValuePrefix}{payload}";
+        PropertySelector<TestItem> selector = text;
 
-        Assert.IsType<BooleanValueSelector<TestItem>>(selector);
-        Assert.Equal(typeof(bool), selector.SelectorType);
-        Assert.Equal(expected, Evaluate<bool>(selector));
-    }
-
-    [Fact]
-    public void Parse_NonGeneric_ValueSpecifiers_CreateMatchingValueSelectors()
-    {
-        PropertySelector stringSelector = $"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}hello";
-        PropertySelector integerSelector = $"{SelectorDefaults.IntegerValueSpecifier}{SelectorDefaults.ValuePrefix}42";
-        PropertySelector doubleSelector = $"{SelectorDefaults.DoubleValueSpecifier}{SelectorDefaults.ValuePrefix}1.5";
-        PropertySelector booleanSelector = $"{SelectorDefaults.BooleanValueSpecifier}{SelectorDefaults.ValuePrefix}true";
-
-        Assert.Equal("hello", Evaluate<string>(Assert.IsType<StringValueSelector>(stringSelector)));
-        Assert.Equal(42, Evaluate<int>(Assert.IsType<IntegerValueSelector>(integerSelector)));
-        Assert.Equal(1.5, Evaluate<double>(Assert.IsType<DoubleValueSelector>(doubleSelector)));
-        Assert.True(Evaluate<bool>(Assert.IsType<BooleanValueSelector>(booleanSelector)));
+        Assert.Equal(typeof(decimal), selector.SelectorType);
+        Assert.Equal(decimal.Parse(expected, CultureInfo.InvariantCulture), Evaluate<decimal>(selector));
     }
 
     [Theory]
-    [InlineData(42)]
-    [InlineData(-7)]
-    [InlineData(int.MinValue)]
-    public void PlainValue_RoundTripsThroughParsing_ForIntegers(int value)
+    [InlineData("1.5", 1.5)]
+    [InlineData("1.234", 1.234)]
+    public void Parse_BareDouble_IsReadWithTheInvariantCulture(string text, double expected)
     {
-        var selector = new IntegerValueSelector(value);
+        // es-ES uses '.' as the group separator, so a culture-sensitive parse would read 1.5 as 15.
+        InCulture("es-ES", () =>
+        {
+            PropertySelector<TestItem> selector = text;
+            Assert.Equal(expected, Evaluate<double>(selector));
+        });
+    }
 
-        PropertySelector reparsed = selector.PlainValue;
+    [Theory]
+    [InlineData("99999999999999999999")]
+    [InlineData("99999999999999999999L")]
+    [InlineData("1.5L")]
+    [InlineData("1e400")]
+    public void Parse_NumberThatDoesNotFit_Throws(string text)
+    {
+        Assert.Throws<ArgumentException>(() => { PropertySelector<TestItem> _ = text; });
+        Assert.Throws<ArgumentException>(() => { PropertySelector _ = text; });
+    }
 
-        Assert.Equal(value, Evaluate<int>(reparsed));
+    [Theory]
+    [InlineData("-7", -7)]
+    [InlineData("-2147483648", int.MinValue)]
+    public void Parse_NegativeNumber_IsALiteral_NotANegation(string text, int expected)
+    {
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
+
+        Assert.IsType<IntegerValueSelector<TestItem>>(generic);
+        Assert.IsType<IntegerValueSelector>(nonGeneric);
+        Assert.Equal(expected, Evaluate<int>(generic));
+    }
+
+    [Theory]
+    [InlineData("-1.5", typeof(double))]
+    [InlineData("-5L", typeof(long))]
+    [InlineData("-2.5m", typeof(decimal))]
+    public void Parse_NegativeNumber_KeepsItsType(string text, Type expectedType)
+    {
+        PropertySelector<TestItem> selector = text;
+
+        Assert.Equal(expectedType, selector.SelectorType);
+    }
+
+    // ── Parsing: strings ────────────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("\"hello\"", "hello")]
+    [InlineData("\"\"", "")]
+    [InlineData("\"say \"\"hi\"\"\"", "say \"hi\"")]
+    [InlineData("\"\"\"\"", "\"")]
+    [InlineData("\"a-b.c:d\"", "a-b.c:d")]
+    public void Parse_QuotedLiteral_UndoublesQuotes(string text, string expected)
+    {
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
+
+        Assert.IsType<StringValueSelector<TestItem>>(generic);
+        Assert.Equal(expected, Evaluate<string>(generic));
+        Assert.Equal(expected, Evaluate<string>(nonGeneric));
     }
 
     [Fact]
-    public void PlainValue_RoundTripsThroughParsing_ForTheRemainingValueTypes()
+    public void Parse_QuotedLiteralWithASingleInnerQuote_Throws()
     {
-        PropertySelector reparsedString = new StringValueSelector("hello").PlainValue;
-        PropertySelector reparsedBoolean = new BooleanValueSelector(false).PlainValue;
-        PropertySelector reparsedDateTime = new DateTimeValueSelector(new DateTime(2024, 1, 15, 10, 30, 0)).PlainValue;
-        PropertySelector reparsedDateOnly = new DateOnlyValueSelector(new DateOnly(2024, 1, 15)).PlainValue;
-        PropertySelector reparsedTimeOnly = new TimeOnlyValueSelector(new TimeOnly(10, 30, 15)).PlainValue;
-
-        Assert.Equal("hello", Evaluate<string>(reparsedString));
-        Assert.False(Evaluate<bool>(reparsedBoolean));
-        Assert.Equal(new DateTime(2024, 1, 15, 10, 30, 0), Evaluate<DateTime>(reparsedDateTime));
-        Assert.Equal(new DateOnly(2024, 1, 15), Evaluate<DateOnly>(reparsedDateOnly));
-        Assert.Equal(new TimeOnly(10, 30, 15), Evaluate<TimeOnly>(reparsedTimeOnly));
-    }
-
-    [Fact]
-    public void Parse_NonLiteralPart_FallsBackToAPropertyPathSelector()
-    {
-        PropertySelector<TestItem> selector = "Name";
-
-        // Nothing in the value factory claims a plain property path.
-        Assert.IsType<PropertySelector<TestItem>>(selector);
-        Assert.Equal(typeof(string), selector.SelectorType);
+        Assert.Throws<ArgumentException>(() => { PropertySelector<TestItem> _ = "\"a\" \"b\""; });
     }
 
     [Fact]
     public void Parse_LoneQuoteCharacter_IsTreatedAsAPropertyPath()
     {
-        // A single quote starts and ends with '"' at the same index, so it is not an
-        // empty quoted literal and must not be sliced as one.
+        // A single quote starts and ends with '"' at the same index, so it is not an empty literal.
         PropertySelector selector = "\"";
 
         Assert.IsType<PropertySelector>(selector);
@@ -678,33 +412,101 @@ public class ValueSelectorTests
     }
 
     [Fact]
-    public void Parse_EmptyQuotedLiteral_CreatesEmptyStringSelector()
+    public void Parse_NonLiteralPart_FallsBackToAPropertyPathSelector()
     {
-        PropertySelector<TestItem> selector = "\"\"";
+        PropertySelector<TestItem> selector = "Name";
 
-        Assert.IsType<StringValueSelector<TestItem>>(selector);
-        Assert.Equal(string.Empty, Evaluate<string>(selector));
+        Assert.IsType<PropertySelector<TestItem>>(selector);
+        Assert.Equal(typeof(string), selector.SelectorType);
     }
 
-    [Fact]
-    public void Parse_SpecifierWithoutValuePrefix_IsNotTreatedAsALiteral()
+    [Theory]
+    [InlineData("$VAL_INT:5")]
+    [InlineData("$VAL_STR:hello")]
+    public void Parse_RemovedValueSpecifier_IsNoLongerALiteral(string text)
     {
-        // The value prefix is what separates $VAL_DATE from $VAL_DATETIME, so a specifier
-        // without it is not a literal.
-        PropertySelector selector = SelectorDefaults.DateOnlyValueSpecifier;
+        PropertySelector selector = text;
 
         Assert.IsType<PropertySelector>(selector);
-        Assert.Equal(SelectorDefaults.DateOnlyValueSpecifier, selector.PlainValue);
+        Assert.Throws<InvalidOperationException>(() => { PropertySelector<TestItem> _ = text; });
+    }
+
+    // ── Plain values reparse ────────────────────────────────────────────────
+
+    [Fact]
+    public void PlainValue_RoundTripsThroughParsing_ForEveryScalarType()
+    {
+        PropertySelector[] selectors =
+        [
+            new IntegerValueSelector(-7),
+            new IntegerValueSelector(int.MinValue),
+            new LongValueSelector(long.MinValue),
+            new DoubleValueSelector(-0.1),
+            new DecimalValueSelector(-12.340m),
+            new BooleanValueSelector(false),
+            new StringValueSelector("say \"hi\", (a|b)"),
+        ];
+
+        foreach (var original in selectors)
+        {
+            PropertySelector reparsed = original.PlainValue;
+
+            Assert.Equal(original.GetType(), reparsed.GetType());
+            Assert.Equal(EvaluateBoxed(original), EvaluateBoxed(reparsed));
+            Assert.Equal(original.PlainValue, reparsed.PlainValue);
+        }
+    }
+
+    // ── Public formatter ────────────────────────────────────────────────────
+
+    public static TheoryData<object, string> FormattedValues() => new()
+    {
+        { 5, "5" },
+        { (short)-3, "-3" },
+        { 5L, "5L" },
+        { 1.5, "1.5" },
+        { 3.0, "3.0" },
+        { 1.5f, "1.5" },
+        { 2.50m, "2.50m" },
+        { true, "true" },
+        { "it's \"x\"", "\"it's \"\"x\"\"\"" },
+        { new DateTime(2024, 1, 15, 8, 30, 0), "$FN_DT_DATETIME(\"2024-01-15T08:30:00.0000000\")" },
+        { new DateTime(2024, 1, 15, 8, 30, 0, DateTimeKind.Utc), "$FN_DT_DATETIME(\"2024-01-15T08:30:00.0000000Z\")" },
+        { new DateOnly(2024, 1, 15), "$FN_DT_DATEONLY(\"2024-01-15\")" },
+        { new TimeOnly(8, 30, 15), "$FN_DT_TIMEONLY(\"08:30:15.0000000\")" },
+    };
+
+    [Theory]
+    [MemberData(nameof(FormattedValues))]
+    public void SelectorLiteral_Format_WritesTheLiteral(object value, string expected)
+    {
+        InCulture("es-ES", () => Assert.Equal(expected, SelectorLiteral.Format(value)));
+    }
+
+    [Theory]
+    [MemberData(nameof(FormattedValues))]
+    public void SelectorLiteral_Format_ParsesBackToTheSameValue(object value, string text)
+    {
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
+
+        var expected = value switch
+        {
+            short s => (object)(int)s,
+            float f => (double)f,
+            _ => value,
+        };
+
+        Assert.Equal(expected, EvaluateBoxed(generic));
+        Assert.Equal(expected, EvaluateBoxed(nonGeneric));
     }
 
     [Fact]
-    public void Parse_ValueSpecifier_IsNotSplitOnArithmeticCharacters()
+    public void SelectorLiteral_Format_RejectsValuesWithoutALiteral()
     {
-        // Value payloads are opaque: the dashes in the date must not be read as subtraction.
-        PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.DateOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}2024-01-15";
-
-        Assert.IsType<DateOnlyValueSelector<TestItem>>(selector);
-        Assert.Null(selector.ChildSelector);
+        Assert.Throws<ArgumentOutOfRangeException>(() => SelectorLiteral.Format(double.NaN));
+        Assert.Throws<ArgumentOutOfRangeException>(() => SelectorLiteral.Format(double.PositiveInfinity));
+        Assert.Throws<NotSupportedException>(() => SelectorLiteral.Format(Guid.Empty));
+        Assert.Throws<ArgumentNullException>(() => SelectorLiteral.Format((object)null!));
     }
 }

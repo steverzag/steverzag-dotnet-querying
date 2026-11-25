@@ -31,7 +31,6 @@ public class StringSelectorTests
     }
 
     private const string Delimiter = SelectorDefaults.PropertyDelimiter;
-    private const string StringValue = SelectorDefaults.StringValueSpecifier + SelectorDefaults.ValuePrefix;
 
     // ── Length ──────────────────────────────────────────────────────────────
 
@@ -174,7 +173,7 @@ public class StringSelectorTests
     [Fact]
     public void StringIndexOf_WithStringLiteral_ReturnsIndex()
     {
-        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringIndexOf}({StringValue}ll)";
+        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringIndexOf}(\"ll\")";
 
         var result = Evaluate<int>(selector, new TestItem { Name = "hello" });
 
@@ -186,7 +185,7 @@ public class StringSelectorTests
     [Fact]
     public void StringReplace_WithStringLiterals_ReplacesOccurrences()
     {
-        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringReplace}({StringValue}l, {StringValue}r)";
+        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringReplace}(\"l\", \"r\")";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "hello" });
 
@@ -198,7 +197,7 @@ public class StringSelectorTests
     [Fact]
     public void StringContains_WithMatchingLiteral_ReturnsTrue()
     {
-        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringContains}({StringValue}ell)";
+        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringContains}(\"ell\")";
 
         var result = Evaluate<bool>(selector, new TestItem { Name = "hello" });
 
@@ -209,7 +208,7 @@ public class StringSelectorTests
     [Fact]
     public void StringStartsWith_WithNonMatchingLiteral_ReturnsFalse()
     {
-        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringStartsWith}({StringValue}xyz)";
+        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringStartsWith}(\"xyz\")";
 
         var result = Evaluate<bool>(selector, new TestItem { Name = "hello" });
 
@@ -219,7 +218,7 @@ public class StringSelectorTests
     [Fact]
     public void StringEndsWith_WithMatchingLiteral_ReturnsTrue()
     {
-        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringEndsWith}({StringValue}llo)";
+        PropertySelector<TestItem> selector = $"Name{Delimiter}{SelectorDefaults.StringEndsWith}(\"llo\")";
 
         var result = Evaluate<bool>(selector, new TestItem { Name = "hello" });
 
@@ -266,7 +265,7 @@ public class StringSelectorTests
     {
         // Value literals are exempt from arithmetic detection, so "-" is safe here;
         // commas and parentheses are still structural and cannot appear in literals.
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringConcat}(Name, {StringValue}-, Code)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringConcat}(Name, \"-\", Code)";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "a", Code = "b" });
 
@@ -375,7 +374,7 @@ public class StringSelectorTests
     [Fact]
     public void StringJoin_WithTwoValues_JoinsWithSeparator()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}({StringValue}-, Name, Code)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}(\"-\", Name, Code)";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "a", Code = "b" });
 
@@ -386,7 +385,7 @@ public class StringSelectorTests
     [Fact]
     public void StringJoin_WithSingleValue_ReturnsValue()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}({StringValue}-, Name)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}(\"-\", Name)";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "a" });
 
@@ -398,7 +397,7 @@ public class StringSelectorTests
     {
         // A comma cannot appear inside a literal: it stays the structural parameter separator.
         PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.StringJoin}({StringValue}-, Name, Code, {StringValue}tail, Name)";
+            $"{SelectorDefaults.StringJoin}(\"-\", Name, Code, \"tail\", Name)";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "a", Code = "b" });
 
@@ -409,7 +408,7 @@ public class StringSelectorTests
     public void StringJoin_WithFunctionValue_JoinsFunctionResult()
     {
         PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.StringJoin}({StringValue}-, Name{Delimiter}{SelectorDefaults.StringToUpper}, Code)";
+            $"{SelectorDefaults.StringJoin}(\"-\", Name{Delimiter}{SelectorDefaults.StringToUpper}, Code)";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "a", Code = "b" });
 
@@ -421,14 +420,14 @@ public class StringSelectorTests
     {
         Assert.Throws<ArgumentException>(() =>
         {
-            PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}({StringValue}-)";
+            PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}(\"-\")";
         });
     }
 
     [Fact]
     public void StringJoin_WithNonStringValue_ThrowsInvalidOperationExceptionOnBuild()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}({StringValue}-, Name, Id)";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.StringJoin}(\"-\", Name, Id)";
 
         Assert.Throws<InvalidOperationException>(() => Evaluate<string>(selector, new TestItem { Id = 1 }));
     }
@@ -437,7 +436,7 @@ public class StringSelectorTests
     public void StringJoin_ChainedWithToUpper_AppliesFunctionToResult()
     {
         PropertySelector<TestItem> selector =
-            $"{SelectorDefaults.StringJoin}({StringValue}-, Name, Code){Delimiter}{SelectorDefaults.StringToUpper}";
+            $"{SelectorDefaults.StringJoin}(\"-\", Name, Code){Delimiter}{SelectorDefaults.StringToUpper}";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "a", Code = "b" });
 
@@ -474,7 +473,7 @@ public class StringSelectorTests
     {
         // Deeper chains keep resolving parameters against the root item.
         PropertySelector<TestItem> selector =
-            $"Name{Delimiter}{SelectorDefaults.StringTrim}{Delimiter}{SelectorDefaults.StringReplace}(Code, {StringValue}x)";
+            $"Name{Delimiter}{SelectorDefaults.StringTrim}{Delimiter}{SelectorDefaults.StringReplace}(Code, \"x\")";
 
         var result = Evaluate<string>(selector, new TestItem { Name = "  hello  ", Code = "l" });
 
@@ -484,9 +483,9 @@ public class StringSelectorTests
     // ── String value selector ───────────────────────────────────────────────
 
     [Fact]
-    public void StringValueSpecifier_AsSelector_ProducesStringConstant()
+    public void QuotedString_AsSelector_ProducesStringConstant()
     {
-        PropertySelector<TestItem> selector = $"{StringValue}hello";
+        PropertySelector<TestItem> selector = $"\"hello\"";
 
         var result = Evaluate<string>(selector, new TestItem());
 

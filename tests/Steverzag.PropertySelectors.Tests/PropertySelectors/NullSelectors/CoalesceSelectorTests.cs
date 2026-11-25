@@ -125,7 +125,7 @@ public class CoalesceSelectorTests
     [MemberData(nameof(BothForms))]
     public void NullableDate_WithTypedLiteralDefault(bool generic)
     {
-        var selector = Parse($"LastUpdated|{Coalesce}({SelectorDefaults.DateTimeValueSpecifier}:2024-01-01)", generic);
+        var selector = Parse($"LastUpdated|{Coalesce}({SelectorDefaults.DateTimeLiteral}(\"2024-01-01\"))", generic);
 
         Assert.Equal(CreatedAt, Evaluate(selector, new TestItem()));
         Assert.Equal(typeof(DateTime), BuiltType(selector));

@@ -1,3 +1,4 @@
+using Steverzag.PropertySelectors.ValueSelectors;
 using System.Buffers;
 
 namespace Steverzag.PropertySelectors.Extensions
@@ -29,9 +30,7 @@ namespace Steverzag.PropertySelectors.Extensions
 			if (expression.Length == 0)
 				return new SelectorExpressionAnalysis(false, []);
 
-			// Value literals ($VAL_*) are opaque: their payload may contain arithmetic or
-			// delimiter characters (e.g. dates like 2024-01-15), so they are never analyzed.
-			if (expression.StartsWith(SelectorDefaults.ValueStart, StringComparison.Ordinal))
+			if (ValueSelectorFactory.IsNumberLiteral(expression.Trim()))
 				return new SelectorExpressionAnalysis(false, [expression.Trim()]);
 
 			// Vectorized pre-check: without any operator character the expression cannot be
@@ -98,8 +97,22 @@ namespace Steverzag.PropertySelectors.Extensions
 
 		internal static int EndOfQuotedLiteral(this string text, int openingQuoteIndex)
 		{
-			var closingQuoteIndex = text.IndexOf('"', openingQuoteIndex + 1);
-			return closingQuoteIndex == -1 ? text.Length - 1 : closingQuoteIndex;
+			var index = openingQuoteIndex + 1;
+
+			while (true)
+			{
+				var closingQuoteIndex = text.IndexOf('"', index);
+				if (closingQuoteIndex == -1)
+					return text.Length - 1;
+
+				if (closingQuoteIndex + 1 < text.Length && text[closingQuoteIndex + 1] == '"')
+				{
+					index = closingQuoteIndex + 2;
+					continue;
+				}
+
+				return closingQuoteIndex;
+			}
 		}
 	}
 }

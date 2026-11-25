@@ -1,193 +1,129 @@
 using System.Globalization;
+using System.Text.RegularExpressions;
 
 namespace Steverzag.PropertySelectors.ValueSelectors
 {
-	/// <summary>
-	/// The literal kinds a selector part can carry.
-	/// </summary>
-	internal enum ValueLiteralKind
+	internal static partial class ValueSelectorFactory
 	{
-		String,
-		DateTime,
-		DateOnly,
-		TimeOnly,
-		Integer,
-		Double,
-		Boolean
-	}
+		[GeneratedRegex(@"^-?\d+(?<fraction>\.\d+)?(?<exponent>[eE][+-]?\d+)?(?<suffix>[lLmM])?$", RegexOptions.CultureInvariant)]
+		private static partial Regex NumberLiteral();
 
-	/// <summary>
-	/// A classified literal: the kind recognized in the selector part and its parsed payload.
-	/// </summary>
-	internal readonly record struct ValueLiteral(ValueLiteralKind Kind, object Value);
+		internal static bool IsNumberLiteral(string text) => NumberLiteral().IsMatch(text);
 
-	/// <summary>
-	/// Recognizes the literal forms a selector part can take (quoted strings, <c>$VAL_*</c>
-	/// specifiers and bare numeric or boolean literals) and builds the matching value selector.
-	/// Classification lives here once so the generic and non generic selector parsers cannot
-	/// drift apart.
-	/// </summary>
-	internal static class ValueSelectorFactory
-	{
-		/// <summary>
-		/// Builds the non generic value selector for <paramref name="selectorPart"/>, when the
-		/// part is a literal at all.
-		/// </summary>
 		internal static bool TryCreate(string selectorPart, out PropertySelector selector)
 		{
-			if (!TryClassify(selectorPart, out var literal))
+			if (!TryClassify(selectorPart, out var value))
 			{
 				selector = null!;
 				return false;
 			}
 
-			selector = literal.Kind switch
+			selector = value switch
 			{
-				ValueLiteralKind.String => new StringValueSelector((string)literal.Value),
-				ValueLiteralKind.DateTime => new DateTimeValueSelector((DateTime)literal.Value),
-				ValueLiteralKind.DateOnly => new DateOnlyValueSelector((DateOnly)literal.Value),
-				ValueLiteralKind.TimeOnly => new TimeOnlyValueSelector((TimeOnly)literal.Value),
-				ValueLiteralKind.Integer => new IntegerValueSelector((int)literal.Value),
-				ValueLiteralKind.Double => new DoubleValueSelector((double)literal.Value),
-				ValueLiteralKind.Boolean => new BooleanValueSelector((bool)literal.Value),
-				_ => throw new NotSupportedException($"The value literal kind '{literal.Kind}' is not supported.")
+				string s => new StringValueSelector(s),
+				bool b => new BooleanValueSelector(b),
+				int i => new IntegerValueSelector(i),
+				long l => new LongValueSelector(l),
+				double d => new DoubleValueSelector(d),
+				decimal m => new DecimalValueSelector(m),
+				_ => throw new NotSupportedException($"The literal type '{value.GetType().Name}' is not supported.")
 			};
-
 			return true;
 		}
 
-		/// <summary>
-		/// Builds the generic value selector for <paramref name="selectorPart"/>, when the part
-		/// is a literal at all.
-		/// </summary>
 		internal static bool TryCreate<T>(string selectorPart, out PropertySelector<T> selector)
 		{
-			if (!TryClassify(selectorPart, out var literal))
+			if (!TryClassify(selectorPart, out var value))
 			{
 				selector = null!;
 				return false;
 			}
 
-			selector = literal.Kind switch
+			selector = value switch
 			{
-				ValueLiteralKind.String => new StringValueSelector<T>((string)literal.Value),
-				ValueLiteralKind.DateTime => new DateTimeValueSelector<T>((DateTime)literal.Value),
-				ValueLiteralKind.DateOnly => new DateOnlyValueSelector<T>((DateOnly)literal.Value),
-				ValueLiteralKind.TimeOnly => new TimeOnlyValueSelector<T>((TimeOnly)literal.Value),
-				ValueLiteralKind.Integer => new IntegerValueSelector<T>((int)literal.Value),
-				ValueLiteralKind.Double => new DoubleValueSelector<T>((double)literal.Value),
-				ValueLiteralKind.Boolean => new BooleanValueSelector<T>((bool)literal.Value),
-				_ => throw new NotSupportedException($"The value literal kind '{literal.Kind}' is not supported.")
+				string s => new StringValueSelector<T>(s),
+				bool b => new BooleanValueSelector<T>(b),
+				int i => new IntegerValueSelector<T>(i),
+				long l => new LongValueSelector<T>(l),
+				double d => new DoubleValueSelector<T>(d),
+				decimal m => new DecimalValueSelector<T>(m),
+				_ => throw new NotSupportedException($"The literal type '{value.GetType().Name}' is not supported.")
 			};
-
 			return true;
 		}
 
-		/// <summary>
-		/// Classifies <paramref name="selectorPart"/> as a literal and parses its payload.
-		/// Returns false when the part is not a literal, in which case it is a property path.
-		/// </summary>
-		private static bool TryClassify(string selectorPart, out ValueLiteral literal)
+		private static bool TryClassify(string selectorPart, out object value)
 		{
-			if (selectorPart.Length > 1 && selectorPart.StartsWith('"') && selectorPart.EndsWith('"'))
+			if (selectorPart.Length > 1 && selectorPart[0] == '"' && selectorPart[^1] == '"')
 			{
-				literal = new ValueLiteral(ValueLiteralKind.String, selectorPart[1..^1]);
-				return true;
-			}
-
-			// $VAL_* payloads are opaque: everything after the prefix belongs to the literal,
-			// so characters that are structural elsewhere (dashes, dots, colons) survive.
-			if (TryGetPayload(selectorPart, SelectorDefaults.StringValueSpecifier, out var payload))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.String, payload);
-				return true;
-			}
-
-			if (TryGetPayload(selectorPart, SelectorDefaults.DateTimeValueSpecifier, out payload))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.DateTime,
-					DateTime.Parse(payload, CultureInfo.InvariantCulture));
-				return true;
-			}
-
-			if (TryGetPayload(selectorPart, SelectorDefaults.DateOnlyValueSpecifier, out payload))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.DateOnly,
-					DateOnly.Parse(payload, CultureInfo.InvariantCulture));
-				return true;
-			}
-
-			if (TryGetPayload(selectorPart, SelectorDefaults.TimeOnlyValueSpecifier, out payload))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.TimeOnly,
-					TimeOnly.Parse(payload, CultureInfo.InvariantCulture));
-				return true;
-			}
-
-			if (TryGetPayload(selectorPart, SelectorDefaults.IntegerValueSpecifier, out payload))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.Integer,
-					int.Parse(payload, CultureInfo.InvariantCulture));
-				return true;
-			}
-
-			if (TryGetPayload(selectorPart, SelectorDefaults.DoubleValueSpecifier, out payload))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.Double,
-					double.Parse(payload, CultureInfo.InvariantCulture));
-				return true;
-			}
-
-			if (TryGetPayload(selectorPart, SelectorDefaults.BooleanValueSpecifier, out payload))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.Boolean, bool.Parse(payload));
-				return true;
-			}
-
-			// Bare literals carry no specifier, so they keep being read with the current culture.
-			if (int.TryParse(selectorPart, out var intValue))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.Integer, intValue);
-				return true;
-			}
-
-			if (double.TryParse(selectorPart, out var doubleValue))
-			{
-				literal = new ValueLiteral(ValueLiteralKind.Double, doubleValue);
+				value = ParseString(selectorPart);
 				return true;
 			}
 
 			if (bool.TryParse(selectorPart, out var boolValue))
 			{
-				literal = new ValueLiteral(ValueLiteralKind.Boolean, boolValue);
+				value = boolValue;
 				return true;
 			}
 
-			literal = default;
-			return false;
-		}
-
-		/// <summary>
-		/// Matches the <c>specifier + value prefix</c> header and hands back the payload behind it.
-		/// Requiring the prefix keeps specifiers that share a start apart, such as
-		/// <see cref="SelectorDefaults.DateOnlyValueSpecifier"/> and
-		/// <see cref="SelectorDefaults.DateTimeValueSpecifier"/>.
-		/// </summary>
-		private static bool TryGetPayload(string selectorPart, string specifier, out string payload)
-		{
-			var headerLength = specifier.Length + SelectorDefaults.ValuePrefix.Length;
-
-			if (selectorPart.Length >= headerLength
-				&& selectorPart.StartsWith(specifier, StringComparison.Ordinal)
-				&& selectorPart.AsSpan(specifier.Length, SelectorDefaults.ValuePrefix.Length)
-					.SequenceEqual(SelectorDefaults.ValuePrefix))
+			var match = NumberLiteral().Match(selectorPart);
+			if (match.Success)
 			{
-				payload = selectorPart[headerLength..];
+				value = ParseNumber(selectorPart, match);
 				return true;
 			}
 
-			payload = string.Empty;
+			value = null!;
 			return false;
 		}
+
+		private static string ParseString(string literal)
+		{
+			var body = literal[1..^1];
+
+			if (body.Replace("\"\"", string.Empty).Contains('"'))
+				throw new ArgumentException(
+					$"Invalid string literal {literal}: a '\"' inside a string must be doubled (\"\").", nameof(literal));
+
+			return body.Replace("\"\"", "\"");
+		}
+
+		private static object ParseNumber(string literal, Match match)
+		{
+			var suffix = match.Groups["suffix"];
+			var number = suffix.Success ? literal[..^1] : literal;
+			var isInteger = !match.Groups["fraction"].Success && !match.Groups["exponent"].Success;
+
+			switch (suffix.Success ? char.ToLowerInvariant(suffix.Value[0]) : '\0')
+			{
+				case 'm':
+					return decimal.TryParse(number, NumberStyles.Float, CultureInfo.InvariantCulture, out var decimalValue)
+						? decimalValue
+						: throw OutOfRange(literal, "decimal");
+
+				case 'l':
+					if (!isInteger)
+						throw new ArgumentException($"Invalid literal '{literal}': the 'L' suffix needs an integer.", nameof(literal));
+					return long.TryParse(number, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var longValue)
+						? longValue
+						: throw OutOfRange(literal, "long");
+			}
+
+			if (!isInteger)
+			{
+				var doubleValue = double.Parse(number, NumberStyles.Float, CultureInfo.InvariantCulture);
+				return double.IsFinite(doubleValue) ? doubleValue : throw OutOfRange(literal, "double");
+			}
+
+			if (int.TryParse(number, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var intValue))
+				return intValue;
+
+			return long.TryParse(number, NumberStyles.AllowLeadingSign, CultureInfo.InvariantCulture, out var wideValue)
+				? wideValue
+				: throw OutOfRange(literal, "long");
+		}
+
+		private static ArgumentException OutOfRange(string literal, string type)
+			=> new($"The literal '{literal}' does not fit in a {type}.", "selectorPart");
 	}
 }

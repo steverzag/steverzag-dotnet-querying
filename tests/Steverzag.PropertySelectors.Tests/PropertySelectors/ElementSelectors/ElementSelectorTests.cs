@@ -42,7 +42,6 @@ public class ElementSelectorTests
     }
 
     private const string Delimiter = SelectorDefaults.PropertyDelimiter;
-    private const string IntegerValue = SelectorDefaults.IntegerValueSpecifier + SelectorDefaults.ValuePrefix;
 
     private static TestOrder SampleOrder() => new()
     {
@@ -188,9 +187,9 @@ public class ElementSelectorTests
     }
 
     [Fact]
-    public void ElementAtIndex_WithIntegerValueSpecifier_ReturnsElementAtThatIndex()
+    public void ElementAtIndex_WithIntegerLiteral_ReturnsElementAtThatIndex()
     {
-        PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.ElementAtIndex}({IntegerValue}2)";
+        PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.ElementAtIndex}(2)";
 
         var result = Evaluate<int>(selector, SampleOrder());
 

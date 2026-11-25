@@ -64,6 +64,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		internal List<ArithmeticOperationToken> SanitizeNegations(List<ArithmeticOperationToken> tokens)
 		{
+			FoldNegativeNumbers(tokens);
+
 			var unaryMinusIndices = new List<int>();
 			for (int i = 0; i < tokens.Count; i++)
 			{
@@ -89,6 +91,22 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			return tokens;
 		}
 
+		private static void FoldNegativeNumbers(List<ArithmeticOperationToken> tokens)
+		{
+			for (int i = tokens.Count - 2; i >= 0; i--)
+			{
+				var isUnaryPosition = i == 0 || tokens[i - 1].Type is not ArithmeticOperationTokenType.Selector and not ArithmeticOperationTokenType.RParen;
+				var next = tokens[i + 1];
+
+				if (tokens[i].Type == ArithmeticOperationTokenType.Minus && isUnaryPosition
+					&& next.Type == ArithmeticOperationTokenType.Selector && next.Value.Length > 0 && char.IsDigit(next.Value[0]))
+				{
+					tokens[i] = new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, "-" + next.Value);
+					tokens.RemoveAt(i + 1);
+				}
+			}
+		}
+
 		private ArithmeticOperationToken ReadSelector()
 		{
 			var start = _pos;
@@ -100,6 +118,20 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				{
 					_pos++;
 				}
+
+				if (_pos < _text.Length && _text[_pos] is 'e' or 'E')
+				{
+					var exponentDigits = _pos + 1 < _text.Length && _text[_pos + 1] is '+' or '-' ? _pos + 2 : _pos + 1;
+					if (exponentDigits < _text.Length && char.IsDigit(_text[exponentDigits]))
+					{
+						_pos = exponentDigits;
+						while (_pos < _text.Length && char.IsDigit(_text[_pos]))
+							_pos++;
+					}
+				}
+
+				if (_pos < _text.Length && _text[_pos] is 'l' or 'L' or 'm' or 'M')
+					_pos++;
 
 				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos]);
 			}

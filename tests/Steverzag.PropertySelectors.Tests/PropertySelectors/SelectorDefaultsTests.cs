@@ -11,13 +11,6 @@ public class SelectorDefaultsTests
         Assert.Equal("$FN_", SelectorDefaults.FunctionStart);
     }
 
-    [Fact]
-    public void SpecifierStart_ShouldHaveCorrectPrefix()
-    {
-        // Assert
-        Assert.Equal("$SPEC_", SelectorDefaults.SpecifierStart);
-    }
-
     [Theory]
     [InlineData(nameof(SelectorDefaults.CountAggregateFunction))]
     [InlineData(nameof(SelectorDefaults.LongCountAggregateFunction))]
@@ -72,11 +65,10 @@ public class SelectorDefaultsTests
     }
 
     [Theory]
-    [InlineData(nameof(SelectorDefaults.IntegerValueSpecifier))]
-    [InlineData(nameof(SelectorDefaults.DoubleValueSpecifier))]
-    [InlineData(nameof(SelectorDefaults.BooleanValueSpecifier))]
-    [InlineData(nameof(SelectorDefaults.StringValueSpecifier))]
-    public void ValueSpecifiers_ShouldStartWithValuePrefix(string propertyName)
+    [InlineData(nameof(SelectorDefaults.DateTimeLiteral))]
+    [InlineData(nameof(SelectorDefaults.DateOnlyLiteral))]
+    [InlineData(nameof(SelectorDefaults.TimeOnlyLiteral))]
+    public void DateLiterals_ShouldBeDateFunctions(string propertyName)
     {
         // Arrange
         var property = typeof(SelectorDefaults).GetField(propertyName);
@@ -84,7 +76,7 @@ public class SelectorDefaultsTests
 
         // Assert
         Assert.NotNull(value);
-        Assert.StartsWith(SelectorDefaults.ValueStart, value);
+        Assert.StartsWith(SelectorDefaults.FunctionStart + "DT_", value);
     }
 
     [Fact]
@@ -95,7 +87,7 @@ public class SelectorDefaultsTests
             .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static)
             .Where(f => f.IsLiteral && f.FieldType == typeof(string))
             .Select(f => f.GetValue(null) as string)
-            .Where(v => v != SelectorDefaults.FunctionStart && v != SelectorDefaults.SpecifierStart)
+            .Where(v => v != SelectorDefaults.FunctionStart)
             .ToList();
 
         // Assert

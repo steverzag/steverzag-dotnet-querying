@@ -223,7 +223,7 @@ public class ArithmeticOperationSelectorTests
     [InlineData("Name|$FN_STR_SUBSTRING(1 + 1)|$FN_STR_LENGTH + 1", 4)]
     [InlineData("1 + Name|$FN_STR_SUBSTRING(0, 2)|$FN_STR_LENGTH", 3)]
     [InlineData("(Name|$FN_STR_SUBSTRING(0, 2)|$FN_STR_LENGTH + 1) * 2", 6)]
-    [InlineData("Name|$FN_STR_INDEXOF($VAL_STR:l) - Amount", -8)]
+    [InlineData("Name|$FN_STR_INDEXOF(\"l\") - Amount", -8)]
     public void PropertyChainWithFunctionArguments_IsReadAsASingleToken(string expression, int expected)
     {
         // A chain that starts with a property used to stop at the first '(', which cut the function's arguments off.

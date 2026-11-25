@@ -158,7 +158,7 @@ var aggregate = await context.Persons.Skip(5)
 		nameof(AppPerson.Id), 
 		nameof(AppPerson.Name), 
 		nameof(AppPerson.Name) + SelectorDefaults.PropertyDelimiter
-			+ SelectorDefaults.StringContains + "(" + SelectorDefaults.StringValueSpecifier + SelectorDefaults.ValuePrefix + "Merl" + ")"])
+			+ SelectorDefaults.StringContains + "(" + SelectorLiteral.Format("Merl") + ")"])
 	.PaginateAsync(1, 10);
 
 foreach (var person in persons)

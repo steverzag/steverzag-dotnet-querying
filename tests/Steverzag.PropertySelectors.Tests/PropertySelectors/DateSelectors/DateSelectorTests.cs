@@ -34,6 +34,13 @@ public class DateSelectorTests
         return lambda(item);
     }
 
+    private static object? EvaluateBoxed(PropertySelector selector)
+    {
+        var parameter = Expression.Parameter(typeof(TestItem), "x");
+        var body = Expression.Convert(ExpressionUtils.CreateMemberAccess(parameter, selector), typeof(object));
+        return Expression.Lambda<Func<TestItem, object?>>(body, parameter).Compile()(new TestItem());
+    }
+
     // ── Add functions ───────────────────────────────────────────────────────
 
     [Fact]
@@ -174,9 +181,9 @@ public class DateSelectorTests
     // ── Value literals ──────────────────────────────────────────────────────
 
     [Fact]
-    public void DateTimeValueSpecifier_AsSelector_ProducesDateTimeConstant()
+    public void DateTimeLiteral_AsSelector_ProducesDateTimeConstant()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateTimeValueSpecifier}{SelectorDefaults.ValuePrefix}2024-03-15T10:30:45";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateTimeLiteral}(\"2024-03-15T10:30:45\")";
 
         var result = Evaluate<DateTime>(selector, new TestItem());
 
@@ -185,9 +192,9 @@ public class DateSelectorTests
     }
 
     [Fact]
-    public void DateOnlyValueSpecifier_AsSelector_ProducesDateOnlyConstant()
+    public void DateOnlyLiteral_AsSelector_ProducesDateOnlyConstant()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}2024-03-15";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateOnlyLiteral}(\"2024-03-15\")";
 
         var result = Evaluate<DateOnly>(selector, new TestItem());
 
@@ -196,13 +203,89 @@ public class DateSelectorTests
     }
 
     [Fact]
-    public void TimeOnlyValueSpecifier_AsSelector_ProducesTimeOnlyConstant()
+    public void TimeOnlyLiteral_AsSelector_ProducesTimeOnlyConstant()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.TimeOnlyValueSpecifier}{SelectorDefaults.ValuePrefix}10:30:45";
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.TimeOnlyLiteral}(\"10:30:45\")";
 
         var result = Evaluate<TimeOnly>(selector, new TestItem());
 
         Assert.Equal(typeof(TimeOnly), selector.SelectorType);
         Assert.Equal(new TimeOnly(10, 30, 45), result);
+    }
+
+    public static TheoryData<string, object> DateLiterals() => new()
+    {
+        { "$FN_DT_DATETIME(\"2024-03-15T10:30:45\")", new DateTime(2024, 3, 15, 10, 30, 45) },
+        { "$FN_DT_DATETIME(\"2024-03-15\")", new DateTime(2024, 3, 15) },
+        { "$FN_DT_DATEONLY(\"2024-03-15\")", new DateOnly(2024, 3, 15) },
+        { "$FN_DT_TIMEONLY(\"10:30\")", new TimeOnly(10, 30) },
+        { "$FN_DT_TIMEONLY(\"10:30:45.5\")", new TimeOnly(10, 30, 45, 500) },
+    };
+
+    [Theory]
+    [MemberData(nameof(DateLiterals))]
+    public void DateLiteral_InBothForms_IsAConstantOfItsType(string text, object expected)
+    {
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
+
+        Assert.Equal(expected.GetType(), generic.Type);
+        Assert.Equal(expected.GetType(), nonGeneric.Type);
+        Assert.Equal(expected, EvaluateBoxed(generic));
+        Assert.Equal(expected, EvaluateBoxed(nonGeneric));
+        Assert.IsAssignableFrom<ConstantExpression>(nonGeneric.PropertyAccess(null!));
+    }
+
+    [Fact]
+    public void DateTimeLiteral_KeepsTheKind()
+    {
+        PropertySelector<TestItem> utc = $"{SelectorDefaults.DateTimeLiteral}(\"2024-03-15T10:30:00Z\")";
+        PropertySelector<TestItem> unspecified = $"{SelectorDefaults.DateTimeLiteral}(\"2024-03-15T10:30:00\")";
+
+        var utcValue = Evaluate<DateTime>(utc, new TestItem());
+
+        Assert.Equal(DateTimeKind.Utc, utcValue.Kind);
+        Assert.Equal(new DateTime(2024, 3, 15, 10, 30, 0, DateTimeKind.Utc), utcValue);
+        Assert.Equal(DateTimeKind.Unspecified, Evaluate<DateTime>(unspecified, new TestItem()).Kind);
+    }
+
+    [Theory]
+    [InlineData("$FN_DT_DATETIME(\"2024-13-01\")")]
+    [InlineData("$FN_DT_DATEONLY(\"not a date\")")]
+    [InlineData("$FN_DT_TIMEONLY(\"25:00\")")]
+    [InlineData("$FN_DT_DATETIME(CreatedAt)")]
+    [InlineData("$FN_DT_DATETIME(5)")]
+    public void DateLiteral_WithAnInvalidArgument_FailsWhenParsed(string text)
+    {
+        Assert.Throws<ArgumentException>(() => { PropertySelector<TestItem> _ = text; });
+        Assert.Throws<ArgumentException>(() => { PropertySelector _ = text; });
+    }
+
+    [Theory]
+    [InlineData("$FN_DT_DATETIME")]
+    [InlineData("$FN_DT_DATEONLY(\"2024-01-01\", \"2024-01-02\")")]
+    public void DateLiteral_WithoutExactlyOneArgument_IsRejected(string text)
+    {
+        Assert.ThrowsAny<Exception>(() => { PropertySelector<TestItem> _ = text; });
+        Assert.ThrowsAny<Exception>(() => { PropertySelector _ = text; });
+    }
+
+    [Fact]
+    public void DateLiteral_WorksAsAFunctionArgument()
+    {
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateAddDays}({SelectorDefaults.DateTimeLiteral}(\"2024-03-15\"), 3)";
+
+        Assert.Equal(new DateTime(2024, 3, 18), Evaluate<DateTime>(selector, new TestItem()));
+    }
+
+    [Fact]
+    public void DateLiteral_ToString_ReparsesToTheSameValue()
+    {
+        PropertySelector<TestItem> selector = $"UpdatedAt|$FN_COALESCE({SelectorDefaults.DateTimeLiteral}(\"2024-03-15T10:30:00\"))";
+
+        PropertySelector<TestItem> reparsed = selector.ToString();
+
+        Assert.Equal("UpdatedAt|$FN_COALESCE($FN_DT_DATETIME(\"2024-03-15T10:30:00\"))", selector.ToString());
+        Assert.Equal(new DateTime(2024, 3, 15, 10, 30, 0), Evaluate<DateTime>(reparsed, new TestItem()));
     }
 }

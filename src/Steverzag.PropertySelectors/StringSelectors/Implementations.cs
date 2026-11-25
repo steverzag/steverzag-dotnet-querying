@@ -19,7 +19,7 @@ namespace Steverzag.PropertySelectors.StringSelectors
 
 		/// <summary>
 		/// Calls <paramref name="methodInfo"/> on the chained target, so
-		/// <c>Name|$FN_STR_CONTAINS($VAL_STR:ell)</c> builds <c>x.Name.Contains("ell")</c>.
+		/// <c>Name|$FN_STR_CONTAINS("ell")</c> builds <c>x.Name.Contains("ell")</c>.
 		/// The selector parameters carry only the arguments; because the target is already a
 		/// resolved string expression, property parameters are resolved against the scope root
 		/// the target itself was built from (<c>x</c> in the example above).

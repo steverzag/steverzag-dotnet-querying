@@ -20,6 +20,7 @@ PropertySelector<Person> avgId  = "Phones.Id|$FN_AGGR_AVG";             // p => 
 PropertySelector<Person> calc   = "(Salary + 100) * 2";                 // arithmetic
 PropertySelector<Person> pow    = SelectorDefaults.MathPower + "(2, 2)";// function with arguments
 PropertySelector<Person> lit    = "42";                                 // literal value
+PropertySelector<Person> since  = "$FN_DT_DATEONLY(\"2024-01-01\")";    // date literal
 
 Expression body = avgId.PropertyAccess(parameter);
 ```
@@ -31,9 +32,15 @@ Expression body = avgId.PropertyAccess(parameter);
 | Property path | `Name(.Name)*` | `Address.City` |
 | Pipe / chain | `part\|part\|…`, where each part applies to the previous result | `Phones.Id\|$FN_AGGR_SUM` |
 | Function | `$FN_<NAME>` or `$FN_<NAME>(arg, …)`. Arguments are selectors themselves. | `$FN_STR_SUBSTRING(0, 3)` |
-| Literal | number, `true`/`false`, `"quoted string"`. Everything between the quotes is text, including `\| + - * / ( ) ,`. There are no escapes, so a string can't contain `"`. | `55`, `"Hi"`, `"n/a"` |
-| Typed literal | `$VAL_<KIND>:<value>` with KIND ∈ INT, DOUBLE, BOOL, STR, DATETIME, DATE, TIME. The value runs to the end of its part, so as a function argument it ends at the next `,` or `)`. For text with commas or parentheses, use a quoted string. | `$VAL_DATE:2025-01-31` |
-| Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths or literals. | `Amount - 3 - 2` |
+| Number literal | Read with the invariant culture on every machine (decision 017). An integer is `int`, or `long` if it doesn't fit. A `.` or an exponent makes it `double`. The suffix `L` gives `long` and `m` gives `decimal`. A minus sign in front of a number is part of it. A number that doesn't fit its type is rejected. | `55`, `-3`, `1.5`, `1e-3`, `5L`, `9.99m` |
+| Boolean literal | `true` / `false`, in any case. | `true` |
+| String literal | `"quoted string"`. Everything between the quotes is text, including `\| + - * / ( ) ,`. Write a `"` inside as `""`. | `"Hi"`, `"n/a"`, `"say ""hi"""` |
+| Date/time literal | A constructor function taking one quoted string, read with the invariant culture and checked when the selector is parsed. A date-time keeps its kind (a trailing `Z` stays UTC). | `$FN_DT_DATETIME("2025-01-31T08:30:00")`, `$FN_DT_DATEONLY("2025-01-31")`, `$FN_DT_TIMEONLY("08:30")` |
+| Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths, literals or chains. | `Amount - 3 - 2` |
+
+`SelectorLiteral.Format(value)` writes any of these literals from a .NET value (`int`, `long`, `double`, `float`,
+`decimal`, `bool`, `string`, `DateTime`, `DateOnly`, `TimeOnly`). Use it instead of building literal text by hand.
+Values typed by end users should travel as filter values (QueryShaper's `SearchValue`), not inside selector text.
 
 All tokens are constants on `SelectorDefaults`. Prefer those constants to string literals in your code.
 
@@ -46,7 +53,7 @@ All tokens are constants on `SelectorDefaults`. Prefer those constants to string
 | Ordering | `ORDER_ASC`, `ORDER_DESC`, `THEN_ORDER_ASC`, `THEN_ORDER_DESC` |
 | Math | `MATH_CEILING`, `FLOOR`, `ROUND`, `TRUNCATE`, `SIGN`, `POW`, `SQRT`, `EXP`, `LOG`, `LOG10`, `SIN`, `COS`, `TAN`, `ASIN`, `ACOS`, `ATAN`, `ATAN2`, `MAX`, `MIN` |
 | String | `STR_LENGTH`, `TOUPPER`, `TOLOWER`, `TRIM`, `TRIMSTART`, `TRIMEND`, `SUBSTRING`, `INDEXOF`, `REPLACE`, `CONTAINS`, `STARTSWITH`, `ENDSWITH`, `CONCAT`, `JOIN`, `COMPARE`, `ISNULLOREMPTY`, `ISNULLORWHITESPACE` |
-| Date | `DT_ADDYEARS`, `ADDMONTHS`, `ADDDAYS`, `ADDHOURS`, `ADDMINUTES`, `ADDSECONDS`, `ADDMILLISECONDS`, `NOW`, `UTCNOW`, `TODAY` |
+| Date | `DT_DATETIME`, `DATEONLY`, `TIMEONLY` (literals), `DT_ADDYEARS`, `ADDMONTHS`, `ADDDAYS`, `ADDHOURS`, `ADDMINUTES`, `ADDSECONDS`, `ADDMILLISECONDS`, `NOW`, `UTCNOW`, `TODAY`. The family is meant to grow (decision 017.9; roadmap). |
 | Null handling | `COALESCE` |
 
 **Aggregate result types** follow `Enumerable`'s overload for the element type, and the selector's `Type` matches
@@ -89,8 +96,9 @@ PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";     
   exception: it declares `string`. Code that builds the expression first, such as the QueryShaper mapper, still checks
   the result type. A function chained after a value-type coalesce with a property fallback (`DeletedAt|$FN_COALESCE(CreatedAt)|…`)
   can't be resolved in the generic form yet (roadmap: typed function arguments).
-- Coalesce works inside arithmetic (`A|$FN_COALESCE(0) + 1`), and a quoted default can hold any character but `"`
-  (`Nickname|$FN_COALESCE("n/a")`).
+- Coalesce works inside arithmetic (`A|$FN_COALESCE(0) + 1`). A quoted default can hold any character, with `"`
+  written as `""` (`Nickname|$FN_COALESCE("n/a")`), and a date default is a date literal
+  (`DeletedAt|$FN_COALESCE($FN_DT_DATETIME("2024-01-01"))`).
 
 ## Generic vs non-generic
 
@@ -111,15 +119,10 @@ normalized, not echoed:
   (`Reviews|$FN_AGGR_COUNT`).
 - Arithmetic gets only the parentheses its structure needs: `(A * B) + C` becomes `A * B + C`, while
   `A - (B - C)` keeps its parentheses.
-- Strings are quoted (`"n/a"`). A string containing `"` falls back to `$VAL_STR:`.
-- Non-negative ints and bools are written bare (`42`, `true`). Negative ints, doubles and dates keep
-  their `$VAL_*:` form: bare doubles parse with the current culture, and a negative bare number
-  passed as an argument would be read as negation.
-
-Known gap: a `$VAL_*:` literal inside arithmetic only parses as the **last** token, because the
-payload runs to the end of the text (`$VAL_DOUBLE:1.5 * A` fails). So `ToString()` of arithmetic
-that has a double or date literal before another token doesn't reparse. Decision 017 removes the `$VAL_*:` forms
-(plain literals, and `$FN_DT_*("…")` for dates), which closes this gap.
+- Literals are written the way `SelectorLiteral.Format` writes them: `42`, `-3`, `5L`, `9.99m`,
+  `true`, `"say ""hi"""`. A double always has a `.` or an exponent (`2.0`, `1E+20`), so it reads back
+  as a double.
+- Date literals keep the text they were written with (`$FN_DT_DATEONLY("2025-01-31")`).
 
 ## Extending: custom functions
 
