@@ -37,7 +37,7 @@ Expression body = avgId.PropertyAccess(parameter);
 | Boolean literal | `true` / `false`, in any case. | `true` |
 | String literal | `"quoted string"`. Everything between the quotes is text, including `\| + - * / ( ) ,`. Write a `"` inside as `""`. | `"Hi"`, `"n/a"`, `"say ""hi"""` |
 | Date/time literal | A constructor function taking one quoted string, read with the invariant culture and checked when the selector is parsed. A date-time keeps its kind (a trailing `Z` stays UTC). | `$FN_DT_DATETIME("2025-01-31T08:30:00")`, `$FN_DT_DATEONLY("2025-01-31")`, `$FN_DT_TIMEONLY("08:30")` |
-| Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths, literals or chains. | `Amount - 3 - 2` |
+| Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths, literals or chains. Both operands are widened to their common type, which is the result type (`Quantity + 1` → `int`, `Price * 3` → `decimal`, nullable if either operand is). | `Amount - 3 - 2` |
 
 `SelectorLiteral.Format(value)` writes any of these literals from a .NET value (`int`, `long`, `double`, `float`,
 `decimal`, `bool`, `string`, `DateTime`, `DateOnly`, `TimeOnly`). Use it instead of building literal text by hand.
@@ -78,8 +78,14 @@ type when there is one (`MAX` on two `int`s is `Math.Max(int, int)` → `int`; o
 `double` otherwise (`CEILING` on an `int` → `double`). **Decimals go through `double`**: EF's SQLite provider can't
 translate `Math` over `decimal`, and the core can't see the provider (decision 006). For money this can lose precision
 (`Math.Round(0.5015m, 3)` is 0.502, but through `double` it is 0.501). The roadmap tracks an opt-in fix. The other math
-functions return `double`, and `SIGN` returns `int`. The declared type always matches what is built. Note that SQL and
-.NET round halves differently: SQLite rounds 4.5 to 5, and .NET's `Math.Round` gives 4 (to even).
+functions return `double`, and `SIGN` returns `int`. Note that SQL and .NET round halves differently: SQLite rounds
+4.5 to 5, and .NET's `Math.Round` gives 4 (to even).
+
+**Declared type (`Type`).** A selector's declared type is either the type of the expression it builds, or `null` when
+that can't be known until the expression is built. It is never a different type. It is `null` when it depends on a
+type that isn't known yet: a property in the non-generic form, or a property argument of a function (roadmap: typed
+function arguments). So `$FN_MATH_MAX(Amount, 5.0)` and `Quantity|$FN_MATH_MAX(Views)` declare no type, while
+`Quantity|$FN_MATH_MAX(10)` declares `int`.
 
 ## Piped and static forms
 

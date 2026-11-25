@@ -95,22 +95,17 @@ public class PipedFormTests
         { "Name|$FN_STR_TRIM|$FN_STR_CONCAT(\"!\")", "$FN_STR_CONCAT(Name|$FN_STR_TRIM, \"!\")" },
         { "Numbers|$FN_AGGR_SUM|$FN_MATH_SQRT", "$FN_MATH_SQRT(Numbers|$FN_AGGR_SUM)" },
         { "Nickname|$FN_COALESCE(Name)|$FN_STR_CONCAT(\"!\")", "$FN_STR_CONCAT(Nickname|$FN_COALESCE(Name), \"!\")" },
+        { "Price|$FN_MATH_ROUND(2) * 3", "$FN_MATH_ROUND(Price, 2) * 3" },
+        { "Quantity|$FN_MATH_MAX(10) - Digits", "$FN_MATH_MAX(Quantity, 10) - Digits" },
         { "Created|$FN_DT_ADDDAYS(1)|$FN_DT_ADDHOURS(2)", "$FN_DT_ADDHOURS($FN_DT_ADDDAYS(Created, 1), 2)" },
         { "Ratio|$FN_MATH_POW(2)|$FN_MATH_SQRT", "$FN_MATH_SQRT($FN_MATH_POW(Ratio, 2))" },
         { "Nickname|$FN_COALESCE(Name|$FN_STR_CONCAT(\"?\"))", "Nickname|$FN_COALESCE($FN_STR_CONCAT(Name, \"?\"))" },
-    };
-
-    // Arithmetic always declares double (a known gap, see the roadmap), so these stay out of the declared-type test.
-    public static TheoryData<string, string> InArithmetic => new()
-    {
-        { "Price|$FN_MATH_ROUND(2) * 3", "$FN_MATH_ROUND(Price, 2) * 3" },
     };
 
     [Theory]
     [MemberData(nameof(UnaryMath))]
     [MemberData(nameof(WithArguments))]
     [MemberData(nameof(InContext))]
-    [MemberData(nameof(InArithmetic))]
     public void PipedForm_BuildsTheSameExpressionAsTheStaticForm(string piped, string @static)
     {
         foreach (var (pipedSelector, staticSelector) in BothForms(piped).Zip(BothForms(@static)))
@@ -131,8 +126,18 @@ public class PipedFormTests
     {
         var selector = (PropertySelector<Product>)piped;
 
-        Assert.Equal(Body(selector).Type, selector.Type);
+        if (UnknownUntilBuilt.Contains(piped))
+            Assert.Null(selector.Type);
+        else
+            Assert.Equal(Body(selector).Type, selector.Type);
     }
+
+    // MAX/MIN widen over every argument, and a property argument has no type until built (typed function arguments).
+    private static readonly HashSet<string> UnknownUntilBuilt =
+    [
+        "Quantity|$FN_MATH_MIN(Digits)",
+        "Price|$FN_MATH_MAX(Ratio)",
+    ];
 
     [Theory]
     [InlineData("Price|$FN_MATH_ROUND(2)", 12.35)]

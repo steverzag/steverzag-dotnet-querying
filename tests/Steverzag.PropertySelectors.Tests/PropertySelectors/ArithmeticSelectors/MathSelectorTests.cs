@@ -281,11 +281,12 @@ public class MathSelectorTests
     }
 
     [Fact]
-    public void MathMax_SetsSelectorTypeToTheWiderParameterType()
+    public void MathMax_WithAPropertyArgument_DeclaresNoTypeUntilBuilt()
     {
+        // The property argument has no type when parsed, and the wider type depends on it.
         PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}(Amount, 5.0)";
 
-        Assert.Equal(typeof(double), selector.Type);
+        Assert.Null(selector.Type);
         Assert.Equal(5d, Evaluate<double>(selector, new TestItem { Amount = 2 }));
     }
 

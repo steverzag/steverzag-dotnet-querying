@@ -6,12 +6,14 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		public PropertySelector LeftExpression { get; init; } = null!;
 		public PropertySelector? RightExpression { get; init; }
 		public ArithmeticOperator Operator { get; set; }
-		public override Type? SelectorType => typeof(double);
+		public override Type? SelectorType => ArithmeticUtils.DeclaredType(this);
 
 		public ArithmeticOperationSelector() : base(SelectorDefaults.ArithmeticOperation)
 		{
 			PropertyAccess = (target) => target.CreateArithmeticOperationExpression(this);
 		}
+
+		public override Type? InitSelectorTypeToApply() => null;
 
 		protected override string SegmentToString() => ArithmeticOperationFormatter.Format(this);
 	}
@@ -21,7 +23,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		public PropertySelector LeftExpression { get; init; } = null!;
 		public PropertySelector? RightExpression { get; init; }
 		public ArithmeticOperator Operator { get; set; }
-		public override Type? SelectorType => typeof(double);
+		public override Type? SelectorType => ArithmeticUtils.DeclaredType(this);
 
 		public ArithmeticOperationSelector() : base(SelectorDefaults.ArithmeticOperation)
 		{

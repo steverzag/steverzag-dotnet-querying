@@ -61,6 +61,21 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			return wider;
 		}
 
+		public static Type? DeclaredType(IArithmeticOperationSelector operation)
+		{
+			// Read by the base constructor too, before the operands are set.
+			var left = operation.LeftExpression?.Type;
+
+			if (operation.Operator == ArithmeticOperator.Negation)
+				return left is not null && IsNumericType(left) ? left : null;
+
+			var right = operation.RightExpression?.Type;
+
+			return left is not null && right is not null && IsNumericType(left) && IsNumericType(right)
+				? GetWiderNumericType(left, right)
+				: null;
+		}
+
 		public static Type GetWiderNumericType(params List<Type?> types)
 		{
 			if (types == null || types.Count == 0)

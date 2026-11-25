@@ -77,15 +77,82 @@ public class ArithmeticOperationSelectorTests
     }
 
     [Fact]
-    public void ArithmeticSelector_DeclaresDoubleRegardlessOfTheOperandTypes()
+    public void ArithmeticSelector_DeclaresTheWidenedOperandType()
     {
-        // Known mismatch: SelectorType is hard-coded to double, while the built expression keeps
-        // the widened operand type — int here.
         PropertySelector<TestItem> selector = "Amount + 2";
 
-        Assert.Equal(typeof(double), selector.Type);
+        Assert.Equal(typeof(int), selector.Type);
         Assert.Equal(5, Evaluate<int>(selector, new TestItem { Amount = 3 }));
-        Assert.ThrowsAny<ArgumentException>(() => Evaluate<double>(selector, new TestItem { Amount = 3 }));
+    }
+
+    public class TypedItem
+    {
+        public int Quantity { get; set; }
+        public int? NullableQuantity { get; set; }
+        public long Views { get; set; }
+        public double Score { get; set; }
+        public decimal Price { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public List<int> Numbers { get; set; } = [];
+    }
+
+    public static TheoryData<string> TypedExpressions => new()
+    {
+        "Quantity + 1",
+        "Quantity * Views",
+        "Quantity / 2",
+        "Price * 3",
+        "Price * 1.5m",
+        "Quantity * 1.5",
+        "Score - Quantity",
+        "NullableQuantity + 1",
+        "-Quantity",
+        "-Price",
+        "-(Quantity + Views)",
+        "(Quantity + 1) * Price",
+        "Numbers|$FN_AGGR_SUM + 1",
+        "Numbers|$FN_AGGR_MAX + 1",
+        "Name|$FN_STR_LENGTH * 2",
+        "Quantity|$FN_MATH_MAX(1L) + 1",
+        "Price|$FN_MATH_ROUND(2) * 3",
+    };
+
+    [Theory]
+    [MemberData(nameof(TypedExpressions))]
+    public void ArithmeticSelector_DeclaresTheTypeItBuilds(string text)
+    {
+        PropertySelector<TypedItem> selector = text;
+        var body = ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(TypedItem), "x"), selector);
+
+        Assert.NotNull(selector.Type);
+        Assert.Equal(body.Type, selector.Type);
+    }
+
+    [Fact]
+    public void ArithmeticSelector_DeclaresNoType_WhenAnOperandTypeIsUnknown()
+    {
+        // Non-generic properties, and property arguments of a function, have no type until the expression is built.
+        Assert.Null(((PropertySelector)"Quantity + 1").Type);
+        Assert.Null(((PropertySelector)"$FN_MATH_ROUND(Quantity) + 1").Type);
+        Assert.Null(((PropertySelector<TypedItem>)"$FN_MATH_ROUND(Quantity) + 1").Type);
+        Assert.Null(((PropertySelector<TypedItem>)"Quantity|$FN_MATH_MAX(Views) + 1").Type);
+    }
+
+    [Fact]
+    public void ArithmeticSelector_DeclaresLiteralTypes_InTheNonGenericForm()
+    {
+        Assert.Equal(typeof(int), ((PropertySelector)"2 + 3").Type);
+        Assert.Equal(typeof(decimal), ((PropertySelector)"2 * 1.5m").Type);
+    }
+
+    [Fact]
+    public void ArithmeticSelector_OnANonNumericOperand_StillFailsWhenBuilt()
+    {
+        PropertySelector<TypedItem> selector = "Name + 1";
+
+        Assert.Null(selector.Type);
+        Assert.ThrowsAny<Exception>(() =>
+            ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(TypedItem), "x"), selector));
     }
 
     // ── Evaluation ──────────────────────────────────────────────────────────

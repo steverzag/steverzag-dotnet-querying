@@ -95,11 +95,11 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		public static Type? MathResultType(MethodInfo doubleOverload, IEnumerable<PropertySelector> operands)
 		{
-			var known = operands.Select(o => o?.Type).Where(t => t is not null).ToList();
+			var types = operands.Select(o => o?.Type).ToList();
 
-			return known.Count == 0
+			return types.Count == 0 || types.Any(t => t is null)
 				? null
-				: doubleOverload.ForOperandType(ArithmeticUtils.GetWiderNumericType(known)).ReturnType;
+				: doubleOverload.ForOperandType(ArithmeticUtils.GetWiderNumericType(types)).ReturnType;
 		}
 
 		public static Expression CreateUnaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector parameter, bool matchOperandType = false)
