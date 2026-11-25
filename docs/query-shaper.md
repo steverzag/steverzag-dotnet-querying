@@ -153,6 +153,12 @@ one `SelectResult` per group, and its selectors resolve against the **group**:
 
 Each `SelectValue.Selector` is the selector text exactly as passed in.
 
+The selectors are parsed as `PropertySelector<IGrouping<GroupByKeys, T>>`, so a mistake is caught when the
+selector is parsed, and the error points at it in the whole selector: `Key|Missing` gives "Property 'Missing' was
+not found on type 'GroupByKeys'." at position 4. A property is looked up on the grouping first (`Key`) and then on
+the rows (`Quantity`), so a typo in a row property names the row type: "…'Quantiy' was not found on type
+'Product'." (decision 023).
+
 ```csharp
 var totals = db.Products
     .ApplyGrouping(["Category.Name"])

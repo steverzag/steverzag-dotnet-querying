@@ -35,17 +35,15 @@ public static class TypesExtensions
 			var offset = segmentOffset;
 			segmentOffset += propertyName.Length + 1;
 
-			if (ExpressionUtils.TryGetEnumerableElementType(currentType, out var itemType) && itemType is not null)
+			var property = offset == 0 ? FindProperty(currentType, propertyName) : null;
+
+			if (property is null && ExpressionUtils.TryGetEnumerableElementType(currentType, out var itemType) && itemType is not null)
 			{
 				projected = true;
 				currentType = itemType;
 			}
 
-			var property = currentType.GetProperty(
-				propertyName,
-				BindingFlags.Public |
-				BindingFlags.Instance |
-				BindingFlags.IgnoreCase);
+			property ??= FindProperty(currentType, propertyName);
 
 			if (property is null && Nullable.GetUnderlyingType(currentType) is { } underlying)
 			{
@@ -76,4 +74,7 @@ public static class TypesExtensions
 
 		return typeof(IEnumerable<>).MakeGenericType(currentType);
 	}
+
+	private static PropertyInfo? FindProperty(Type type, string propertyName)
+		=> type.GetProperty(propertyName, BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
 }

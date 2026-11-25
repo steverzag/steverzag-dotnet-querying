@@ -87,12 +87,7 @@ namespace Steverzag.QueryShaper.Aggregating
 
 			foreach (var selectorText in aggregateSelectors)
 			{
-				// Selectors resolve against the group, not the element: "Key.GroupKey0" reads a key,
-				// "Quantity|$FN_AGGR_SUM" aggregates the group's elements. The non-generic selector is used on
-				// purpose: PropertySelector<T> resolves types up front and unwraps IGrouping<K, T> to T, so it
-				// can't see Key. The non-generic one resolves while building the expression, where
-				// ExpressionUtils maps grouping member access onto the elements.
-				PropertySelector propertySelector = selectorText;
+				PropertySelector<IGrouping<GroupByKeys, T>> propertySelector = selectorText;
 				var aggregateExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);
 
 				var newAggregateValueExp = Expression.New(selectValueConstructor,

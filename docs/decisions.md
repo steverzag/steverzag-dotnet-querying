@@ -628,3 +628,25 @@ refusing a member after a function, which would remove chains that worked in the
 **Consequence:** `Lines|Missing` now reports the element type ("not found on type 'Line'"). The two tests that
 pinned the old behaviour were rewritten. In the non-generic form, an unknown property in a later part is reported
 when the expression is built, with a position relative to that part (021.4).
+
+### 023: At the start of a part, a collection's own members come before its elements (2026-11-25)
+**Status:** accepted; implemented (2026-11-25)
+**Context:** when a part started on a collection, the generic type resolver (`GetPropertyType`) always went to the
+element type first. The expression builder (`CreateMemberAccessRec`) tried the collection's own member first and
+only then projected. For a grouping this meant `PropertySelector<IGrouping<K, T>>` couldn't resolve `Key` ("not
+found on type 'Product'"), so QueryShaper's grouped `ApplySelect` used the non-generic form as a workaround and
+lost errors at parse time. With 022 a piped collection became reachable, and `Names|Length` on a `string[]`
+declared `IEnumerable<int>` but built the array's `int` length.
+**Decision:** the resolver follows the builder. At the **start of a part** (the root, or a piped value), a member is
+looked up on the value itself first. If it isn't there and the value is a collection, it's looked up on the
+elements, which projects. So `Key` on a grouping is its key, `Quantity` projects the rows, `Names|Length` is the
+array length and `Phones|Count` is the list's `Count`. **Inside a dotted path**, a collection still projects:
+`Names.Length` is each name's length. Grouped `ApplySelect` parses with `PropertySelector<IGrouping<GroupByKeys, T>>`.
+Rejected: element-first everywhere. It would mean changing the builder, which would break `Key` in the non-generic
+form and every grouped select. Also rejected: member-first inside dotted paths, which would change what
+`Names.Length` means today.
+**Consequence:** 022's "`Phones|Number` ≡ `Phones.Number`" holds only when the collection itself has no member with
+that name. When both have one (`Length`, `Count`), the piped and dotted forms differ, as documented in
+`property-selectors.md` ("Dot and pipe"). Nothing that worked changes: the generic form gains `Key` and collection
+members, and one wrong declared type is corrected. Grouped select errors now come from the generic parser, with
+positions in the whole selector.

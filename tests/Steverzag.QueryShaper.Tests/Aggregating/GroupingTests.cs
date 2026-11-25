@@ -140,6 +140,25 @@ namespace Steverzag.QueryShaper.Tests.Aggregating
 		}
 
 		[Fact]
+		public void AnUnknownKeyMember_IsReportedWithItsPositionInTheSelector()
+		{
+			var exception = Assert.Throws<SelectorParseException>(() => Grouped(["Category.Name"], ["Key|Missing"]));
+
+			Assert.Equal("Property 'Missing' was not found on type 'GroupByKeys'.", exception.Detail);
+			Assert.Equal("Key|Missing", exception.Selector);
+			Assert.Equal(4, exception.Position);
+		}
+
+		[Fact]
+		public void AnUnknownElementProperty_IsReportedAgainstTheElementType()
+		{
+			var exception = Assert.Throws<SelectorParseException>(() => Grouped(["Category.Name"], ["Quantiy|" + SelectorDefaults.SumAggregateFunction]));
+
+			Assert.Equal("Property 'Quantiy' was not found on type 'Product'.", exception.Detail);
+			Assert.Equal("Quantiy|" + SelectorDefaults.SumAggregateFunction, exception.Selector);
+		}
+
+		[Fact]
 		public void MoreThanTwentyOneKeys_Throws()
 		{
 			// Decision 009 cleanup: a descriptive error instead of an ArgumentNullException from Expression.Bind.

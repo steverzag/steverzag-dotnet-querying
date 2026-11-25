@@ -57,6 +57,12 @@ All tokens are constants on `SelectorDefaults`. Prefer those constants to string
 - **A selector after `|` is resolved against the piped value**, exactly as it would be against a root of that type.
   So `Address|City` builds the same as `Address.City`, and a collection piped into a property projects:
   `Phones|Number` builds `Phones.Number`. Both are allowed, but `.` is the preferred way to write navigation.
+- **At the start of a part, a collection's own members come first** (decision 023). A property is looked up on the
+  value itself, and only if it isn't there, on its elements, which projects. So on an `IGrouping<K, T>`, `Key` is the
+  grouping's key and `Quantity` projects the rows. On a piped `string[]`, `Names|Length` is the array's length, and
+  `Phones|Count` is the list's `Count`. **Inside a dotted path**, a collection always projects: `Names.Length` is
+  each name's length (`IEnumerable<int>`). So when a collection and its elements have a member with the same name,
+  `Names|Length` and `Names.Length` mean different things. To count elements, prefer `$FN_AGGR_COUNT`.
 - **`.` after a function is rejected**, and the message shows the piped form. `$FN_ELM_FIRST.Number` gives
   "A member can't follow a function with '.'. Write it after a pipe: '$FN_ELM_FIRST|Number'.", and
   `$FN_DT_ADDDAYS(3).Year` gives the same message with `'$FN_DT_ADDDAYS(3)|Year'`.
