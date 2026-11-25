@@ -32,6 +32,7 @@ public static class TypesExtensions
 		Type? outerCollectionType = null;
 
 		var segmentOffset = 0;
+		var lifted = false;
 		foreach (var propertyName in propertyPath.Split('.'))
 		{
 			var offset = segmentOffset;
@@ -53,13 +54,26 @@ public static class TypesExtensions
 				BindingFlags.Instance |
 				BindingFlags.IgnoreCase);
 
+			if (property is null && Nullable.GetUnderlyingType(currentType) is { } underlying)
+			{
+				property = underlying.GetProperty(
+					propertyName,
+					BindingFlags.Public |
+					BindingFlags.Instance |
+					BindingFlags.IgnoreCase);
+				lifted |= property is not null;
+			}
+
 			if (property is null)
 			{
-				throw PropertyNotFound(propertyName, currentType, propertyPath, offset);
+				throw PropertyNotFound(propertyName, Nullable.GetUnderlyingType(currentType) ?? currentType, propertyPath, offset);
 			}
 
 			currentType = property.PropertyType;
 		}
+
+		if (lifted)
+			currentType = ExpressionUtils.LiftToNullable(currentType);
 
 		// Final unwrap if result itself is still a collection
 		if (outerCollectionType is not null && TryGetCollectionInfo(currentType, out var finalItemType, out _))

@@ -125,6 +125,9 @@ namespace Steverzag.PropertySelectors
 				}
 				catch (ArgumentException e)
 				{
+					if (Nullable.GetUnderlyingType(current.Type) is not null)
+						return CreateLiftedMemberAccess(current, parts, i);
+
 					if (!TryGetGroupingTypes(target.Type, out var _, out var groupElementType) || groupElementType is null)
 						throw Extensions.TypesExtensions.PropertyNotFound(part, current.Type, string.Join('.', parts), parts.Take(i).Sum(p => p.Length + 1), e);
 
@@ -195,6 +198,22 @@ namespace Steverzag.PropertySelectors
 
 			return current;
 		}
+
+		private static Expression CreateLiftedMemberAccess(Expression nullable, string[] parts, int index)
+		{
+			var inner = CreateMemberAccessRec(Expression.Property(nullable, nameof(Nullable<int>.Value)), parts, index);
+			var liftedType = LiftToNullable(inner.Type);
+
+			return Expression.Condition(
+				Expression.Equal(nullable, Expression.Constant(null, nullable.Type)),
+				Expression.Constant(null, liftedType),
+				inner.Type == liftedType ? inner : Expression.Convert(inner, liftedType));
+		}
+
+		internal static Type LiftToNullable(Type type)
+			=> type.IsValueType && Nullable.GetUnderlyingType(type) is null
+				? typeof(Nullable<>).MakeGenericType(type)
+				: type;
 
 		public static string ToFlatString(Expression exp)
 		{

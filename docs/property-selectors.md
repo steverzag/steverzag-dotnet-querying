@@ -30,7 +30,7 @@ Expression body = avgId.PropertyAccess(parameter);
 
 | Construct | Form | Example |
 |---|---|---|
-| Property path | `Name(.Name)*` | `Address.City` |
+| Property path | `Name(.Name)*`. Any public property works, including members of value types, so date parts are plain paths. On a nullable struct, a member that `Nullable<T>` doesn't have is read from `T` and the result is lifted to nullable: `Deleted.Year` is `int?`, and it's null when `Deleted` is (it builds `x.Deleted == null ? null : (int?)x.Deleted.Value.Year`). `Value` and `HasValue` keep their usual meaning. | `Address.City`, `Created.Year`, `Deleted.Year` |
 | Pipe / chain | `part\|part\|…`, where each part applies to the previous result | `Phones.Id\|$FN_AGGR_SUM` |
 | Function | `$FN_<NAME>` or `$FN_<NAME>(arg, …)`. Arguments are selectors themselves, resolved against the scope root. A function gets its subject from the pipe or from its first argument; see [Piped and static forms](#piped-and-static-forms). | `$FN_STR_SUBSTRING(0, 3)`, `Price\|$FN_MATH_ROUND(2)` |
 | Number literal | Read with the invariant culture on every machine (decision 017). An integer is `int`, or `long` if it doesn't fit. A `.` or an exponent makes it `double`. The suffix `L` gives `long` and `m` gives `decimal`. A minus sign in front of a number is part of it. A number that doesn't fit its type is rejected. | `55`, `-3`, `1.5`, `1e-3`, `5L`, `9.99m` |

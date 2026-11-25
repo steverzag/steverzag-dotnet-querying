@@ -34,11 +34,11 @@ public class DateSelectorTests
         return lambda(item);
     }
 
-    private static object? EvaluateBoxed(PropertySelector selector)
+    private static object? EvaluateBoxed(PropertySelector selector, TestItem? item = null)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
         var body = Expression.Convert(ExpressionUtils.CreateMemberAccess(parameter, selector), typeof(object));
-        return Expression.Lambda<Func<TestItem, object?>>(body, parameter).Compile()(new TestItem());
+        return Expression.Lambda<Func<TestItem, object?>>(body, parameter).Compile()(item ?? new TestItem());
     }
 
     // ── Add functions ───────────────────────────────────────────────────────
@@ -297,5 +297,137 @@ public class DateSelectorTests
 
         Assert.Equal("UpdatedAt|$FN_COALESCE($FN_DT_DATETIME(\"2024-03-15T10:30:00\"))", selector.ToString());
         Assert.Equal(new DateTime(2024, 3, 15, 10, 30, 0), Evaluate<DateTime>(reparsed, new TestItem()));
+    }
+
+    // ── Parts through member access ─────────────────────────────────────────
+
+    public static TheoryData<string, object> MemberParts() => new()
+    {
+        { "CreatedAt.Year", 2024 },
+        { "CreatedAt.Month", 3 },
+        { "CreatedAt.Day", 15 },
+        { "CreatedAt.Hour", 10 },
+        { "CreatedAt.Minute", 30 },
+        { "CreatedAt.Second", 45 },
+        { "CreatedAt.Millisecond", 500 },
+        { "CreatedAt.DayOfWeek", DayOfWeek.Friday },
+        { "CreatedAt.DayOfYear", 75 },
+        { "CreatedAt.Date", new DateTime(2024, 3, 15) },
+        { "CreatedAt.TimeOfDay", new TimeSpan(0, 10, 30, 45, 500) },
+        { "StartDate.Month", 9 },
+        { "StartDate.DayOfWeek", DayOfWeek.Sunday },
+        { "StartTime.Hour", 8 },
+        { "StartTime.Minute", 15 },
+        { "UpdatedAt.Value.Year", 2024 },
+    };
+
+    [Theory]
+    [MemberData(nameof(MemberParts))]
+    public void DatePart_AsAPlainPropertyPath_WorksInBothForms(string text, object expected)
+    {
+        var item = new TestItem
+        {
+            CreatedAt = SampleDateTime,
+            UpdatedAt = SampleDateTime,
+            StartDate = new DateOnly(2024, 9, 1),
+            StartTime = new TimeOnly(8, 15),
+        };
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
+
+        Assert.Equal(expected.GetType(), generic.SelectorType);
+        Assert.Equal(expected, EvaluateBoxed(generic, item));
+        Assert.Equal(expected, EvaluateBoxed(nonGeneric, item));
+    }
+
+    public static TheoryData<string, Type, object> LiftedParts() => new()
+    {
+        { "UpdatedAt.Year", typeof(int?), 2024 },
+        { "UpdatedAt.DayOfWeek", typeof(DayOfWeek?), DayOfWeek.Friday },
+        { "UpdatedAt.Date", typeof(DateTime?), new DateTime(2024, 3, 15) },
+        { "UpdatedAt.Date.Year", typeof(int?), 2024 },
+        { "UpdatedAt.TimeOfDay.Hours", typeof(int?), 10 },
+    };
+
+    [Theory]
+    [MemberData(nameof(LiftedParts))]
+    public void DatePart_OnANullableDate_IsLifted_InBothForms(string text, Type declared, object expected)
+    {
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
+        var withValue = new TestItem { UpdatedAt = SampleDateTime };
+        var withNull = new TestItem { UpdatedAt = null };
+
+        Assert.Equal(declared, generic.SelectorType);
+        Assert.Equal(expected, EvaluateBoxed(generic, withValue));
+        Assert.Equal(expected, EvaluateBoxed(nonGeneric, withValue));
+        Assert.Null(EvaluateBoxed(generic, withNull));
+        Assert.Null(EvaluateBoxed(nonGeneric, withNull));
+    }
+
+    private class Parent
+    {
+        public List<TestItem> Items { get; set; } = [];
+    }
+
+    [Fact]
+    public void DatePart_OnANullableDate_InsideACollection_ProjectsLiftedValues()
+    {
+        PropertySelector<Parent> generic = "Items.UpdatedAt.Year";
+        PropertySelector nonGeneric = "Items.UpdatedAt.Year";
+        var parent = new Parent { Items = [new() { UpdatedAt = SampleDateTime }, new() { UpdatedAt = null }] };
+        var parameter = Expression.Parameter(typeof(Parent), "p");
+
+        var body = ExpressionUtils.CreateMemberAccess(parameter, nonGeneric);
+        var result = Expression.Lambda<Func<Parent, IEnumerable<int?>>>(body, parameter).Compile()(parent);
+
+        Assert.Equal(typeof(int?), generic.SelectorType!.GetGenericArguments()[0]);
+        Assert.Equal([2024, null], result);
+    }
+
+    [Fact]
+    public void DatePart_OnANullableDate_BuildsANullCheck()
+    {
+        PropertySelector<TestItem> selector = "UpdatedAt.Year";
+        var parameter = Expression.Parameter(typeof(TestItem), "x");
+
+        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+
+        Assert.Equal(typeof(int?), body.Type);
+        Assert.Equal("IIF((x.UpdatedAt == null), null, Convert(x.UpdatedAt.Value.Year, Nullable`1))", body.ToString());
+    }
+
+    [Theory]
+    [InlineData("UpdatedAt.HasValue", typeof(bool))]
+    [InlineData("UpdatedAt.Value", typeof(DateTime))]
+    [InlineData("UpdatedAt.Value.Year", typeof(int))]
+    public void NullableMembers_AreNotLifted(string text, Type declared)
+    {
+        PropertySelector<TestItem> generic = text;
+        PropertySelector nonGeneric = text;
+        var parameter = Expression.Parameter(typeof(TestItem), "x");
+
+        Assert.Equal(declared, generic.SelectorType);
+        Assert.Equal(declared, ExpressionUtils.CreateMemberAccess(parameter, nonGeneric).Type);
+    }
+
+    [Fact]
+    public void UnknownMember_OnANullableDate_IsNotFound_InBothForms()
+    {
+        var generic = Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = "UpdatedAt.Nope"; });
+
+        PropertySelector nonGeneric = "UpdatedAt.Nope";
+        var nonGenericError = Assert.Throws<SelectorParseException>(() => EvaluateBoxed(nonGeneric));
+
+        Assert.Equal(generic.Message, nonGenericError.Message);
+    }
+
+    [Fact]
+    public void DatePart_ThroughValue_OnANullDate_ThrowsInMemory()
+    {
+        PropertySelector<TestItem> selector = "UpdatedAt.Value.Year";
+
+        Assert.Equal(typeof(int), selector.SelectorType);
+        Assert.Throws<InvalidOperationException>(() => EvaluateBoxed(selector, new TestItem { UpdatedAt = null }));
     }
 }
