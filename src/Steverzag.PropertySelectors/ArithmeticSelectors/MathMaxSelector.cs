@@ -16,8 +16,8 @@ internal record MathMaxSelector : FunctionPropertySelector
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
-		new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric], (_, a) => Implementations.MathResultType(MethodInfos.MathMaxMethodInfo, a),
-			p => target => target.CreateBinaryMathFunction(MethodInfos.MathMaxMethodInfo, p[0], p[1], matchOperandType: true)),
+		new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric], (_, a) => Implementations.MaxMinResultType(a),
+			p => target => target.CreateMaxOrMin(p[0], p[1], max: true)),
 	];
 
 	public MathMaxSelector() : base(SelectorDefaults.MathMax) { }

@@ -112,6 +112,62 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				: doubleOverload.ForOperandType(ArithmeticUtils.GetWiderNumericType(types)).ReturnType;
 		}
 
+		public static Type? MaxMinResultType(IEnumerable<Type?> operandTypes)
+		{
+			var types = operandTypes.ToList();
+			if (types.Count == 0 || types.Any(t => t is null))
+				return null;
+
+			var wider = ArithmeticUtils.GetWiderNumericType(types);
+			var common = Nullable.GetUnderlyingType(wider) ?? wider;
+
+			return types.All(t => Nullable.GetUnderlyingType(t!) is not null)
+				? typeof(Nullable<>).MakeGenericType(common)
+				: common;
+		}
+
+		public static Expression CreateMaxOrMin(this Expression? target, PropertySelector param1, PropertySelector param2, bool max)
+		{
+			var a = ExpressionUtils.ResolveArgument(target, param1);
+			var b = ExpressionUtils.ResolveArgument(target, param2);
+
+			if (!ArithmeticUtils.IsNumericType(a.Type) || !ArithmeticUtils.IsNumericType(b.Type))
+				throw new InvalidOperationException($"Both parameters must be of numeric types for {(max ? "Max" : "Min")} arithmetic function.");
+
+			var wider = ArithmeticUtils.GetWiderNumericType([a.Type, b.Type]);
+			var common = Nullable.GetUnderlyingType(wider) ?? wider;
+			var nullableCommon = typeof(Nullable<>).MakeGenericType(common);
+
+			var aNullable = Nullable.GetUnderlyingType(a.Type) is not null;
+			var bNullable = Nullable.GetUnderlyingType(b.Type) is not null;
+
+			a = ConvertTo(a, aNullable ? nullableCommon : common);
+			b = ConvertTo(b, bNullable ? nullableCommon : common);
+
+			var aValue = ConvertTo(a, common);
+			var bValue = ConvertTo(b, common);
+
+			var pick = Expression.Condition(
+				max ? Expression.GreaterThanOrEqual(aValue, bValue) : Expression.LessThanOrEqual(aValue, bValue),
+				aValue,
+				bValue);
+
+			return (aNullable, bNullable) switch
+			{
+				(true, true) => Expression.Condition(IsNull(a), b,
+					Expression.Condition(IsNull(b), a, Expression.Convert(pick, nullableCommon))),
+				(true, false) => Expression.Condition(IsNull(a), bValue, pick),
+				(false, true) => Expression.Condition(IsNull(b), aValue, pick),
+				_ => pick,
+			};
+
+			static Expression ConvertTo(Expression expression, Type type)
+				=> expression.Type == type ? expression : Expression.Convert(expression, type);
+
+			static Expression IsNull(Expression expression)
+				=> Expression.Equal(expression, Expression.Constant(null, expression.Type));
+		}
+
 		public static Expression CreateUnaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector parameter, bool matchOperandType = false)
 		{
 			var parameterExpr = ExpressionUtils.ResolveArgument(target, parameter);

@@ -16,8 +16,8 @@ internal record MathMinSelector : FunctionPropertySelector
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
-		new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric], (_, a) => Implementations.MathResultType(MethodInfos.MathMinMethodInfo, a),
-			p => target => target.CreateBinaryMathFunction(MethodInfos.MathMinMethodInfo, p[0], p[1], matchOperandType: true)),
+		new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric], (_, a) => Implementations.MaxMinResultType(a),
+			p => target => target.CreateMaxOrMin(p[0], p[1], max: false)),
 	];
 
 	public MathMinSelector() : base(SelectorDefaults.MathMin) { }

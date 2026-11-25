@@ -50,7 +50,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 
 		[Theory]
 		[InlineData("Score|$FN_MATH_ROUND(1)", "round(\"p\".\"Score\", 1)")]
-		[InlineData("Price|$FN_MATH_MAX(1)", "max(CAST(\"p\".\"Price\" AS REAL), 1.0)")]
+		[InlineData("Price|$FN_MATH_MAX(1)", "WHEN ef_compare(\"p\".\"Price\", '1.0') >= 0 THEN \"p\".\"Price\"")]
 		public void TheFallback_LeavesOtherMathAlone(string field, string expected)
 		{
 			var sql = Sql(field);

@@ -56,6 +56,7 @@ public class PipedSegmentTests
         { "Created|$FN_DT_ADDDAYS(30)|Month|$FN_MATH_MAX(Quantity)", 4 },
         { "Deleted|Year", null },
         { "Deleted|$FN_COALESCE(Created)|Year", 2024 },
+        { "Deleted.Year|$FN_MATH_MAX(Quantity)", 4 },
         { "Name|$FN_STR_TRIM|Length", 3 },
         { "Nickname|$FN_COALESCE(Name)|Length", 6 },
         { "Phones|$FN_ELM_FIRST|Number", "111" },

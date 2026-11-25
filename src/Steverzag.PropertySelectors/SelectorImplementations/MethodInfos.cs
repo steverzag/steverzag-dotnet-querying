@@ -67,10 +67,6 @@ namespace Steverzag.PropertySelectors.SelectorImplementations
 				.First(m => m.Name == "Atan" && m.GetParameters().Length == 1);
 		internal readonly static MethodInfo MathAtan2MethodInfo = typeof(Math).GetMethods()
 				.First(m => m.Name == "Atan2" && m.GetParameters().Length == 2);
-		internal readonly static MethodInfo MathMaxMethodInfo = typeof(Math).GetMethods()
-				.First(m => m.Name == "Max" && m.GetParameters()[0].ParameterType == typeof(double));
-		internal readonly static MethodInfo MathMinMethodInfo = typeof(Math).GetMethods()
-				.First(m => m.Name == "Min" && m.GetParameters()[0].ParameterType == typeof(double));
 		internal readonly static MethodInfo StringToUpperMethodInfo = typeof(string).GetMethods()
 				.First(m => m.Name == "ToUpper" && m.GetParameters().Length == 0);
 		internal readonly static MethodInfo StringToLowerMethodInfo = typeof(string).GetMethods()

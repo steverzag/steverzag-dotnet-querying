@@ -99,15 +99,25 @@ forms. Anything else is rejected: `AGGR_AVG` when the selector is parsed (`Selec
 expression is built (`InvalidOperationException`). The message names the element type as written, such as
 "Average is not supported for elements of type TimeSpan." (or `TimeSpan?` for a nullable element).
 
-**Math result types.** `ROUND`, `CEILING`, `FLOOR`, `TRUNCATE`, `MAX` and `MIN` use the `Math` overload for the operand
-type when there is one (`MAX` on two `int`s is `Math.Max(int, int)` → `int`; on `int` and `long` it is `long`), and
-`double` otherwise (`CEILING` on an `int` → `double`). **On a `decimal`, `ROUND`, `CEILING`, `FLOOR` and `TRUNCATE`
-are exact** and return `decimal` (decision 024): `Price|$FN_MATH_ROUND(3)` on `0.5015m` is `0.502m`. They translate
-exactly on SQL Server and PostgreSQL. EF's SQLite provider can't translate them; register QueryShaper's
-`UseDecimalMathAsDouble()` there (see `query-shaper.md`), which runs them through `REAL`. **`MAX` and `MIN` on a
-`decimal` still go through `double`** and return `double`, because on SQLite the `decimal` versions compare as text and
-give wrong results with no error. They only pick an operand, so the values are exact up to about 15 significant
-digits. The other math functions return `double`, and `SIGN` returns `int`. Note that SQL and .NET round halves differently: SQLite rounds
+**Math result types.** `ROUND`, `CEILING`, `FLOOR` and `TRUNCATE` use the `Math` overload for the operand type when
+there is one, and `double` otherwise (`CEILING` on an `int` → `double`). **On a `decimal` they are exact** and return
+`decimal` (decision 024): `Price|$FN_MATH_ROUND(3)` on `0.5015m` is `0.502m`. They translate exactly on SQL Server and
+PostgreSQL. EF's SQLite provider can't translate them; register QueryShaper's `UseDecimalMathAsDouble()` there (see
+`query-shaper.md`), which runs them through `REAL`. The other math functions return `double`, and `SIGN` returns
+`int`.
+
+**`MAX` and `MIN`** (decision 025) pick the larger or smaller of two values in the same row. For the largest value
+across a collection, use `AGGR_MAX`/`AGGR_MIN`. They're built as a conditional (`a >= b ? a : b`), not as a call to
+`Math.Max`, so they translate on every provider: as `CASE WHEN … END` in SQL, including SQL Server before 2022, which
+has no `GREATEST`. On SQLite a `decimal` comparison stays exact (EF's `ef_compare`).
+- **Type:** the operands' common type, widened as in arithmetic: `MAX(int, long)` → `long`, `MAX(Price, 1)` → `decimal`,
+  `MAX(decimal, double)` → `decimal`. Decimals are exact.
+- **Nulls are ignored:** `MAX(null, 5)` and `MAX(5, null)` are 5. The result is null only when both operands are, so it's
+  nullable only when both operand types are (`MAX(int?, int)` → `int`, `MAX(int?, int?)` → `int?`). To get null whenever
+  either is null, coalesce first, or test for null separately.
+- **Cost:** each operand appears twice in the SQL, and a nullable one three times. That's free for columns, but an operand
+  that is itself a subquery (`Reviews|$FN_AGGR_COUNT`) may be computed more than once per row.
+- In memory, `NaN` isn't propagated the way `Math.Max` does it: `MAX(NaN, 1)` is 1. Note that SQL and .NET round halves differently: SQLite rounds
 4.5 to 5, and .NET's `Math.Round` gives 4 (to even).
 
 **Declared type (`Type`).** A selector's declared type is either the type of the expression it builds, or `null` when

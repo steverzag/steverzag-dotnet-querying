@@ -95,6 +95,7 @@ namespace Steverzag.PropertySelectors
 			MethodCallExpression call => FindRootParameter(call.Object) ?? FirstRootParameter(call.Arguments),
 			UnaryExpression unary => FindRootParameter(unary.Operand),
 			BinaryExpression binary => FindRootParameter(binary.Left) ?? FindRootParameter(binary.Right),
+			ConditionalExpression conditional => FindRootParameter(conditional.Test) ?? FindRootParameter(conditional.IfTrue) ?? FindRootParameter(conditional.IfFalse),
 			NewArrayExpression array => FirstRootParameter(array.Expressions),
 			_ => null,
 		};

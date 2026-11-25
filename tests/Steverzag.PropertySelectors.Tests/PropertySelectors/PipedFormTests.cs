@@ -151,7 +151,7 @@ public class PipedFormTests
         { "Price|$FN_MATH_CEILING", 13m },
         { "Price|$FN_MATH_FLOOR", 12m },
         { "Price|$FN_MATH_TRUNCATE", 12m },
-        { "Price|$FN_MATH_MAX(1)", 12.3456d },
+        { "Price|$FN_MATH_MAX(1)", 12.3456m },
         { "Quantity|$FN_MATH_MAX(10)", 10 },
         { "Quantity|$FN_MATH_MIN(Digits)", 1 },
         { "Ratio|$FN_MATH_ROUND", 0d },
@@ -188,9 +188,9 @@ public class PipedFormTests
     [Theory]
     [InlineData("Price|$FN_MATH_MAX(1)")]
     [InlineData("Price|$FN_MATH_MIN(1)")]
-    public void DecimalMaxAndMin_StayOnDouble(string text)
+    public void DecimalMaxAndMin_AreDecimal(string text)
     {
-        Assert.Equal(typeof(double), ((PropertySelector<Product>)text).Type);
+        Assert.Equal(typeof(decimal), ((PropertySelector<Product>)text).Type);
     }
 
     [Fact]

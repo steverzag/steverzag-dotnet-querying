@@ -678,3 +678,27 @@ moving `MAX`/`MIN` to `decimal` now (silent wrong results on SQLite).
 `double`, so a mapping into a `double` destination now converts. On SQLite without the fallback, these four functions
 over `decimal` fail with "could not be translated", which is an error rather than a wrong value. With the fallback
 they have `double` precision on SQLite, as before.
+
+### 025: `MAX`/`MIN` are a conditional that ignores nulls (2026-11-25)
+**Status:** accepted; implemented (2026-11-25). Supersedes 024.2.
+**Context:** `MATH_MAX`/`MATH_MIN` called `Math.Max`/`Min`. EF translates those to `GREATEST`/`LEAST`, which SQL
+Server only has from 2022 (compatibility level 160), so they didn't translate on older SQL Server whatever the type.
+SQL Server's `MAX` is an aggregate over rows, not a two-argument function. Over `decimal` they went through `double`
+(024.2), because SQLite's `decimal` `max()` compares text and returns wrong values with no error. Nulls behaved
+differently everywhere: a nullable operand was converted to non-nullable (throws in memory), PostgreSQL's
+`GREATEST` ignores nulls, and SQLite's `max()` returns null.
+**Decision:**
+1. `MAX`/`MIN` are built as a conditional, `a >= b ? a : b` (`<=` for `MIN`), over the operands widened to their
+   common numeric type as in arithmetic. Providers translate it as `CASE WHEN`, and on SQLite EF compares decimals with
+   `ef_compare`, so decimals are exact everywhere.
+2. **Nulls are ignored:** a null operand gives the other one, and the result is null only when both are. This matches
+   `GREATEST`/`LEAST` on SQL Server and PostgreSQL and the `AGGR_MAX`/`AGGR_MIN` aggregates. The null checks are only
+   built for a nullable operand.
+3. The result type is the common type, nullable only when both operand types are nullable.
+Rejected: keeping `Math.Max` and documenting SQL Server 2022+ (excludes a large share of SQL Server installs, and
+doesn't fix decimals); null if either is null, like arithmetic (less useful for "the later of two optional dates",
+and still reachable with `COALESCE`).
+**Consequence:** breaking changes in types and values. `MAX` on a `decimal` is `decimal` instead of `double`,
+`MAX(int?, int)` is `int`, and a null operand gives the other operand instead of throwing (in memory) or depending on
+the provider. Each operand appears twice in the SQL (three times when nullable), so an expensive operand such as a
+subquery may be evaluated more than once. In memory, `NaN` isn't propagated as `Math.Max` does it.
