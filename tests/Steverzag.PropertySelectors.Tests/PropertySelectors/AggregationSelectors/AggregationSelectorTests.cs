@@ -31,6 +31,8 @@ public class AggregationSelectorTests
         public List<decimal?> NullableDecimals { get; set; } = [1m, 2m, null, 4m];
         public List<DateTime> Dates { get; set; } = [new(2024, 5, 1), new(2024, 1, 1), new(2024, 9, 1)];
         public List<string> Names { get; set; } = ["b", "a", "c"];
+        public List<TimeSpan> Durations { get; set; } = [TimeSpan.FromHours(1)];
+        public List<TimeSpan?> NullableDurations { get; set; } = [TimeSpan.FromHours(1), null];
     }
 
     // Aggregations take their source from the chained target, so the whole selector chain has
@@ -496,6 +498,33 @@ public class AggregationSelectorTests
             PropertySelector<TestOrder> selector = $"Names{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
         });
         Assert.Contains("Average is not supported for elements of type String", exception.Message);
+    }
+
+    [Theory]
+    [InlineData("Durations", "TimeSpan")]
+    [InlineData("NullableDurations", "TimeSpan?")]
+    [InlineData("Dates", "DateTime")]
+    public void Avg_OnAnUnsupportedValueType_NamesTheElementType(string collection, string elementType)
+    {
+        var text = $"{collection}{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
+
+        var generic = Assert.Throws<SelectorParseException>(() => { PropertySelector<TestOrder> selector = text; });
+        var nonGeneric = Assert.ThrowsAny<Exception>(() => Evaluate<object>((PropertySelector)text, new TestOrder()));
+
+        Assert.Equal($"Average is not supported for elements of type {elementType}.", generic.Detail);
+        Assert.Equal($"Average is not supported for elements of type {elementType}.", nonGeneric.Message);
+    }
+
+    [Theory]
+    [InlineData("Durations")]
+    [InlineData("NullableDurations")]
+    public void MinAndMax_OnTimeSpans_StillWork(string collection)
+    {
+        PropertySelector<TestOrder> min = $"{collection}{Delimiter}{SelectorDefaults.MinAggregateFunction}";
+        PropertySelector<TestOrder> max = $"{collection}{Delimiter}{SelectorDefaults.MaxAggregateFunction}";
+
+        Assert.Equal(TimeSpan.FromHours(1), Evaluate<TimeSpan?>(min, new TestOrder()));
+        Assert.Equal(TimeSpan.FromHours(1), Evaluate<TimeSpan?>(max, new TestOrder()));
     }
 
     [Fact]

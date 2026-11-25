@@ -81,7 +81,7 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 				target = Expression.Call(MethodInfos.SelectMethodInfo.MakeGenericMethod(elementType, lifted), target, lift);
 			}
 
-			return Expression.Call(GetAggregateMethod(methodName, lifted), target);
+			return Expression.Call(GetAggregateMethod(methodName, lifted, elementType), target);
 		}
 
 		internal static Type LiftedElementType(Type elementType)
@@ -90,11 +90,15 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 				: elementType;
 
 		internal static Type? LiftedAggregateType(string methodName, Type? elementType)
-			=> elementType is null ? null : GetAggregateMethod(methodName, LiftedElementType(elementType)).ReturnType;
+			=> elementType is null ? null : GetAggregateMethod(methodName, LiftedElementType(elementType), elementType).ReturnType;
 
-		private static readonly ConcurrentDictionary<(string Name, Type ElementType), MethodInfo> _aggregateMethods = new();
+		private static readonly ConcurrentDictionary<(string Name, Type ElementType), MethodInfo?> _aggregateMethods = new();
 
-		internal static MethodInfo GetAggregateMethod(string methodName, Type elementType)
+		internal static MethodInfo GetAggregateMethod(string methodName, Type elementType, Type? writtenElementType = null)
+			=> FindAggregateMethod(methodName, elementType)
+				?? throw new InvalidOperationException($"{methodName} is not supported for elements of type {TypeNames.Describe(writtenElementType ?? elementType)}.");
+
+		private static MethodInfo? FindAggregateMethod(string methodName, Type elementType)
 			=> _aggregateMethods.GetOrAdd((methodName, elementType), static key =>
 			{
 				var (name, element) = key;
@@ -116,7 +120,7 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 					}
 				}
 
-				throw new InvalidOperationException($"{name} is not supported for elements of type {element.Name}.");
+				return null;
 			});
 	}
 }

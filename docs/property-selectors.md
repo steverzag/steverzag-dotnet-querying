@@ -90,7 +90,8 @@ in SQL (decision 014):
 
 `AGGR_SUM` and `AGGR_AVG` support the numeric types `int`, `long`, `float`, `double` and `decimal`, and their nullable
 forms. Anything else is rejected: `AGGR_AVG` when the selector is parsed (`SelectorParseException`), and `AGGR_SUM` when the
-expression is built (`InvalidOperationException`).
+expression is built (`InvalidOperationException`). The message names the element type as written, such as
+"Average is not supported for elements of type TimeSpan." (or `TimeSpan?` for a nullable element).
 
 **Math result types.** `ROUND`, `CEILING`, `FLOOR`, `TRUNCATE`, `MAX` and `MIN` use the `Math` overload for the operand
 type when there is one (`MAX` on two `int`s is `Math.Max(int, int)` → `int`; on `int` and `long` it is `long`), and
