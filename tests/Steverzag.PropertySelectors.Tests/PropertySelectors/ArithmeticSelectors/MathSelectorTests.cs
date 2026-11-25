@@ -159,16 +159,23 @@ public class MathSelectorTests
     }
 
     [Fact]
-    public void MathCeiling_WithIntegerLiteral_ReportsIntButEvaluatesToDouble()
+    public void MathCeiling_WithIntegerLiteral_ReportsAndEvaluatesToDouble()
     {
-        // Known mismatch: SelectorType mirrors the parameter type, while Math.Ceiling always
-        // returns a double, so an integer parameter makes the declared type disagree with the
-        // compiled expression.
+        // Math has no Ceiling(int), so it falls back to Ceiling(double) and declares double.
         PropertySelector<TestItem> selector = $"{SelectorDefaults.MathCeiling}(3)";
 
-        Assert.Equal(typeof(int), selector.Type);
+        Assert.Equal(typeof(double), selector.Type);
         Assert.Equal(3d, Evaluate<double>(selector, new TestItem()));
-        Assert.ThrowsAny<ArgumentException>(() => Evaluate<int>(selector, new TestItem()));
+    }
+
+    [Fact]
+    public void MathCeiling_WithDecimalLiteral_ReportsAndEvaluatesToDouble()
+    {
+        // Decimals stay on the double overload so EF's SQLite provider can translate them.
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathCeiling}(2.1m)";
+
+        Assert.Equal(typeof(double), selector.Type);
+        Assert.Equal(3d, Evaluate<double>(selector, new TestItem()));
     }
 
     [Fact]
@@ -283,14 +290,21 @@ public class MathSelectorTests
     }
 
     [Fact]
-    public void MathMax_WithIntegerParameters_ReportsIntButEvaluatesToDouble()
+    public void MathMax_WithIntegerParameters_ReportsAndEvaluatesToInt()
     {
-        // Known mismatch: the widened parameter type is int, while the bound overload is
-        // Math.Max(double, double).
         PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}(2, 5)";
 
         Assert.Equal(typeof(int), selector.Type);
-        Assert.Equal(5d, Evaluate<double>(selector, new TestItem()));
+        Assert.Equal(5, Evaluate<int>(selector, new TestItem()));
+    }
+
+    [Fact]
+    public void MathMax_WithMixedIntegerSizes_UsesTheWiderOverload()
+    {
+        PropertySelector<TestItem> selector = $"{SelectorDefaults.MathMax}(2, 5L)";
+
+        Assert.Equal(typeof(long), selector.Type);
+        Assert.Equal(5L, Evaluate<long>(selector, new TestItem()));
     }
 
     // ── Nesting and failures ────────────────────────────────────────────────

@@ -6,7 +6,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 [SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument)]
 internal record MathTruncateSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => Parameters[0]?.Type ?? default;
+	public override Type? SelectorType => Implementations.MathResultType(MethodInfos.MathTruncateMethodInfo, Parameters.Take(1));
 	public MathTruncateSelector() : base(SelectorDefaults.MathTruncate) { }
 	public MathTruncateSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTruncate, parameters) { }
 	public override void InitializeOverloads()
@@ -15,7 +15,7 @@ internal record MathTruncateSelector<T> : FunctionPropertySelector<T>
 		{
 			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
 			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathTruncateMethodInfo, Parameters[0]));
+				target => target.CreateUnaryMathFunction(MethodInfos.MathTruncateMethodInfo, Parameters[0], matchOperandType: true));
 			Overloads.Add(selectorOverload);
 		}
 	}
@@ -24,7 +24,7 @@ internal record MathTruncateSelector<T> : FunctionPropertySelector<T>
 [SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument)]
 internal record MathTruncateSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => Parameters[0]?.Type ?? default;
+	public override Type? SelectorType => Implementations.MathResultType(MethodInfos.MathTruncateMethodInfo, Parameters.Take(1));
 	public MathTruncateSelector() : base(SelectorDefaults.MathTruncate) { }
 	public MathTruncateSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTruncate, parameters) { }
 
@@ -34,7 +34,7 @@ internal record MathTruncateSelector : FunctionPropertySelector
 		{
 			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
 			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathTruncateMethodInfo, Parameters[0]));
+				target => target.CreateUnaryMathFunction(MethodInfos.MathTruncateMethodInfo, Parameters[0], matchOperandType: true));
 			Overloads.Add(selectorOverload);
 		}
 	}

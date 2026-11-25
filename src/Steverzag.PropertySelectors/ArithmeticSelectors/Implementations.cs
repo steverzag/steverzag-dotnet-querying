@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Collections.Concurrent;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
 
@@ -71,7 +72,37 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			};
 		}
 
-		public static Expression CreateUnaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector parameter)
+		private static readonly ConcurrentDictionary<(MethodInfo DoubleOverload, Type OperandType), MethodInfo> TypedMathMethods = new();
+
+		public static MethodInfo ForOperandType(this MethodInfo doubleOverload, Type? operandType)
+		{
+			var underlying = operandType is null ? null : Nullable.GetUnderlyingType(operandType) ?? operandType;
+			// Decimals stay on the double overload: EF's SQLite provider can't translate Math over decimal.
+			if (underlying is null || underlying == typeof(double) || underlying == typeof(decimal))
+				return doubleOverload;
+
+			return TypedMathMethods.GetOrAdd((doubleOverload, underlying), static key =>
+			{
+				var parameterTypes = key.DoubleOverload.GetParameters()
+					.Select(p => p.ParameterType == typeof(double) ? key.OperandType : p.ParameterType)
+					.ToArray();
+
+				return typeof(Math).GetMethods().FirstOrDefault(m => m.Name == key.DoubleOverload.Name
+						&& m.GetParameters().Select(p => p.ParameterType).SequenceEqual(parameterTypes))
+					?? key.DoubleOverload;
+			});
+		}
+
+		public static Type? MathResultType(MethodInfo doubleOverload, IEnumerable<PropertySelector> operands)
+		{
+			var known = operands.Select(o => o?.Type).Where(t => t is not null).ToList();
+
+			return known.Count == 0
+				? null
+				: doubleOverload.ForOperandType(ArithmeticUtils.GetWiderNumericType(known)).ReturnType;
+		}
+
+		public static Expression CreateUnaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector parameter, bool matchOperandType = false)
 		{
 			var parameterExpr = ExpressionUtils.ResolveArgument(target, parameter);
 
@@ -79,6 +110,9 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			{
 				throw new InvalidOperationException($"Parameters must be of numeric type for {methodInfo.Name} arithmetic function.");
 			}
+
+			if (matchOperandType)
+				methodInfo = methodInfo.ForOperandType(parameterExpr.Type);
 
 			var parameters = methodInfo.GetParameters();
 
@@ -97,7 +131,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			return Expression.Call(methodInfo, parameterExpr);
 		}
 
-		public static Expression CreateBinaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector param1, PropertySelector param2)
+		public static Expression CreateBinaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector param1, PropertySelector param2, bool matchOperandType = false)
 		{
 			var paramExpr1 = ExpressionUtils.ResolveArgument(target, param1);
 			var paramExpr2 = ExpressionUtils.ResolveArgument(target, param2);
@@ -105,6 +139,17 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			if (!ArithmeticUtils.IsNumericType(paramExpr1.Type) || !ArithmeticUtils.IsNumericType(paramExpr2.Type))
 			{
 				throw new InvalidOperationException($"Both parameters must be of numeric types for {methodInfo.Name} arithmetic function.");
+			}
+
+			if (matchOperandType)
+			{
+				var operandTypes = methodInfo.GetParameters()
+					.Zip([paramExpr1.Type, paramExpr2.Type])
+					.Where(pair => pair.First.ParameterType == typeof(double))
+					.Select(pair => (Type?)pair.Second)
+					.ToList();
+
+				methodInfo = methodInfo.ForOperandType(ArithmeticUtils.GetWiderNumericType(operandTypes));
 			}
 
 			var parameters = methodInfo.GetParameters();

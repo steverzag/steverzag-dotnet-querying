@@ -22,10 +22,12 @@ public class SelectorToStringTests
         public string Name { get; set; } = string.Empty;
         public Inner Inner { get; set; } = new();
         public List<int> Numbers { get; set; } = [];
+        public DateTime Created { get; set; }
     }
 
     private static readonly TestItem Sample = new()
     {
+        Created = new DateTime(2024, 3, 15),
         Quantity = 7,
         LongValue = 3,
         First = null,
@@ -79,6 +81,19 @@ public class SelectorToStringTests
             "Quantity * 1.5",
             "-2.5 * Quantity - 1",
             "$FN_MATH_POW(Quantity + LongValue, Quantity)",
+            "$FN_MATH_MAX(Quantity, 1)",
+            "Quantity|$FN_MATH_ROUND",
+            "Quantity|$FN_MATH_MAX(LongValue)",
+            "Inner.Value|$FN_MATH_POW(2)",
+            "Name|$FN_STR_CONCAT(\"-\", Nickname)",
+            "Name|$FN_STR_TRIM|$FN_STR_CONCAT(\"!\")",
+            "Numbers|$FN_AGGR_SUM|$FN_MATH_SQRT",
+            "Created|$FN_DT_ADDDAYS(-1)",
+            "Created|$FN_DT_ADDDAYS(Quantity)|$FN_DT_ADDHOURS(2)",
+            "Quantity|$FN_MATH_MAX(1) * 2",
+            "(Quantity|$FN_MATH_MAX(1) + 2) * 3",
+            "Quantity|$FN_MATH_MAX(First|$FN_COALESCE(0))",
+            "First|$FN_COALESCE(Quantity|$FN_MATH_MAX(1))",
         ];
 
         var data = new TheoryData<string, bool>();
@@ -106,6 +121,9 @@ public class SelectorToStringTests
     [InlineData("5l", "5L")]
     [InlineData("1e3", "1000.0")]
     [InlineData("Quantity * -(2)", "Quantity * -2")]
+    [InlineData("Name|$FN_STR_CONCAT(\"-\",Nickname)", "Name|$FN_STR_CONCAT(\"-\", Nickname)")]
+    [InlineData("Quantity|$FN_MATH_ROUND()", "Quantity|$FN_MATH_ROUND")]
+    [InlineData("(Quantity|$FN_MATH_MAX(1)) * 2", "Quantity|$FN_MATH_MAX(1) * 2")]
     public void EquivalentText_IsNormalized(string selector, string expected)
     {
         Assert.Equal(expected, ((PropertySelector<TestItem>)selector).ToString());
@@ -128,6 +146,11 @@ public class SelectorToStringTests
     [InlineData("-(Quantity - 1.5) / 2.0")]
     [InlineData("LongValue * 3L - 1")]
     [InlineData("Nickname|$FN_COALESCE(\"say \"\"hi\"\", (a|b)\")")]
+    [InlineData("Quantity|$FN_MATH_MAX(LongValue) * 2")]
+    [InlineData("Numbers|$FN_AGGR_SUM|$FN_MATH_SQRT")]
+    [InlineData("Name|$FN_STR_TRIM|$FN_STR_CONCAT(\"!\")")]
+    [InlineData("Quantity|$FN_MATH_MAX(First|$FN_COALESCE(0))")]
+    [InlineData("Created|$FN_DT_ADDDAYS(-1)")]
     public void ReparsingTheText_GivesTheSameValue(string selector)
     {
         foreach (var generic in new[] { true, false })
@@ -150,6 +173,9 @@ public class SelectorToStringTests
     [InlineData("Numbers|$FN_AGGR_MAX|$FN_COALESCE(0)")]
     [InlineData("First|$FN_COALESCE(Second, Third)")]
     [InlineData("(Quantity + LongValue) * Quantity")]
+    [InlineData("Quantity|$FN_MATH_MAX(LongValue)")]
+    [InlineData("Numbers|$FN_AGGR_SUM|$FN_MATH_SQRT")]
+    [InlineData("Created|$FN_DT_ADDDAYS(Quantity)")]
     public void ToGeneric_KeepsTheWholeSelector(string selector)
     {
         var generic = ((PropertySelector)selector).ToGeneric<TestItem>();

@@ -94,7 +94,7 @@ public class PipedSubjectTests
     public void PipedBuiltInFunction_ResolvesItsOtherArgumentsAgainstTheRoot()
     {
         foreach (var selector in BothForms("Inner.A|$FN_MATH_MAX(B)"))
-            Assert.Equal(400.0, Evaluate<double>(selector));
+            Assert.Equal(400, Evaluate(selector));
 
         foreach (var selector in BothForms("Inner.Name|$FN_STR_CONCAT(Name)"))
             Assert.Equal("innerxyz", Evaluate<string>(selector));

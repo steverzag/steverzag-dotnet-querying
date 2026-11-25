@@ -6,7 +6,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 [SelectorToken(SelectorDefaults.MathFloor, Piped = PipedForm.FirstArgument)]
 internal record MathFloorSelector<T> : FunctionPropertySelector<T>
 {
-	public override Type? SelectorType => Parameters[0]?.Type ?? default;
+	public override Type? SelectorType => Implementations.MathResultType(MethodInfos.MathFloorMethodInfo, Parameters.Take(1));
 	public MathFloorSelector() : base(SelectorDefaults.MathFloor) { }
 	public MathFloorSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathFloor, parameters) { }
 	public override void InitializeOverloads()
@@ -15,7 +15,7 @@ internal record MathFloorSelector<T> : FunctionPropertySelector<T>
 		{
 			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
 			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathFloorMethodInfo, Parameters[0]));
+				target => target.CreateUnaryMathFunction(MethodInfos.MathFloorMethodInfo, Parameters[0], matchOperandType: true));
 			Overloads.Add(selectorOverload);
 		}
 	}
@@ -24,7 +24,7 @@ internal record MathFloorSelector<T> : FunctionPropertySelector<T>
 [SelectorToken(SelectorDefaults.MathFloor, Piped = PipedForm.FirstArgument)]
 internal record MathFloorSelector : FunctionPropertySelector
 {
-	public override Type? SelectorType => Parameters[0]?.Type ?? default;
+	public override Type? SelectorType => Implementations.MathResultType(MethodInfos.MathFloorMethodInfo, Parameters.Take(1));
 	public MathFloorSelector() : base(SelectorDefaults.MathFloor) { }
 	public MathFloorSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathFloor, parameters) { }
 
@@ -34,7 +34,7 @@ internal record MathFloorSelector : FunctionPropertySelector
 		{
 			var valueParameters = new SortedList<int, Type> { { 0, typeof(PropertySelector) } };
 			var selectorOverload = new FunctionPropertySelectorOverload(valueParameters, 
-				target => target.CreateUnaryMathFunction(MethodInfos.MathFloorMethodInfo, Parameters[0]));
+				target => target.CreateUnaryMathFunction(MethodInfos.MathFloorMethodInfo, Parameters[0], matchOperandType: true));
 			Overloads.Add(selectorOverload);
 		}
 	}

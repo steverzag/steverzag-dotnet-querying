@@ -66,6 +66,13 @@ public class PipedFormTests
         { "Ratio|$FN_MATH_POW(2)", "$FN_MATH_POW(Ratio, 2)" },
         { "Ratio|$FN_MATH_ATAN2(1)", "$FN_MATH_ATAN2(Ratio, 1)" },
         { "Quantity|$FN_MATH_MAX(10)", "$FN_MATH_MAX(Quantity, 10)" },
+        { "Quantity|$FN_MATH_MIN(Digits)", "$FN_MATH_MIN(Quantity, Digits)" },
+        { "Price|$FN_MATH_MAX(Ratio)", "$FN_MATH_MAX(Price, Ratio)" },
+        { "Price|$FN_MATH_CEILING", "$FN_MATH_CEILING(Price)" },
+        { "Price|$FN_MATH_FLOOR", "$FN_MATH_FLOOR(Price)" },
+        { "Price|$FN_MATH_TRUNCATE", "$FN_MATH_TRUNCATE(Price)" },
+        { "Price|$FN_MATH_ROUND", "$FN_MATH_ROUND(Price)" },
+        { "Quantity|$FN_MATH_ROUND", "$FN_MATH_ROUND(Quantity)" },
         { "Name|$FN_STR_CONCAT(\"!\")", "$FN_STR_CONCAT(Name, \"!\")" },
         { "Name|$FN_STR_CONCAT(\"-\", Nickname)", "$FN_STR_CONCAT(Name, \"-\", Nickname)" },
         { "Name|$FN_STR_CONCAT(\"a\", \"b\", \"c\")", "$FN_STR_CONCAT(Name, \"a\", \"b\", \"c\")" },
@@ -88,16 +95,22 @@ public class PipedFormTests
         { "Name|$FN_STR_TRIM|$FN_STR_CONCAT(\"!\")", "$FN_STR_CONCAT(Name|$FN_STR_TRIM, \"!\")" },
         { "Numbers|$FN_AGGR_SUM|$FN_MATH_SQRT", "$FN_MATH_SQRT(Numbers|$FN_AGGR_SUM)" },
         { "Nickname|$FN_COALESCE(Name)|$FN_STR_CONCAT(\"!\")", "$FN_STR_CONCAT(Nickname|$FN_COALESCE(Name), \"!\")" },
-        { "Price|$FN_MATH_ROUND(2) * 3", "$FN_MATH_ROUND(Price, 2) * 3" },
         { "Created|$FN_DT_ADDDAYS(1)|$FN_DT_ADDHOURS(2)", "$FN_DT_ADDHOURS($FN_DT_ADDDAYS(Created, 1), 2)" },
         { "Ratio|$FN_MATH_POW(2)|$FN_MATH_SQRT", "$FN_MATH_SQRT($FN_MATH_POW(Ratio, 2))" },
         { "Nickname|$FN_COALESCE(Name|$FN_STR_CONCAT(\"?\"))", "Nickname|$FN_COALESCE($FN_STR_CONCAT(Name, \"?\"))" },
+    };
+
+    // Arithmetic always declares double (a known gap, see the roadmap), so these stay out of the declared-type test.
+    public static TheoryData<string, string> InArithmetic => new()
+    {
+        { "Price|$FN_MATH_ROUND(2) * 3", "$FN_MATH_ROUND(Price, 2) * 3" },
     };
 
     [Theory]
     [MemberData(nameof(UnaryMath))]
     [MemberData(nameof(WithArguments))]
     [MemberData(nameof(InContext))]
+    [MemberData(nameof(InArithmetic))]
     public void PipedForm_BuildsTheSameExpressionAsTheStaticForm(string piped, string @static)
     {
         foreach (var (pipedSelector, staticSelector) in BothForms(piped).Zip(BothForms(@static)))
@@ -111,16 +124,68 @@ public class PipedFormTests
     }
 
     [Theory]
+    [MemberData(nameof(UnaryMath))]
+    [MemberData(nameof(WithArguments))]
+    [MemberData(nameof(InContext))]
+    public void PipedForm_DeclaresTheTypeItBuilds(string piped, string _)
+    {
+        var selector = (PropertySelector<Product>)piped;
+
+        Assert.Equal(Body(selector).Type, selector.Type);
+    }
+
+    [Theory]
     [InlineData("Price|$FN_MATH_ROUND(2)", 12.35)]
     [InlineData("Details.Price|$FN_MATH_ROUND(Digits)", 9.9)]
     [InlineData("Price|$FN_MATH_ROUND(2) * 3", 37.05)]
-    // The static form $FN_MATH_MIN(Quantity, Digits) still fails in the generic form (no argument type is known
-    // when parsed, see "Typed function arguments"); piped, the subject's type comes from the chain.
     [InlineData("Quantity|$FN_MATH_MIN(Digits)", 1)]
     public void PipedForm_GivesTheExpectedValue(string text, double expected)
     {
         foreach (var selector in BothForms(text))
             Assert.Equal(expected, Convert.ToDouble(Evaluate(Body(selector))), 10);
+    }
+
+    public static TheoryData<string, object> ExactlyTyped => new()
+    {
+        { "Price|$FN_MATH_ROUND(2)", 12.35d },
+        { "Price|$FN_MATH_ROUND", 12d },
+        { "Price|$FN_MATH_CEILING", 13d },
+        { "Price|$FN_MATH_FLOOR", 12d },
+        { "Price|$FN_MATH_TRUNCATE", 12d },
+        { "Price|$FN_MATH_MAX(1)", 12.3456d },
+        { "Quantity|$FN_MATH_MAX(10)", 10 },
+        { "Quantity|$FN_MATH_MIN(Digits)", 1 },
+        { "Ratio|$FN_MATH_ROUND", 0d },
+        { "Quantity|$FN_MATH_ROUND", 7d },
+    };
+
+    [Theory]
+    [MemberData(nameof(ExactlyTyped))]
+    public void MathFunction_KeepsTheOperandType(string text, object expected)
+    {
+        foreach (var selector in BothForms(text))
+        {
+            var value = Evaluate(Body(selector));
+            Assert.IsType(expected.GetType(), value);
+            Assert.Equal(expected, value);
+        }
+    }
+
+    [Fact]
+    public void DecimalRounding_GoesThroughDouble()
+    {
+        // Pins the known precision loss: Math.Round(0.5015m, 3) is 0.502, but through double it is 0.501.
+        // Decimal math stays on double so EF's SQLite provider can translate it (see the roadmap).
+        var item = new Product { Price = 0.5015m };
+
+        foreach (var selector in BothForms("Price|$FN_MATH_ROUND(3)"))
+        {
+            var value = Expression.Lambda<Func<Product, double>>(Body(selector), Root).Compile()(item);
+
+            Assert.Equal(0.501d, value);
+        }
+
+        Assert.Equal(typeof(double), ((PropertySelector<Product>)"Price|$FN_MATH_ROUND(3)").Type);
     }
 
     [Fact]
