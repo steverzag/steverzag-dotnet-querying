@@ -126,7 +126,7 @@ namespace Steverzag.QueryShaper.Tests.Ordering
 				new OrderParameters("Reviews|" + SelectorDefaults.CountAggregateFunction, Desc)));
 		}
 
-		[Fact(Skip = "Known gap: OrderParameters<T> stores PlainValue (first segment only). Needs PropertySelector<T>.ToString to rebuild the text, see ROADMAP Phase 3.")]
+		[Fact]
 		public void TypedParameters_BaseStringIsTheFullSelector()
 		{
 			const string text = "Reviews|" + SelectorDefaults.CountAggregateFunction;

@@ -270,3 +270,73 @@ are not supported.
    is chosen should fit typed arguments and type-aware overload resolution.
 4. **Migration.** Which existing functions change form, and whether the old form is kept as an alias until the
    grammar is frozen.
+
+### 017: Literals are written plainly; `$VAL_*:` specifiers are removed (2026-11-24)
+**Status:** accepted; not implemented yet
+**Context:** a literal can be written in two ways. The original form is a specifier, `$VAL_INT:5` or
+`$VAL_DATETIME:2024-01-01T00:00:00`. Bare literals (`5`, `1.5`, `true`, `"text"`) came later, and the two now coexist.
+Fixing `ToString()` (Phase 3) showed what the specifier form costs:
+- **Its value has no end marker.** Everything after `$VAL_X:` belongs to the literal, so `$VAL_INT:10 - A` is read
+  as the int `10 - A`, and `-(A - $VAL_INT:10) / 2` fails the same way. As a function argument it can't contain a
+  comma or parentheses. Every place that scans structure (the pre-scan, the argument splitter, the arithmetic
+  tokenizer) would need its own rule for where the value ends.
+- **Two forms with different rules.** `$VAL_` values are read with the invariant culture, while bare numbers are read
+  with the current culture. So `A * 1.5` means `A * 15` on a machine set to es-ES, but `A * $VAL_DOUBLE:1.5` doesn't.
+
+Nothing outside PropertySelectors uses the specifiers (QueryShaper and the metadata tree don't), and nothing has
+shipped, so removing them costs only work, not compatibility.
+
+Specifiers really give only two things: an explicit type, and a value that may hold any character. Everything else is
+better done by bare literals, except dates and times. They can't be written bare: `2024-01-01` reads as subtraction,
+and a date-time and a date-only value would look the same.
+
+**Decision:**
+1. **Numbers are bare and read with the invariant culture.** An integer is `int` if it fits and `long` otherwise, as
+   in C#. A number with a `.` or an exponent is `double`. Suffixes pick other types: `L` for `long`, `m` for
+   `decimal`. `long` and `decimal` literals are new.
+2. **A minus sign directly in front of a number is part of the literal** wherever a unary minus could stand:
+   `A * -2` holds the int `-2`. Today it becomes a negation, which is typed `double` like all arithmetic. A minus
+   before anything else (`-A`, `-(A + B)`) is still negation.
+3. **Booleans are `true` and `false`.** Parsing stays case-insensitive, as today. `ToString()` writes lowercase.
+4. **Strings are quoted, and a `"` inside is doubled**: `"say ""hi"""` is `say "hi"`. The scanners that skip quoted
+   text need no change: a doubled quote closes the literal and reopens it at once, so the characters inside stay
+   skipped. Only the literal's value has to turn `""` into `"`.
+5. **Dates and times are constructor functions taking one quoted string**: `$FN_DT_DATETIME("2024-01-01T08:30:00")`,
+   `$FN_DT_DATE("2024-01-01")` and `$FN_DT_TIME("08:30")`. The string is read with the invariant culture, the same way
+   the `$VAL_` forms are read today. The argument must be a string literal, and it is checked when the selector is
+   parsed, so a bad date fails then and not when the expression is built. The result is a constant, like any other
+   literal.
+6. **`$VAL_*:` is removed, with no alias.** That means `ValueStart`, `ValuePrefix`, the seven value specifiers, and
+   the code paths that treat a `$VAL_` value as opaque. `SpecifierStart` and the non-generic parser's unused specifier
+   branch go too, which settles D5.
+7. **`ToString()` writes these forms** (§1–5). Every literal then reparses wherever it stands, which closes the
+   round-trip gap that the `ToString()` fix left open for doubles and dates.
+8. **The library formats literals for callers.** A public helper (name to be chosen, e.g.
+   `SelectorLiteral.Format(object)`) turns a .NET value into its literal text, so .NET code that builds selectors never
+   writes quoting or date formatting by hand. `ToString()` uses the same code.
+
+**Considered:**
+- **Keep `$VAL_` and give its value an end** (stop at the operand's boundary). Rejected: each new context, such as
+  arguments, arithmetic or a future grammar feature, would need the boundary defined again. That is the class of bug
+  this decision removes.
+- **Keep `$VAL_` for code that generates selectors.** The argument for it: a client that builds selector text from a
+  value, such as a grid whose date picker writes `"$VAL_DATETIME:" + date.toISOString()`, only joins two strings. It
+  needs no escaping and no knowledge of the grammar. Rejected, for three reasons:
+  - **The ease is only apparent.** Because the value has no end, the generated text breaks as soon as it is not the
+    last token: inside arithmetic, or as an argument containing a comma or parenthesis. A generator has to know those
+    rules anyway.
+  - **Generating the new forms is just as easy.** A date is `'$FN_DT_DATETIME("' + iso + '")'`, and an ISO date never
+    contains a quote. A string needs one rule (double every `"`), and .NET callers get §8.
+  - **Values typed by end users don't belong in selector text.** A selector names *what* to read (fields, functions,
+    the occasional fixed constant). The values users type, such as a search term or a filter bound, travel as
+    QueryShaper filter values (`SearchValue`), which are never parsed as grammar. Building selector text from user
+    input is an injection risk under any literal syntax. The Phase 4 security note should say so.
+- **A prefix on the quote** (`d"2024-01-01"`, `t"08:30"`). It's shorter, but it is new grammar for the tokenizer and
+  the metadata tree. Constructor functions reuse the registry, argument parsing and metadata that already exist.
+- **Escaping with `\"`.** Rejected: it brings backslash rules (`\\`, and what `\n` means), and the scanners would have
+  to track escapes. Doubling needs neither.
+
+**Consequence:** a breaking change in the selector grammar, made before any release. Selectors using `$VAL_` must be
+rewritten (`$VAL_INT:5` → `5`, `$VAL_STR:x` → `"x"`, `$VAL_DATETIME:…` → `$FN_DT_DATETIME("…")`). A bare number now
+means the same on every machine. The tests that pin `$VAL_` forms (mainly `ValueSelectorTests`, `SelectorDefaultsTests`
+and `DateSelectorTests`) are rewritten to the new forms.

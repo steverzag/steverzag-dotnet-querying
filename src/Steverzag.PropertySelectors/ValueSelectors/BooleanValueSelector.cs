@@ -18,6 +18,8 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 				return Implementations.CreateBoolConstantAccesor(value);
 			};
 		}
+
+		protected override string SegmentToString() => Implementations.FormatBoolLiteral(Value);
 	}
 
 	internal record BooleanValueSelector : PropertySelector
@@ -34,5 +36,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 				return Implementations.CreateBoolConstantAccesor(value);
 			};
 		}
+
+		protected override string SegmentToString() => Implementations.FormatBoolLiteral(Value);
 	}
 }

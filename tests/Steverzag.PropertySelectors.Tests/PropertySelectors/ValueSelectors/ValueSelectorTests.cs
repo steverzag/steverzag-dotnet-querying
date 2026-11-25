@@ -425,14 +425,11 @@ public class ValueSelectorTests
     }
 
     [Fact]
-    public void ValueSelectors_ToString_ContainsThePlainValue()
+    public void ValueSelectors_ToString_IsTheSelectorText()
     {
         var selector = new StringValueSelector("hello");
 
-        // Value selectors are records, so the compiler-synthesized ToString wins over
-        // PropertySelector.ToString(): the output carries the plain value inside the record
-        // dump instead of being the bare selector string. PlainValue stays the canonical form.
-        Assert.Contains(selector.PlainValue, selector.ToString());
+        Assert.Equal("\"hello\"", selector.ToString());
         Assert.Equal($"{SelectorDefaults.StringValueSpecifier}{SelectorDefaults.ValuePrefix}hello", selector.PlainValue);
     }
 

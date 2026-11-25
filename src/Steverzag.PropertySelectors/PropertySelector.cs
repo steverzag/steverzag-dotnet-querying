@@ -127,22 +127,24 @@ namespace Steverzag.PropertySelectors
 			};
 		}
 
-		public override string ToString()
+		public sealed override string ToString()
 		{
 			StringBuilder sb = new StringBuilder();
 
-			sb.Append(PlainValue);
+			sb.Append(SegmentToString());
 			var child = ChildSelector;
 
 			while (child != null)
 			{
 				sb.Append(SelectorDefaults.PropertyDelimiter);
-				sb.Append(child.PlainValue);
+				sb.Append(child.SegmentToString());
 				child = child.ChildSelector;
 			}
 
 			return sb.ToString();
 		}
+
+		protected virtual string SegmentToString() => PlainValue;
 
 		public static implicit operator PropertySelector(string selector)
 		{

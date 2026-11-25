@@ -1,4 +1,5 @@
-﻿using System.Linq.Expressions;
+﻿using System.Globalization;
+using System.Linq.Expressions;
 
 namespace Steverzag.PropertySelectors.ValueSelectors
 {
@@ -27,6 +28,21 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 		{
 			var constantExpression = Expression.Constant(value, typeof(string));
 			return constantExpression;
+		}
+
+		internal static string FormatStringLiteral(string value, string plainValue)
+		{
+			return value.Contains('"') ? plainValue : $"\"{value}\"";
+		}
+
+		internal static string FormatIntLiteral(int value, string plainValue)
+		{
+			return value >= 0 ? value.ToString(CultureInfo.InvariantCulture) : plainValue;
+		}
+
+		internal static string FormatBoolLiteral(bool value)
+		{
+			return value ? "true" : "false";
 		}
 
 		internal static Expression CreateDateTimeConstantAccesor(DateTime value)

@@ -21,6 +21,8 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 				return Implementations.CreateIntConstantAccesor(value);
 			};
 		}
+
+		protected override string SegmentToString() => Implementations.FormatIntLiteral(Value, PlainValue);
 	}
 
 	internal record IntegerValueSelector : PropertySelector
@@ -37,5 +39,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 				return Implementations.CreateIntConstantAccesor(value);
 			};
 		}
+
+		protected override string SegmentToString() => Implementations.FormatIntLiteral(Value, PlainValue);
 	}
 }

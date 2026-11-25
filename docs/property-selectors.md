@@ -97,8 +97,29 @@ PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";     
 - `PropertySelector<T>` knows its root type, so it can resolve property types, function overloads
   and arithmetic on properties. **Use it whenever possible.**
 - Non-generic `PropertySelector` exists for DTOs and serialization, where `T` isn't known yet.
-  QueryShaper converts it to the generic form internally. Limitation: arithmetic involving properties
-  only works on the generic form.
+  QueryShaper converts it to the generic form internally (`ToGeneric<T>()`). In the non-generic form,
+  property paths resolve against the target when the expression is built, so an unknown property
+  fails then and not when the selector is parsed.
+
+## Back to text: `ToString()`
+
+`ToString()` returns selector text that parses back to an equivalent selector, in either form. Both
+forms give the same text, and `ToGeneric<T>()` and `OrderParameters<T>` rely on it. The text is
+normalized, not echoed:
+
+- Function arguments are separated by `, `, and a function without arguments has no parentheses
+  (`Reviews|$FN_AGGR_COUNT`).
+- Arithmetic gets only the parentheses its structure needs: `(A * B) + C` becomes `A * B + C`, while
+  `A - (B - C)` keeps its parentheses.
+- Strings are quoted (`"n/a"`). A string containing `"` falls back to `$VAL_STR:`.
+- Non-negative ints and bools are written bare (`42`, `true`). Negative ints, doubles and dates keep
+  their `$VAL_*:` form: bare doubles parse with the current culture, and a negative bare number
+  passed as an argument would be read as negation.
+
+Known gap: a `$VAL_*:` literal inside arithmetic only parses as the **last** token, because the
+payload runs to the end of the text (`$VAL_DOUBLE:1.5 * A` fails). So `ToString()` of arithmetic
+that has a double or date literal before another token doesn't reparse. Decision 017 removes the `$VAL_*:` forms
+(plain literals, and `$FN_DT_*("…")` for dates), which closes this gap.
 
 ## Extending: custom functions
 

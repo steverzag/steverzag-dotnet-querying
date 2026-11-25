@@ -10,8 +10,7 @@ namespace Steverzag.PropertySelectors.Extensions
 	{
 		public static PropertySelector<T> ToGeneric<T>(this PropertySelector selector)
 		{
-			var strSelector = selector.ToString();
-			return new PropertySelector<T>(strSelector);
+			return (PropertySelector<T>)selector.ToString();
 		}
 	}
 }
