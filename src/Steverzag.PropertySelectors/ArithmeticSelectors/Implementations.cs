@@ -2,6 +2,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Xml.Linq;
+using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors
 {
@@ -74,11 +75,20 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		private static readonly ConcurrentDictionary<(MethodInfo DoubleOverload, Type OperandType), MethodInfo> TypedMathMethods = new();
 
+		private static readonly HashSet<MethodInfo> ExactDecimalOverloads =
+		[
+			MethodInfos.MathRoundMethodInfo,
+			MethodInfos.MathRound_2_MethodInfo,
+			MethodInfos.MathCeilingMethodInfo,
+			MethodInfos.MathFloorMethodInfo,
+			MethodInfos.MathTruncateMethodInfo,
+		];
+
 		public static MethodInfo ForOperandType(this MethodInfo doubleOverload, Type? operandType)
 		{
 			var underlying = operandType is null ? null : Nullable.GetUnderlyingType(operandType) ?? operandType;
-			// Decimals stay on the double overload: EF's SQLite provider can't translate Math over decimal.
-			if (underlying is null || underlying == typeof(double) || underlying == typeof(decimal))
+			if (underlying is null || underlying == typeof(double)
+				|| (underlying == typeof(decimal) && !ExactDecimalOverloads.Contains(doubleOverload)))
 				return doubleOverload;
 
 			return TypedMathMethods.GetOrAdd((doubleOverload, underlying), static key =>

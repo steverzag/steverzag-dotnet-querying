@@ -101,10 +101,13 @@ expression is built (`InvalidOperationException`). The message names the element
 
 **Math result types.** `ROUND`, `CEILING`, `FLOOR`, `TRUNCATE`, `MAX` and `MIN` use the `Math` overload for the operand
 type when there is one (`MAX` on two `int`s is `Math.Max(int, int)` → `int`; on `int` and `long` it is `long`), and
-`double` otherwise (`CEILING` on an `int` → `double`). **Decimals go through `double`**: EF's SQLite provider can't
-translate `Math` over `decimal`, and the core can't see the provider (decision 006). For money this can lose precision
-(`Math.Round(0.5015m, 3)` is 0.502, but through `double` it is 0.501). The roadmap tracks an opt-in fix. The other math
-functions return `double`, and `SIGN` returns `int`. Note that SQL and .NET round halves differently: SQLite rounds
+`double` otherwise (`CEILING` on an `int` → `double`). **On a `decimal`, `ROUND`, `CEILING`, `FLOOR` and `TRUNCATE`
+are exact** and return `decimal` (decision 024): `Price|$FN_MATH_ROUND(3)` on `0.5015m` is `0.502m`. They translate
+exactly on SQL Server and PostgreSQL. EF's SQLite provider can't translate them; register QueryShaper's
+`UseDecimalMathAsDouble()` there (see `query-shaper.md`), which runs them through `REAL`. **`MAX` and `MIN` on a
+`decimal` still go through `double`** and return `double`, because on SQLite the `decimal` versions compare as text and
+give wrong results with no error. They only pick an operand, so the values are exact up to about 15 significant
+digits. The other math functions return `double`, and `SIGN` returns `int`. Note that SQL and .NET round halves differently: SQLite rounds
 4.5 to 5, and .NET's `Math.Round` gives 4 (to even).
 
 **Declared type (`Type`).** A selector's declared type is either the type of the expression it builds, or `null` when

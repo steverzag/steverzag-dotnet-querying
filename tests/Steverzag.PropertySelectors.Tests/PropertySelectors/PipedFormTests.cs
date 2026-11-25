@@ -146,11 +146,11 @@ public class PipedFormTests
 
     public static TheoryData<string, object> ExactlyTyped => new()
     {
-        { "Price|$FN_MATH_ROUND(2)", 12.35d },
-        { "Price|$FN_MATH_ROUND", 12d },
-        { "Price|$FN_MATH_CEILING", 13d },
-        { "Price|$FN_MATH_FLOOR", 12d },
-        { "Price|$FN_MATH_TRUNCATE", 12d },
+        { "Price|$FN_MATH_ROUND(2)", 12.35m },
+        { "Price|$FN_MATH_ROUND", 12m },
+        { "Price|$FN_MATH_CEILING", 13m },
+        { "Price|$FN_MATH_FLOOR", 12m },
+        { "Price|$FN_MATH_TRUNCATE", 12m },
         { "Price|$FN_MATH_MAX(1)", 12.3456d },
         { "Quantity|$FN_MATH_MAX(10)", 10 },
         { "Quantity|$FN_MATH_MIN(Digits)", 1 },
@@ -171,20 +171,26 @@ public class PipedFormTests
     }
 
     [Fact]
-    public void DecimalRounding_GoesThroughDouble()
+    public void DecimalRounding_IsExact()
     {
-        // Pins the known precision loss: Math.Round(0.5015m, 3) is 0.502, but through double it is 0.501.
-        // Decimal math stays on double so EF's SQLite provider can translate it (see the roadmap).
         var item = new Product { Price = 0.5015m };
 
         foreach (var selector in BothForms("Price|$FN_MATH_ROUND(3)"))
         {
-            var value = Expression.Lambda<Func<Product, double>>(Body(selector), Root).Compile()(item);
+            var value = Expression.Lambda<Func<Product, decimal>>(Body(selector), Root).Compile()(item);
 
-            Assert.Equal(0.501d, value);
+            Assert.Equal(0.502m, value);
         }
 
-        Assert.Equal(typeof(double), ((PropertySelector<Product>)"Price|$FN_MATH_ROUND(3)").Type);
+        Assert.Equal(typeof(decimal), ((PropertySelector<Product>)"Price|$FN_MATH_ROUND(3)").Type);
+    }
+
+    [Theory]
+    [InlineData("Price|$FN_MATH_MAX(1)")]
+    [InlineData("Price|$FN_MATH_MIN(1)")]
+    public void DecimalMaxAndMin_StayOnDouble(string text)
+    {
+        Assert.Equal(typeof(double), ((PropertySelector<Product>)text).Type);
     }
 
     [Fact]

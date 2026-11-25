@@ -650,3 +650,31 @@ that name. When both have one (`Length`, `Count`), the piped and dotted forms di
 `property-selectors.md` ("Dot and pipe"). Nothing that worked changes: the generic form gains `Key` and collection
 members, and one wrong declared type is corrected. Grouped select errors now come from the generic parser, with
 positions in the whole selector.
+
+### 024: Decimal rounding is exact; SQLite gets an opt-in fallback through `double` (2026-11-25)
+**Status:** accepted; implemented (2026-11-25)
+**Context:** `ROUND`, `CEILING`, `FLOOR`, `TRUNCATE`, `MAX` and `MIN` on a `decimal` went through `double` (decided
+2026-11-24 while implementing 016), because EF's SQLite provider can't translate `Math` over `decimal`. That loses
+precision for money (`Math.Round(0.5015m, 3)` is 0.502, through `double` 0.501) and declares `double`. A provider
+check (EF Core 9.0.10, Npgsql 9.0.4; table in the roadmap) found more. The `double` path doesn't translate
+`Round(x, digits)` on PostgreSQL, so `Price|$FN_MATH_ROUND(2)` failed there. The `decimal` rounding functions
+translate exactly on SQL Server and PostgreSQL. `Math.Max`/`Min` over `decimal` on SQLite compare as text and return
+wrong results with no error (`max(9, 10)` is 9). And `Math.Max`/`Min` don't translate on SQL Server below
+compatibility level 160, whatever the type.
+**Decision:**
+1. On a `decimal` (or `decimal?`) operand, `ROUND`, `CEILING`, `FLOOR` and `TRUNCATE` use `Math`'s `decimal` overloads
+   and declare `decimal`. This is done in `ForOperandType`, which already picks the overload for the operand type,
+   so the signature tables don't change. Other operand types are unchanged.
+2. `MAX`/`MIN` on a `decimal` stay on `double`. Changing them would only gain the declared type, and it would add
+   silently wrong results on SQLite. A conditional form that would fix them everywhere is a roadmap follow-up.
+3. `Steverzag.QueryShaper.EntityFrameworkCore` adds `UseDecimalMathAsDouble()`, an opt-in `IQueryExpressionInterceptor`
+   for providers that can't translate the `decimal` overloads (SQLite). It rewrites
+   `Math.Round/Ceiling/Floor/Truncate(decimal…)` to `(decimal)Math.X((double)…)` before EF compiles the query. The core
+   stays provider-agnostic (006), and it needs no configuration hook, so it doesn't wait for D4.
+Rejected: a global or per-call setting in the core (needs D4, and every caller would have to know their provider);
+keeping `double` as the default (wrong values on the providers that can do better, and broken on PostgreSQL);
+moving `MAX`/`MIN` to `decimal` now (silent wrong results on SQLite).
+**Consequence:** a breaking change in declared and built types. `Price|$FN_MATH_ROUND(2)` is `decimal` instead of
+`double`, so a mapping into a `double` destination now converts. On SQLite without the fallback, these four functions
+over `decimal` fail with "could not be translated", which is an error rather than a wrong value. With the fallback
+they have `double` precision on SQLite, as before.

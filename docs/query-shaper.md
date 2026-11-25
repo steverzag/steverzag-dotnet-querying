@@ -214,6 +214,22 @@ The reverse (`int` → `int?`) is fine. `MIN`, `MAX` and `AVG` are declared null
 `int?`, decision 014), because over an empty collection they are `NULL` in SQL. So the same check rejects mapping
 them into a non-nullable destination; a nullable destination receives `null` for a row with an empty collection.
 
+## Decimal math on SQLite
+
+`ROUND`, `CEILING`, `FLOOR` and `TRUNCATE` over a `decimal` build .NET's exact `decimal` overloads (decision 024).
+SQL Server and PostgreSQL translate them exactly. EF's SQLite provider can't, so a query that uses one fails with
+"could not be translated". On SQLite, register the fallback from `Steverzag.QueryShaper.EntityFrameworkCore`:
+
+```csharp
+options.UseSqlite(connection).UseDecimalMathAsDouble();
+```
+
+It's an EF query interceptor that rewrites those calls to `(decimal)Math.X((double)value)` before EF compiles the
+query, so SQLite runs `round(CAST(Price AS REAL), 2)`. Comparisons with the result stay numeric. The rounding itself
+happens in `REAL`, so on SQLite it has `double` precision (`0.5015` rounds to `0.501`). Don't register it on other
+providers: there it would turn exact SQL into `float` SQL. Ordering by a `decimal` is a separate EF limitation on
+SQLite, and the fallback doesn't change it.
+
 ## Status
 
 This is a prototype. Every feature (filtering, base search, ordering, paging, grouping, select and mapping) is

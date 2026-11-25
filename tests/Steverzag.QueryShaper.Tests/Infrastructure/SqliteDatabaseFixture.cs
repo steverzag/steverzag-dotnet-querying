@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Steverzag.QueryShaper.EntityFrameworkCore;
 
 namespace Steverzag.QueryShaper.Tests.Infrastructure
 {
@@ -22,6 +23,7 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 
 			_options = new DbContextOptionsBuilder<TestDbContext>()
 				.UseSqlite(_connection)
+				.UseDecimalMathAsDouble()
 				.Options;
 
 			using var context = CreateContext();

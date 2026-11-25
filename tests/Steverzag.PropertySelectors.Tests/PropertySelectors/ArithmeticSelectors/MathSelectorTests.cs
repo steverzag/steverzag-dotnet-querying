@@ -169,13 +169,12 @@ public class MathSelectorTests
     }
 
     [Fact]
-    public void MathCeiling_WithDecimalLiteral_ReportsAndEvaluatesToDouble()
+    public void MathCeiling_WithDecimalLiteral_ReportsAndEvaluatesToDecimal()
     {
-        // Decimals stay on the double overload so EF's SQLite provider can translate them.
         PropertySelector<TestItem> selector = $"{SelectorDefaults.MathCeiling}(2.1m)";
 
-        Assert.Equal(typeof(double), selector.Type);
-        Assert.Equal(3d, Evaluate<double>(selector, new TestItem()));
+        Assert.Equal(typeof(decimal), selector.Type);
+        Assert.Equal(3m, Evaluate<decimal>(selector, new TestItem()));
     }
 
     [Fact]
