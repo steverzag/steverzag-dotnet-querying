@@ -12,6 +12,8 @@ namespace Steverzag.PropertySelectors.Extensions;
 
 public static class TypesExtensions
 {
+	internal static SelectorParseException PropertyNotFound(string propertyName, Type type, string propertyPath, int offset, Exception? innerException = null)
+		=> new($"Property '{propertyName}' was not found on type '{type.Name}'.", propertyPath, offset, propertyName, innerException);
 
 	public static Type GetPropertyType(this Type rootType, PropertySelector propertySelector)
 	{
@@ -29,8 +31,12 @@ public static class TypesExtensions
 		// so nested collections behave like SelectMany()
 		Type? outerCollectionType = null;
 
+		var segmentOffset = 0;
 		foreach (var propertyName in propertyPath.Split('.'))
 		{
+			var offset = segmentOffset;
+			segmentOffset += propertyName.Length + 1;
+
 			if (TryGetCollectionInfo(currentType, out var itemType, out var collectionType))
 			{
 				// Preserve only the first collection encountered
@@ -49,8 +55,7 @@ public static class TypesExtensions
 
 			if (property is null)
 			{
-				throw new InvalidOperationException(
-					$"Property '{propertyName}' was not found on type '{currentType.Name}'.");
+				throw PropertyNotFound(propertyName, currentType, propertyPath, offset);
 			}
 
 			currentType = property.PropertyType;

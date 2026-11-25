@@ -104,7 +104,7 @@ public class ElementSelectorTests
         // the registry for function parts, but a plain property part is always built as
         // PropertySelector<T> against the ROOT type, so "Name" is looked up on TestOrder
         // instead of on the TestLine the preceding function returned.
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector = $"Lines{Delimiter}{SelectorDefaults.ElementFirst}{Delimiter}Name";
         });
@@ -123,11 +123,11 @@ public class ElementSelectorTests
     }
 
     [Fact]
-    public void ElementFirst_OnStringProperty_ThrowsInvalidOperationException()
+    public void ElementFirst_OnStringProperty_ThrowsSelectorParseException()
     {
         // string is deliberately excluded from the enumerable detection, so it is not a
         // sequence of characters as far as the element selectors are concerned.
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector = $"Code{Delimiter}{SelectorDefaults.ElementFirst}";
         });
@@ -236,16 +236,16 @@ public class ElementSelectorTests
         // Skip() constant, so a property reference cannot supply it.
         var text = $"Lines{Delimiter}{SelectorDefaults.ElementAtIndex}(Code)";
 
-        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestOrder>)text);
-        Assert.Equal("$FN_ELM_ATINDEX: argument 1 ('Code') must be an integer literal: '$FN_ELM_ATINDEX(Code)'.", exception.Message);
-        Assert.Throws<InvalidOperationException>(() => (PropertySelector)text);
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestOrder>)text);
+        Assert.Equal("$FN_ELM_ATINDEX: argument 1 ('Code') must be an integer literal: '$FN_ELM_ATINDEX(Code)'.", exception.Detail);
+        Assert.Throws<SelectorParseException>(() => (PropertySelector)text);
     }
 
     [Fact]
-    public void ElementAtIndex_WithoutParameters_ThrowsArgumentException()
+    public void ElementAtIndex_WithoutParameters_ThrowsSelectorParseException()
     {
         // Only the one-parameter overload is registered.
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector = $"Lines{Delimiter}{SelectorDefaults.ElementAtIndex}";
         });

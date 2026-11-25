@@ -6,5 +6,5 @@ using System.Threading.Tasks;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors
 {
-	internal record ArithmeticOperationToken(ArithmeticOperationTokenType Type, string Value);
+	internal record ArithmeticOperationToken(ArithmeticOperationTokenType Type, string Value, int Position);
 }

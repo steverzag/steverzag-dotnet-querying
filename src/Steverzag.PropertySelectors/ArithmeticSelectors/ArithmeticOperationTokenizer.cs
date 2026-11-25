@@ -40,20 +40,20 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				if (c == '"')
 				{
 					var start = _pos;
-					_pos = _text.EndOfQuotedLiteral(_pos) + 1;
-					tokens.Add(new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos]));
+					_pos = _text.EndOfQuotedLiteralOrThrow(_pos) + 1;
+					tokens.Add(new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start));
 					continue;
 				}
 
 				tokens.Add(c switch
 				{
-					'+' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Plus, "+"),
-					'-' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Minus, "-"),
-					'*' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Multiply, "*"),
-					'/' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Divide, "/"),
-					'(' => new ArithmeticOperationToken(ArithmeticOperationTokenType.LParen, "("),
-					')' => new ArithmeticOperationToken(ArithmeticOperationTokenType.RParen, ")"),
-					_ => throw new Exception($"Invalid char: {c}")
+					'+' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Plus, "+", _pos),
+					'-' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Minus, "-", _pos),
+					'*' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Multiply, "*", _pos),
+					'/' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Divide, "/", _pos),
+					'(' => new ArithmeticOperationToken(ArithmeticOperationTokenType.LParen, "(", _pos),
+					')' => new ArithmeticOperationToken(ArithmeticOperationTokenType.RParen, ")", _pos),
+					_ => throw new SelectorParseException($"Unexpected character '{c}'.", _text, _pos, c.ToString())
 				});
 
 				_pos++;
@@ -84,8 +84,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 			foreach (var index in unaryMinusIndices)
 			{
-				tokens.Insert(index + 1, new ArithmeticOperationToken(ArithmeticOperationTokenType.LParen, "("));
-				tokens.Insert(index + 3, new ArithmeticOperationToken(ArithmeticOperationTokenType.RParen, ")"));
+				tokens.Insert(index + 1, new ArithmeticOperationToken(ArithmeticOperationTokenType.LParen, "(", tokens[index + 1].Position));
+				tokens.Insert(index + 3, new ArithmeticOperationToken(ArithmeticOperationTokenType.RParen, ")", tokens[index + 2].Position + tokens[index + 2].Value.Length));
 			}
 
 			return tokens;
@@ -101,7 +101,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				if (tokens[i].Type == ArithmeticOperationTokenType.Minus && isUnaryPosition
 					&& next.Type == ArithmeticOperationTokenType.Selector && next.Value.Length > 0 && char.IsDigit(next.Value[0]))
 				{
-					tokens[i] = new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, "-" + next.Value);
+					tokens[i] = new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, "-" + next.Value, tokens[i].Position);
 					tokens.RemoveAt(i + 1);
 				}
 			}
@@ -133,7 +133,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				if (_pos < _text.Length && _text[_pos] is 'l' or 'L' or 'm' or 'M')
 					_pos++;
 
-				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos]);
+				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start);
 			}
 
 			var complexSelectorStart = SelectorDefaults.ComplexSelectorStart[0];
@@ -150,7 +150,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 					if (c == '"')
 					{
-						_pos = _text.EndOfQuotedLiteral(_pos);
+						_pos = _text.EndOfQuotedLiteralOrThrow(_pos);
 					}
 					else if (c == '(')
 					{
@@ -169,7 +169,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 					_pos++;
 				}
 
-				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos]);
+				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start);
 			}
 
 			var isPropertySelectorCandidate = char.IsLetter(_text[_pos]) || (_text[_pos] is '_' or '@');
@@ -187,7 +187,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 					if (c == '"')
 					{
-						_pos = _text.EndOfQuotedLiteral(_pos);
+						_pos = _text.EndOfQuotedLiteralOrThrow(_pos);
 					}
 					else if (parenDepth > 0)
 					{
@@ -210,10 +210,10 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 					_pos++;
 				}
 
-				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos]);
+				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start);
 			}
 
-			throw new Exception("Invalid selector");
+			throw new SelectorParseException($"Unexpected character '{_text[_pos]}'.", _text, _pos, _text[_pos].ToString());
 		}
 	}
 

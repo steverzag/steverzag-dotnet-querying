@@ -244,7 +244,7 @@ public class CoalesceSelectorTests
     [Fact]
     public void NonNullablePipedValue_IsRejectedWhenParsed()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"Quantity|{Coalesce}(0)");
+        var ex = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"Quantity|{Coalesce}(0)");
         Assert.Contains("the piped value", ex.Message);
     }
 
@@ -261,7 +261,7 @@ public class CoalesceSelectorTests
     [MemberData(nameof(BothForms))]
     public void NonNullableOperandBeforeTheLast_IsRejected(bool generic)
     {
-        var ex = Assert.Throws<InvalidOperationException>(() => Build(Parse($"First|{Coalesce}(0, Second)", generic), out _));
+        var ex = Assert.Throws<SelectorParseException>(() => Build(Parse($"First|{Coalesce}(0, Second)", generic), out _));
         Assert.Contains("argument 1", ex.Message);
     }
 
@@ -269,7 +269,9 @@ public class CoalesceSelectorTests
     [MemberData(nameof(BothForms))]
     public void NonNullablePropertyBeforeTheLast_IsRejectedWhenBuilt(bool generic)
     {
-        var ex = Assert.Throws<InvalidOperationException>(() => Build(Parse($"First|{Coalesce}(Quantity, 0)", generic), out _));
+        Exception ex = generic
+            ? Assert.Throws<SelectorParseException>(() => Build(Parse($"First|{Coalesce}(Quantity, 0)", generic), out _))
+            : Assert.Throws<InvalidOperationException>(() => Build(Parse($"First|{Coalesce}(Quantity, 0)", generic), out _));
         Assert.Contains("argument 1", ex.Message);
     }
 
@@ -280,7 +282,7 @@ public class CoalesceSelectorTests
     [InlineData("Day", "0")]
     public void MismatchedTypes_AreRejected(string property, string fallback)
     {
-        Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"{property}|{Coalesce}({fallback})");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"{property}|{Coalesce}({fallback})");
 
         PropertySelector nonGeneric = $"{property}|{Coalesce}({fallback})";
         Assert.Throws<InvalidOperationException>(() => Build(nonGeneric, out _));
@@ -289,7 +291,7 @@ public class CoalesceSelectorTests
     [Fact]
     public void MismatchedPropertyFallback_IsRejectedWhenParsed_InTheGenericForm()
     {
-        Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"LastUpdated|{Coalesce}(Name)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"LastUpdated|{Coalesce}(Name)");
 
         PropertySelector nonGeneric = $"LastUpdated|{Coalesce}(Name)";
         Assert.Throws<InvalidOperationException>(() => Build(nonGeneric, out _));
@@ -298,7 +300,7 @@ public class CoalesceSelectorTests
     [Fact]
     public void Collection_IsRejected()
     {
-        Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"NullableNumbers|{Coalesce}(0)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"NullableNumbers|{Coalesce}(0)");
 
         PropertySelector nonGeneric = $"NullableNumbers|{Coalesce}(0)";
         Assert.Throws<InvalidOperationException>(() => Build(nonGeneric, out _));
@@ -317,6 +319,6 @@ public class CoalesceSelectorTests
     [MemberData(nameof(BothForms))]
     public void WithoutArguments_IsRejected(bool generic)
     {
-        Assert.Throws<ArgumentException>(() => Parse($"First|{Coalesce}", generic));
+        Assert.Throws<SelectorParseException>(() => Parse($"First|{Coalesce}", generic));
     }
 }

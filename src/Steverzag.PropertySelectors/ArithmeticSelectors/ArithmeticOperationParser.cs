@@ -2,13 +2,15 @@
 {
 	internal class ArithmeticOperationParser
 	{
+		private readonly string _text;
 		private readonly List<ArithmeticOperationToken> _tokens;
 		private int _pos;
 		private Func<string, PropertySelector> _createOperand = null!;
 		private Func<PropertySelector, PropertySelector?, ArithmeticOperator, PropertySelector> _createOperation = null!;
 
-		public ArithmeticOperationParser(List<ArithmeticOperationToken> tokens)
+		public ArithmeticOperationParser(string text, List<ArithmeticOperationToken> tokens)
 		{
+			_text = text;
 			_tokens = tokens;
 		}
 
@@ -33,7 +35,15 @@
 			_pos = 0;
 			_createOperand = createOperand;
 			_createOperation = createOperation;
-			return ParseExpression();
+
+			var expression = ParseExpression();
+			if (_pos < _tokens.Count)
+			{
+				var unexpected = _tokens[_pos];
+				throw new SelectorParseException($"Unexpected '{unexpected.Value}': an operator is missing before it.", _text, unexpected.Position, unexpected.Value);
+			}
+
+			return expression;
 		}
 
 		private PropertySelector ParseExpression()
@@ -45,7 +55,7 @@
 				var op = Previous();
 				var right = ParseTerm();
 
-				left = _createOperation(left, right, op.Type == ArithmeticOperationTokenType.Plus
+				left = CreateOperation(op, left, right, op.Type == ArithmeticOperationTokenType.Plus
 					? ArithmeticOperator.Addition
 					: ArithmeticOperator.Subtraction);
 			}
@@ -62,7 +72,7 @@
 				var op = Previous();
 				var right = ParseFactor();
 
-				left = _createOperation(left, right, op.Type == ArithmeticOperationTokenType.Multiply
+				left = CreateOperation(op, left, right, op.Type == ArithmeticOperationTokenType.Multiply
 					? ArithmeticOperator.Multiplication
 					: ArithmeticOperator.Division);
 			}
@@ -74,23 +84,52 @@
 		{
 			if (Match(ArithmeticOperationTokenType.Minus))
 			{
+				var op = Previous();
 				var operand = ParseFactor();
-				return _createOperation(operand, null, ArithmeticOperator.Negation);
+				return CreateOperation(op, operand, null, ArithmeticOperator.Negation);
 			}
 
 			if (Match(ArithmeticOperationTokenType.Selector))
 			{
-				return _createOperand(Previous().Value);
+				var operand = Previous();
+				try
+				{
+					return _createOperand(operand.Value);
+				}
+				catch (Exception e) when (SelectorParseException.IsSelectorError(e))
+				{
+					throw SelectorParseException.From(e, _text, operand.Position, operand.Value);
+				}
 			}
 
 			if (Match(ArithmeticOperationTokenType.LParen))
 			{
+				var open = Previous();
 				var expr = ParseExpression();
-				Consume(ArithmeticOperationTokenType.RParen, "Missing ')'");
+				if (!Match(ArithmeticOperationTokenType.RParen))
+					throw new SelectorParseException("Unbalanced parentheses: 1 unclosed '('.", _text, open.Position, "(");
 				return expr;
 			}
 
-			throw new Exception("Invalid expression");
+			if (_pos < _tokens.Count)
+			{
+				var unexpected = _tokens[_pos];
+				throw new SelectorParseException($"Unexpected '{unexpected.Value}': an operand is expected here.", _text, unexpected.Position, unexpected.Value);
+			}
+
+			throw new SelectorParseException("The expression ends where an operand is expected.", _text, _text.Length, null);
+		}
+
+		private PropertySelector CreateOperation(ArithmeticOperationToken op, PropertySelector left, PropertySelector? right, ArithmeticOperator @operator)
+		{
+			try
+			{
+				return _createOperation(left, right, @operator);
+			}
+			catch (Exception e) when (SelectorParseException.IsSelectorError(e))
+			{
+				throw SelectorParseException.From(e, _text, op.Position, op.Value);
+			}
 		}
 
 		private bool Match(ArithmeticOperationTokenType type)
@@ -110,12 +149,5 @@
 		}
 
 		private ArithmeticOperationToken Previous() => _tokens[_pos - 1];
-
-		private ArithmeticOperationToken Consume(ArithmeticOperationTokenType type, string message)
-		{
-			if (Check(type)) return _tokens[_pos++];
-
-			throw new Exception(message);
-		}
 	}
 }

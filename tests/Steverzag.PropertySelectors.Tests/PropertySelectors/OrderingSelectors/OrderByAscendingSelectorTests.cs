@@ -208,10 +208,10 @@ public class OrderByAscendingSelectorTests
     }
 
     [Fact]
-    public void OrderAscending_OnNonEnumerableTarget_ThrowsInvalidOperationException()
+    public void OrderAscending_OnNonEnumerableTarget_ThrowsSelectorParseException()
     {
         // The generic selector validates the enumerability of its target at parse time.
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector =
                 $"Lines{Delimiter}{SelectorDefaults.ElementFirst}{Delimiter}{SelectorDefaults.OrderAscending}(Amount)";

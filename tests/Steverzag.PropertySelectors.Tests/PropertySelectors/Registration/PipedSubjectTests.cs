@@ -86,8 +86,8 @@ public class PipedSubjectTests
     [Fact]
     public void PipedForm_WithTheSubjectAlsoInTheArguments_IsRejected()
     {
-        Assert.Throws<ArgumentException>(() => (PropertySelector)"Inner|$FN_TESTPIPE_SUM(A, B)");
-        Assert.Throws<ArgumentException>(() => (PropertySelector<TestItem>)"Inner|$FN_TESTPIPE_SUM(A, B)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector)"Inner|$FN_TESTPIPE_SUM(A, B)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"Inner|$FN_TESTPIPE_SUM(A, B)");
     }
 
     [Fact]
@@ -106,8 +106,8 @@ public class PipedSubjectTests
     [Fact]
     public void PipedBuiltInFunction_WithTheSubjectAlsoInTheArguments_IsRejected()
     {
-        Assert.Throws<ArgumentException>(() => (PropertySelector)"Inner|$FN_MATH_MAX(A, 1)");
-        Assert.Throws<ArgumentException>(() => (PropertySelector<TestItem>)"Inner|$FN_MATH_MAX(A, 1)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector)"Inner|$FN_MATH_MAX(A, 1)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"Inner|$FN_MATH_MAX(A, 1)");
     }
 
     [Theory]

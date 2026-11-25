@@ -556,3 +556,40 @@ because `COUNT(DISTINCT)` skipping nulls is standard SQL.
 **Consequence:** in memory, `COUNTDISTINCT` differs from `Distinct().Count()` for nullable elements. That is
 documented in `property-selectors.md`. Tests cover both selector forms, nullable values and references, the
 per-row and grouped SQLite paths, and declared type = built type.
+
+### 021: Selector errors are `SelectorParseException`s with a position and token (2026-11-25)
+**Status:** accepted; implemented (2026-11-25)
+**Context:** a bad selector string failed with whichever exception the code that noticed it threw: `ArgumentException`
+for counts and literals, `InvalidOperationException` for types and unknown properties, `NotSupportedException` for
+unknown functions, and a bare `Exception` from the arithmetic tokenizer and parser ("Invalid char: #", "Missing ')'").
+Only the unbalanced-parenthesis check gave an index. A caller had to catch four types to turn a bad client selector
+into a 400, and couldn't tell the client where the problem was. An unknown property also read differently in the two
+forms: "was not found" when the generic form parsed it, and `Expression.PropertyOrField`'s "'X' is not a member of
+type …" when the non-generic form built it. The review also found input that was silently accepted: leftover
+arithmetic operands (`A * 2 3` dropped the `3`), unterminated strings, empty chain parts (`A||B`), empty arguments
+(`f(a,,b)`) and text after a function's closing parenthesis.
+**Decision:**
+1. A public `SelectorParseException : ArgumentException` (the same base as .NET's `RegexParseException`), with
+   `Detail`, `Selector`, `Position` (0-based, nullable) and `Token`. `Message` is `Detail` followed by
+   "Position N in '…'.", and names the token when `Detail` doesn't already. No error-code enum yet; one can be added
+   with the Phase 4 function metadata if UIs need it.
+2. **Everything found while parsing** is a `SelectorParseException`: syntax errors, unknown functions and properties,
+   literals, argument count and type errors, ambiguity and rejected pipes. Errors that helpers throw as
+   `ArgumentException`, `InvalidOperationException`, `NotSupportedException` or `FormatException` are converted
+   where the parser knows the position, so their wording is unchanged (`Detail`). `ArgumentNullException` and any
+   other exception type are not converted, because they mean a bug, not bad input.
+3. **Positions compose.** The chain split records each part's offset, function arguments record theirs, and
+   arithmetic tokens carry their position. An error from a nested parse is shifted into the outer text as it passes
+   through, so `$FN_MATH_MAX(Amount, $FN_MATH_SQRT(Missing))` points at `Missing` (35). Count and type errors point
+   at the function.
+4. **The non-generic form's unknown property** is found only when the expression is built. It is a
+   `SelectorParseException` with the generic form's message, with `Selector` set to the property path, since the
+   full text isn't available then.
+5. The silently accepted input above is now rejected, each with its own message.
+Rejected: deriving from `InvalidOperationException` (kept more existing tests passing, but a malformed string is an
+argument error) or `FormatException`; converting only syntax errors (callers would still catch several types).
+**Consequence:** a breaking change in exception types. Code that caught `InvalidOperationException` or
+`NotSupportedException` for a bad selector must catch `SelectorParseException` (or `ArgumentException`). Tests that
+compared exact messages now compare `Detail`. Build-time errors other than an unknown property, which only the
+non-generic form can hit, stay `InvalidOperationException`; making them `SelectorParseException`s too is a possible
+follow-up. A lone `"` used to be read as a property name and is now an unterminated string.

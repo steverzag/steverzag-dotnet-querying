@@ -204,8 +204,8 @@ public class PipedFormTests
     [InlineData("Name|$FN_STR_ISNULLOREMPTY(Name)")]
     public void PipedForm_WithTheSubjectRepeatedAsAnArgument_IsRejected(string text)
     {
-        Assert.Throws<ArgumentException>(() => (PropertySelector)text);
-        Assert.Throws<ArgumentException>(() => (PropertySelector<Product>)text);
+        Assert.Throws<SelectorParseException>(() => (PropertySelector)text);
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<Product>)text);
     }
 
     [Theory]

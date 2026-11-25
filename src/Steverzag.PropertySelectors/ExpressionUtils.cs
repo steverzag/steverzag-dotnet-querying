@@ -123,10 +123,10 @@ namespace Steverzag.PropertySelectors
 				{
 					property = Expression.PropertyOrField(current, part);
 				}
-				catch
+				catch (ArgumentException e)
 				{
 					if (!TryGetGroupingTypes(target.Type, out var _, out var groupElementType) || groupElementType is null)
-						throw;
+						throw Extensions.TypesExtensions.PropertyNotFound(part, current.Type, string.Join('.', parts), parts.Take(i).Sum(p => p.Length + 1), e);
 
 					var param = Expression.Parameter(groupElementType, "y");
 					var innerAccess = CreateMemberAccessRec(param, parts, index);

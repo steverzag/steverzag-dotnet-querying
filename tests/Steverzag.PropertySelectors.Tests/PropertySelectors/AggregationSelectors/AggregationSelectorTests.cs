@@ -110,20 +110,20 @@ public class AggregationSelectorTests
     }
 
     [Fact]
-    public void Count_OnNonEnumerableProperty_ThrowsInvalidOperationExceptionAtParseTime()
+    public void Count_OnNonEnumerableProperty_ThrowsSelectorParseExceptionAtParseTime()
     {
         // The generic selector validates enumerability in its constructor.
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector = $"Code{Delimiter}{SelectorDefaults.CountAggregateFunction}";
         });
     }
 
     [Fact]
-    public void Count_WithParameters_ThrowsNotSupportedException()
+    public void Count_WithParameters_ThrowsSelectorParseException()
     {
         // Aggregation selectors only declare a parameterless constructor.
-        Assert.Throws<NotSupportedException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.CountAggregateFunction}(Amount)";
         });
@@ -237,9 +237,9 @@ public class AggregationSelectorTests
     }
 
     [Fact]
-    public void CountDistinct_OnNonEnumerableProperty_ThrowsInvalidOperationExceptionAtParseTime()
+    public void CountDistinct_OnNonEnumerableProperty_ThrowsSelectorParseExceptionAtParseTime()
     {
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector = $"Code{Delimiter}{SelectorDefaults.CountDistinctAggregateFunction}";
         });
@@ -491,7 +491,7 @@ public class AggregationSelectorTests
     [Fact]
     public void Avg_OnNonNumericElements_ThrowsAtParseTime()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector = $"Names{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
         });

@@ -120,16 +120,16 @@ namespace Steverzag.PropertySelectors.Registration
 			ExceptionDispatchInfo? argumentError = null;
 			var parameters = argumentScopeType is null
 				? ParseParameters(selectorPart, ParseNonGeneric)
-				: ParseParameters(selectorPart, text =>
+				: ParseParameters(selectorPart, (text, offset) =>
 				{
 					try
 					{
-						return GenericArgumentParser(argumentScopeType)(text);
+						return PropertySelectorUtils.ParseArgument(GenericArgumentParser(argumentScopeType), selectorPart, text, offset);
 					}
 					catch (Exception e)
 					{
 						argumentError ??= ExceptionDispatchInfo.Capture(e);
-						return ParseNonGeneric(text);
+						return PropertySelectorUtils.ParseArgument(ParseNonGeneric, selectorPart, text, offset);
 					}
 				});
 
@@ -173,11 +173,7 @@ namespace Steverzag.PropertySelectors.Registration
 			}
 		}
 
-		private static string TokenName(string selectorPart)
-		{
-			var parenthesesIndex = selectorPart.IndexOf('(');
-			return parenthesesIndex < 0 ? selectorPart : selectorPart[..parenthesesIndex];
-		}
+		private static string TokenName(string selectorPart) => PropertySelectorUtils.FunctionName(selectorPart);
 
 		private static SelectorFactories BuildFactories(Type closedSelectorType)
 		{
@@ -223,12 +219,12 @@ namespace Steverzag.PropertySelectors.Registration
 			{
 				return factories.CreateWithParameters is not null
 					? factories.CreateWithParameters(parameters)
-					: throw new NotSupportedException($"The function '{selectorPart}' is not supported with {parameters.Count} parameter(s).");
+					: throw new SelectorParseException($"{TokenName(selectorPart)} takes no arguments.", selectorPart, selectorPart.IndexOf('('), TokenName(selectorPart));
 			}
 
 			return factories.CreateParameterless is not null
 				? factories.CreateParameterless()
-				: throw new NotSupportedException($"The function '{selectorPart}' is not supported without parameters.");
+				: throw new SelectorParseException($"{TokenName(selectorPart)} needs arguments.", selectorPart, 0, TokenName(selectorPart));
 		}
 
 		private static bool TryGetEntry(string selectorPart, [NotNullWhen(true)] out SelectorRegistration? entry)
@@ -239,6 +235,9 @@ namespace Steverzag.PropertySelectors.Registration
 		}
 
 		private static List<PropertySelector> ParseParameters(string selectorPart, Func<string, PropertySelector> parse)
+			=> ParseParameters(selectorPart, (text, offset) => PropertySelectorUtils.ParseArgument(parse, selectorPart, text, offset));
+
+		private static List<PropertySelector> ParseParameters(string selectorPart, Func<string, int, PropertySelector> parse)
 		{
 			PropertySelectorUtils.TryGetParameters(selectorPart, parse, out var parameters);
 			return parameters;

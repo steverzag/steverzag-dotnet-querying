@@ -354,11 +354,12 @@ public class ArithmeticOperationSelectorTests
     public void NonGenericOperator_UnknownProperty_FailsWhenBuilt()
     {
         // The non-generic selector has no type to check against when it's parsed, so a missing
-        // property is reported when the expression is built, by Expression.PropertyOrField.
+        // property is reported when the expression is built, with the generic form's message.
         PropertySelector selector = "Missing + 2";
 
-        var exception = Assert.Throws<ArgumentException>(() => Evaluate<int>(selector, new TestItem()));
-        Assert.Contains("'Missing' is not a member", exception.Message);
+        var exception = Assert.Throws<SelectorParseException>(() => Evaluate<int>(selector, new TestItem()));
+        Assert.Equal("Property 'Missing' was not found on type 'TestItem'.", exception.Detail);
+        Assert.Equal("Missing", exception.Token);
     }
 
     private static object EvaluateObject(PropertySelector selector, TestItem item)
@@ -386,7 +387,7 @@ public class ArithmeticOperationSelectorTests
         // would swallow the operator and let the whole string fall through to the property path
         // branch. The balance check turns that into a syntax error instead of a later, and much
         // more confusing, "property not found".
-        var exception = Assert.Throws<ArgumentException>(() => (PropertySelector<TestItem>)"(Amount + 2");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"(Amount + 2");
 
         Assert.Contains("Unbalanced parentheses", exception.Message);
         Assert.Contains("unclosed", exception.Message);
@@ -397,7 +398,7 @@ public class ArithmeticOperationSelectorTests
     {
         // A stray ')' drives the depth negative, which used to suppress operator detection for
         // the rest of the scan.
-        var exception = Assert.Throws<ArgumentException>(() => (PropertySelector<TestItem>)"Amount) + 2");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"Amount) + 2");
 
         Assert.Contains("Unbalanced parentheses", exception.Message);
         Assert.Contains("unexpected ')'", exception.Message);
@@ -408,7 +409,7 @@ public class ArithmeticOperationSelectorTests
     {
         // The same swallowing hits the property delimiter, so the check is not arithmetic
         // specific: "Amount(|Amount" used to collapse into a single part.
-        var exception = Assert.Throws<ArgumentException>(() => (PropertySelector<TestItem>)"Amount(|Amount");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"Amount(|Amount");
 
         Assert.Contains("Unbalanced parentheses", exception.Message);
     }
@@ -432,7 +433,7 @@ public class ArithmeticOperationSelectorTests
         // the property path branch. The parentheses balance, so the syntax check cannot catch
         // it; telling a grouping '(' from a function-call '(' is what would be needed, and that
         // is a parser concern rather than a scanning one.
-        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)"((Amount + 2) * 2)");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"((Amount + 2) * 2)");
 
         Assert.Contains("was not found", exception.Message);
 
@@ -446,14 +447,16 @@ public class ArithmeticOperationSelectorTests
     {
         // Here the leading operand keeps the operator visible at depth zero, so the string does
         // reach the arithmetic parser, which rejects the unterminated group.
-        var exception = Assert.Throws<Exception>(() => (PropertySelector<TestItem>)"1 * (Amount + 2");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"1 * (Amount + 2");
 
-        Assert.Equal("Missing ')'", exception.Message);
+        Assert.Equal("Unbalanced parentheses: 1 unclosed '('. Position 4 in '1 * (Amount + 2'.", exception.Message);
     }
 
     [Fact]
     public void TrailingOperator_ThrowsAtParseTime()
     {
-        Assert.Throws<Exception>(() => (PropertySelector<TestItem>)"Amount +");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"Amount +");
+
+        Assert.Equal(8, exception.Position);
     }
 }

@@ -144,10 +144,10 @@ public class SelectorRegistryDispatchTests
     }
 
     [Fact]
-    public void ImplicitOperator_UnknownFunctionToken_ThrowsNotSupportedException()
+    public void ImplicitOperator_UnknownFunctionToken_ThrowsSelectorParseException()
     {
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => (PropertySelector)"$FN_NOPE(1)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector)"$FN_NOPE(1)");
     }
 
     [Fact]
@@ -161,12 +161,12 @@ public class SelectorRegistryDispatchTests
     }
 
     [Fact]
-    public void ImplicitOperator_FunctionWithUnsupportedParameterCount_ThrowsNotSupportedException()
+    public void ImplicitOperator_FunctionWithUnsupportedParameterCount_ThrowsSelectorParseException()
     {
         // Aggregation selectors only define a parameterless constructor.
 
         // Act & Assert
-        Assert.Throws<NotSupportedException>(() => (PropertySelector)(SelectorDefaults.SumAggregateFunction + "(Id)"));
+        Assert.Throws<SelectorParseException>(() => (PropertySelector)(SelectorDefaults.SumAggregateFunction + "(Id)"));
     }
 
     [Fact]

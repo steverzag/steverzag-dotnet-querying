@@ -71,8 +71,8 @@ in SQL (decision 014):
 | `AGGR_MIN`, `AGGR_MAX` on other comparable types | `DateTime` → `DateTime?` (any value type is lifted); reference types such as `string` stay as they are, through the generic overload |
 
 `AGGR_SUM` and `AGGR_AVG` support the numeric types `int`, `long`, `float`, `double` and `decimal`, and their nullable
-forms. Anything else throws `InvalidOperationException`: `AGGR_AVG` when the selector is parsed, and `AGGR_SUM` when the
-expression is built.
+forms. Anything else is rejected: `AGGR_AVG` when the selector is parsed (`SelectorParseException`), and `AGGR_SUM` when the
+expression is built (`InvalidOperationException`).
 
 **Math result types.** `ROUND`, `CEILING`, `FLOOR`, `TRUNCATE`, `MAX` and `MIN` use the `Math` overload for the operand
 type when there is one (`MAX` on two `int`s is `Math.Max(int, int)` → `int`; on `int` and `long` it is `long`), and
@@ -129,7 +129,7 @@ resolves against the scope root in both forms, so `Details.Price|$FN_MATH_ROUND(
 - **Symmetric functions** (`MATH_MAX`, `MATH_POW`, `STR_CONCAT`, …) follow the same rule: `A|$FN_MATH_MAX(B)` is
   `Math.Max(A, B)`.
 - **Don't repeat the subject.** `Inner|$FN_MATH_MAX(A, 1)` is `Math.Max(Inner, A, 1)`, which is one argument too many.
-  It's rejected with `ArgumentException`: "…can't be called with 2 arguments besides the piped value… The piped value
+  It's rejected with `SelectorParseException`: "…can't be called with 2 arguments besides the piped value… The piped value
   is its first argument, so 'Inner|$FN_MATH_MAX(…)' means '$FN_MATH_MAX(Inner, …)'."
 - **Functions without a subject reject the pipe** when the selector is parsed: "$FN_DT_NOW takes no piped value, but
   'Created' is piped into it. Write it at the start of a chain: '$FN_DT_NOW'." `STR_JOIN` is rejected too, because its
@@ -156,7 +156,8 @@ PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";     
 - Every argument is a selector (a literal, a property, a chain, a function), resolved against the scope root.
   EF translates the result to SQL `COALESCE`.
 - Every operand except the last must be able to be null (`Nullable<>` or a reference type). Otherwise the selector is
-  rejected with `InvalidOperationException`, including a non-nullable piped value (`Quantity|$FN_COALESCE(0)` on an `int`).
+  rejected, including a non-nullable piped value (`Quantity|$FN_COALESCE(0)` on an `int`): with `SelectorParseException`
+  when parsed, or `InvalidOperationException` when the non-generic form only finds out as the expression is built.
 - Types unify like C#'s `??`: numbers widen (`decimal? ?? 0` → `decimal`, `int? ?? long` → `long`), and other types
   must match exactly (`DateTime?` with `DateTime`, an enum with the same enum). The result is nullable only if the last
   operand is.
@@ -178,7 +179,39 @@ PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";     
 - Non-generic `PropertySelector` exists for DTOs and serialization, where `T` isn't known yet.
   QueryShaper converts it to the generic form internally (`ToGeneric<T>()`). In the non-generic form,
   property paths resolve against the target when the expression is built, so an unknown property
-  fails then and not when the selector is parsed.
+  fails then and not when the selector is parsed. It fails with the same `SelectorParseException` and message as
+  the generic form.
+
+## Errors
+
+Anything wrong with the selector text is a `SelectorParseException`, which derives from `ArgumentException`
+(decision 021). Callers such as an HTTP endpoint can catch that one type and answer 400. It carries:
+
+| Property | Meaning |
+|---|---|
+| `Detail` | What is wrong, without the position: "Property 'Missing' was not found on type 'Order'." |
+| `Selector` | The text the position refers to: the whole selector when it's parsed. |
+| `Position` | 0-based offset into `Selector` of the token at fault, or `null` if it isn't known. |
+| `Token` | The text at fault: a property name, a function name, an operator, an argument. |
+| `Message` | `Detail` plus "Position N in '…'.", with the token added when `Detail` doesn't already name it. |
+
+```
+"Lines|Missing"                              → Property 'Missing' was not found on type 'Order'. Position 6 in 'Lines|Missing'.
+"$FN_MATH_MAX(Amount, $FN_MATH_SQRT(Missing))" → position 35, inside the nested argument
+"Amount * 2 3"                               → Unexpected '3': an operator is missing before it. Position 11 in 'Amount * 2 3'.
+"Name|$FN_NOPE(1)"                           → Unknown function '$FN_NOPE'. Position 5 in 'Name|$FN_NOPE(1)'.
+```
+
+- **When the selector is parsed:** syntax errors (unbalanced parentheses, an unterminated string, an empty part such
+  as `A||B`, an empty argument such as `f(a,,b)`, text after a function's closing `)`, an unexpected character or
+  leftover operand in arithmetic), unknown functions, unknown properties in the generic form, invalid literals,
+  argument count and type errors, ambiguous overloads and rejected pipes.
+- **Positions** point at the token for syntax, property and arithmetic errors, at the argument for errors inside an
+  argument, and at the function for count and type errors.
+- **When the expression is built**, in the non-generic form: an unknown property is a `SelectorParseException` too,
+  with the generic form's message. `Selector` is then the property path and `Position` an offset into it, because
+  the full text isn't known at that point. Other errors found while building (a type mismatch the non-generic form
+  couldn't see earlier) are still `InvalidOperationException`s.
 
 ## Back to text: `ToString()`
 
@@ -239,7 +272,8 @@ expression is built (the non-generic form with an untyped argument).
 '$FN_MATH_ROUND(1, 2, 3)'. It takes 1 or 2 arguments."). A wrong type names the argument, what it is, and what was
 expected ("$FN_MATH_SQRT: argument 1 ('Name') must be a number, not a String: '$FN_MATH_SQRT(Name)'."), the piped
 value ("the piped value 'Name' must be a number") or the target ("$FN_AGGR_SUM must be applied to a collection, not a
-String"). Count errors are `ArgumentException`s and type errors are `InvalidOperationException`s.
+String"). Both are `SelectorParseException`s when the selector is parsed (see "Errors"). A type error found only when
+the expression is built, in the non-generic form, is an `InvalidOperationException` with the same message.
 
 A function that doesn't override `Signatures` keeps the older model: it overrides `InitializeOverloads` and adds the
 overload for the count it was given. Its declared type is whatever it sets itself.

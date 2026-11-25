@@ -152,7 +152,7 @@ public class TypedArgumentsTests
     [Fact]
     public void OrderingArguments_ThatOnlyExistOnTheRoot_AreRejectedWhenParsed()
     {
-        Assert.Throws<InvalidOperationException>(() => (PropertySelector<Order>)"Lines|$FN_ORDER_ASC(Quantity)");
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<Order>)"Lines|$FN_ORDER_ASC(Quantity)");
     }
 
     // ── Errors move to parse time in the generic form ───────────────────────
@@ -164,7 +164,7 @@ public class TypedArgumentsTests
     [InlineData("$FN_MATH_MAX(Quantity, $FN_MATH_ROUND(Missing))")]
     public void UnknownPropertyInAnArgument_FailsWhenParsed(string text)
     {
-        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<Order>)text);
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<Order>)text);
         Assert.Contains("'Missing'", exception.Message);
 
         PropertySelector nonGeneric = text;
@@ -174,10 +174,10 @@ public class TypedArgumentsTests
     [Fact]
     public void StructuralErrors_AreReportedBeforeArgumentErrors()
     {
-        var count = Assert.Throws<ArgumentException>(() => (PropertySelector<Order>)"$FN_MATH_ROUND(Missing, 1, 2)");
+        var count = Assert.Throws<SelectorParseException>(() => (PropertySelector<Order>)"$FN_MATH_ROUND(Missing, 1, 2)");
         Assert.StartsWith("$FN_MATH_ROUND can't be called with 3 arguments", count.Message);
 
-        var piped = Assert.Throws<ArgumentException>(() => (PropertySelector<Order>)"Quantity|$FN_STR_JOIN(\",\", Missing)");
+        var piped = Assert.Throws<SelectorParseException>(() => (PropertySelector<Order>)"Quantity|$FN_STR_JOIN(\",\", Missing)");
         Assert.StartsWith("$FN_STR_JOIN takes no piped value", piped.Message);
     }
 

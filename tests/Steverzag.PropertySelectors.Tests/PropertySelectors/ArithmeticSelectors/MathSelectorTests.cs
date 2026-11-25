@@ -323,27 +323,27 @@ public class MathSelectorTests
     [Fact]
     public void MathSqrt_WithNonNumericParameter_IsRejectedWhenParsedInTheGenericForm()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<TestItem>)$"{SelectorDefaults.MathSqrt}(Name)");
-        Assert.Equal("$FN_MATH_SQRT: argument 1 ('Name') must be a number, not a String: '$FN_MATH_SQRT(Name)'.", exception.Message);
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"{SelectorDefaults.MathSqrt}(Name)");
+        Assert.Equal("$FN_MATH_SQRT: argument 1 ('Name') must be a number, not a String: '$FN_MATH_SQRT(Name)'.", exception.Detail);
 
         PropertySelector nonGeneric = $"{SelectorDefaults.MathSqrt}(Name)";
         Assert.Throws<InvalidOperationException>(() => Evaluate<double>(nonGeneric, new TestItem()));
     }
 
     [Fact]
-    public void MathSqrt_WithoutParameters_ThrowsArgumentException()
+    public void MathSqrt_WithoutParameters_ThrowsSelectorParseException()
     {
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestItem> selector = SelectorDefaults.MathSqrt;
         });
     }
 
     [Fact]
-    public void MathPow_WithASingleParameter_ThrowsArgumentException()
+    public void MathPow_WithASingleParameter_ThrowsSelectorParseException()
     {
         // Only the two-parameter overload is registered for Pow.
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestItem> selector = $"{SelectorDefaults.MathPower}(2)";
         });

@@ -255,8 +255,8 @@ public class DateSelectorTests
     [InlineData("$FN_DT_TIMEONLY(\"25:00\")")]
     public void DateLiteral_WithAnInvalidValue_FailsWhenParsed(string text)
     {
-        Assert.Throws<ArgumentException>(() => { PropertySelector<TestItem> _ = text; });
-        Assert.Throws<ArgumentException>(() => { PropertySelector _ = text; });
+        Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = text; });
+        Assert.Throws<SelectorParseException>(() => { PropertySelector _ = text; });
     }
 
     [Theory]
@@ -264,10 +264,10 @@ public class DateSelectorTests
     [InlineData("$FN_DT_DATETIME(5)", "argument 1 ('5')")]
     public void DateLiteral_WithANonLiteralArgument_FailsWhenParsed_InBothForms(string text, string argument)
     {
-        var generic = Assert.Throws<InvalidOperationException>(() => { PropertySelector<TestItem> _ = text; });
-        var nonGeneric = Assert.Throws<InvalidOperationException>(() => { PropertySelector _ = text; });
+        var generic = Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = text; });
+        var nonGeneric = Assert.Throws<SelectorParseException>(() => { PropertySelector _ = text; });
 
-        Assert.Equal($"$FN_DT_DATETIME: {argument} must be a quoted string: '{text}'.", generic.Message);
+        Assert.Equal($"$FN_DT_DATETIME: {argument} must be a quoted string: '{text}'.", generic.Detail);
         Assert.Equal(generic.Message, nonGeneric.Message);
     }
 

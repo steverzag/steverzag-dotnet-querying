@@ -349,8 +349,8 @@ public class ValueSelectorTests
     [InlineData("1e400")]
     public void Parse_NumberThatDoesNotFit_Throws(string text)
     {
-        Assert.Throws<ArgumentException>(() => { PropertySelector<TestItem> _ = text; });
-        Assert.Throws<ArgumentException>(() => { PropertySelector _ = text; });
+        Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = text; });
+        Assert.Throws<SelectorParseException>(() => { PropertySelector _ = text; });
     }
 
     [Theory]
@@ -398,17 +398,16 @@ public class ValueSelectorTests
     [Fact]
     public void Parse_QuotedLiteralWithASingleInnerQuote_Throws()
     {
-        Assert.Throws<ArgumentException>(() => { PropertySelector<TestItem> _ = "\"a\" \"b\""; });
+        Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = "\"a\" \"b\""; });
     }
 
     [Fact]
-    public void Parse_LoneQuoteCharacter_IsTreatedAsAPropertyPath()
+    public void Parse_LoneQuoteCharacter_IsAnUnterminatedString()
     {
-        // A single quote starts and ends with '"' at the same index, so it is not an empty literal.
-        PropertySelector selector = "\"";
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector)"\"");
 
-        Assert.IsType<PropertySelector>(selector);
-        Assert.Equal("\"", selector.PlainValue);
+        Assert.Equal("Unterminated string literal: a '\"' is never closed.", exception.Detail);
+        Assert.Equal(0, exception.Position);
     }
 
     [Fact]
@@ -428,7 +427,7 @@ public class ValueSelectorTests
         PropertySelector selector = text;
 
         Assert.IsType<PropertySelector>(selector);
-        Assert.Throws<InvalidOperationException>(() => { PropertySelector<TestItem> _ = text; });
+        Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = text; });
     }
 
     // ── Plain values reparse ────────────────────────────────────────────────

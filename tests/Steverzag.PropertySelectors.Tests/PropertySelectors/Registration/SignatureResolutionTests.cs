@@ -169,8 +169,8 @@ public class SignatureResolutionTests
         const string text = "$FN_TESTSIG_AMBIG(Count)";
         const string message = "$FN_TESTSIG_AMBIG(Count) is ambiguous between (an Int64) and (a Double).";
 
-        var generic = Assert.Throws<InvalidOperationException>(() => (PropertySelector<Item>)text);
-        Assert.Equal(message, generic.Message);
+        var generic = Assert.Throws<SelectorParseException>(() => (PropertySelector<Item>)text);
+        Assert.Equal(message, generic.Detail);
 
         PropertySelector nonGeneric = text;
         var whenBuilt = Assert.Throws<InvalidOperationException>(() => Body(nonGeneric));
@@ -180,25 +180,25 @@ public class SignatureResolutionTests
     [Fact]
     public void NoMatchingOverload_ListsWhatTheFunctionTakes()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<Item>)"$FN_TESTSIG_AMBIG(Flag)");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<Item>)"$FN_TESTSIG_AMBIG(Flag)");
 
-        Assert.Equal("$FN_TESTSIG_AMBIG has no overload for (Boolean): '$FN_TESTSIG_AMBIG(Flag)'. It takes (an Int64) or (a Double).", exception.Message);
+        Assert.Equal("$FN_TESTSIG_AMBIG has no overload for (Boolean): '$FN_TESTSIG_AMBIG(Flag)'. It takes (an Int64) or (a Double).", exception.Detail);
     }
 
     [Fact]
     public void ATargetOfTheWrongKind_IsRejected()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<Item>)"Name|$FN_AGGR_SUM");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<Item>)"Name|$FN_AGGR_SUM");
 
-        Assert.Equal("$FN_AGGR_SUM must be applied to a collection, not a String: '$FN_AGGR_SUM'.", exception.Message);
+        Assert.Equal("$FN_AGGR_SUM must be applied to a collection, not a String: '$FN_AGGR_SUM'.", exception.Detail);
     }
 
     [Fact]
     public void APipedValueOfTheWrongKind_IsNamed()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() => (PropertySelector<Item>)"Name|$FN_MATH_ROUND(2)");
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<Item>)"Name|$FN_MATH_ROUND(2)");
 
-        Assert.Equal("$FN_MATH_ROUND: the piped value 'Name' must be a number, not a String: 'Name|$FN_MATH_ROUND(2)'.", exception.Message);
+        Assert.Equal("$FN_MATH_ROUND: the piped value 'Name' must be a number, not a String: 'Name|$FN_MATH_ROUND(2)'.", exception.Detail);
     }
 
     [Theory]
@@ -208,9 +208,9 @@ public class SignatureResolutionTests
     [InlineData("Name|$FN_STR_CONCAT", "$FN_STR_CONCAT can't be called with no arguments besides the piped value: 'Name|$FN_STR_CONCAT'. It takes 1, 2 or 3 arguments besides the piped value. The piped value is its first argument, so 'Name|$FN_STR_CONCAT(…)' means '$FN_STR_CONCAT(Name, …)'.")]
     public void WrongArgumentCount_SaysWhichCountsAreAccepted(string text, string expected)
     {
-        var exception = Assert.Throws<ArgumentException>(() => (PropertySelector<Item>)text);
+        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<Item>)text);
 
-        Assert.Equal(expected, exception.Message);
+        Assert.Equal(expected, exception.Detail);
     }
 
     // ── Declared type = built type for the collection and date functions ────

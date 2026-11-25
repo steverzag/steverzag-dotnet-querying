@@ -38,7 +38,7 @@ public class PipedRejectionTests
 
         foreach (var parse in BothParsers)
         {
-            var exception = Assert.Throws<ArgumentException>(() => parse(text));
+            var exception = Assert.Throws<SelectorParseException>(() => parse(text));
             Assert.StartsWith(expected, exception.Message);
         }
     }
@@ -56,10 +56,10 @@ public class PipedRejectionTests
     {
         foreach (var parse in BothParsers)
         {
-            var exception = Assert.Throws<ArgumentException>(() => parse("Name|$FN_STR_JOIN(\",\", \"x\")"));
+            var exception = Assert.Throws<SelectorParseException>(() => parse("Name|$FN_STR_JOIN(\",\", \"x\")"));
             Assert.EndsWith(
                 "Its first argument is the separator. To join the piped value, pass it as one of the values after the separator.",
-                exception.Message);
+                exception.Detail);
         }
     }
 
@@ -68,12 +68,12 @@ public class PipedRejectionTests
     {
         foreach (var parse in BothParsers)
         {
-            var exception = Assert.Throws<ArgumentException>(() => parse("Inner|$FN_MATH_MAX(A, 1)"));
+            var exception = Assert.Throws<SelectorParseException>(() => parse("Inner|$FN_MATH_MAX(A, 1)"));
             Assert.Equal(
                 "$FN_MATH_MAX can't be called with 2 arguments besides the piped value: 'Inner|$FN_MATH_MAX(A, 1)'. " +
                 "It takes 1 argument besides the piped value. " +
                 "The piped value is its first argument, so 'Inner|$FN_MATH_MAX(…)' means '$FN_MATH_MAX(Inner, …)'.",
-                exception.Message);
+                exception.Detail);
         }
     }
 
@@ -85,7 +85,7 @@ public class PipedRejectionTests
     public void WrongArgumentCount_SaysWhatWasWritten(string text, string expected)
     {
         foreach (var parse in BothParsers)
-            Assert.Equal(expected, Assert.Throws<ArgumentException>(() => parse(text)).Message);
+            Assert.Equal(expected, Assert.Throws<SelectorParseException>(() => parse(text)).Detail);
     }
 
     private static readonly Func<string, PropertySelector>[] BothParsers =

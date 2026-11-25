@@ -208,10 +208,10 @@ public class OrderByDescendingSelectorTests
     }
 
     [Fact]
-    public void OrderDescending_OnNonEnumerableTarget_ThrowsInvalidOperationException()
+    public void OrderDescending_OnNonEnumerableTarget_ThrowsSelectorParseException()
     {
         // The generic selector validates the enumerability of its target at parse time.
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector<TestOrder> selector =
                 $"Lines{Delimiter}{SelectorDefaults.ElementFirst}{Delimiter}{SelectorDefaults.OrderDescending}(Amount)";

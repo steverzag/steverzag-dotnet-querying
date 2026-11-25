@@ -30,7 +30,7 @@ namespace Steverzag.PropertySelectors
 			var analysis = selector.AnalyzePropertySelector();
 			if (analysis.IsTopLevelArithmetic)
 			{
-				return PropertySelectorUtils.CreateArithmeticOperationSelector<T>(selector);
+				return (PropertySelector<T>)PropertySelectorUtils.ParseArithmetic(selector, () => PropertySelectorUtils.CreateArithmeticOperationSelector<T>(selector));
 			}
 
 			var selectorParts = analysis.Parts;
@@ -38,26 +38,23 @@ namespace Steverzag.PropertySelectors
 			Type currentIterationType = typeof(T);
 			string? pipedText = null;
 
-			foreach (var selectorPart in selectorParts)
+			foreach (var (selectorPart, offset) in selectorParts)
 			{
 				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.FunctionStart);
 
-				PropertySelector propertySelector;
+				var propertySelector = PropertySelectorUtils.ParsePart(selector, selectorPart, offset, () =>
+				{
+					if (isFunctionPart)
+					{
+						return SelectorRegistry.TryResolveGeneric(selectorPart, currentIterationType, typeof(T), pipedText, out var registeredSelector)
+							? registeredSelector
+							: throw PropertySelectorUtils.UnknownFunction(selectorPart);
+					}
 
-				if (isFunctionPart)
-				{
-					propertySelector = SelectorRegistry.TryResolveGeneric(selectorPart, currentIterationType, typeof(T), pipedText, out var registeredSelector)
-						? registeredSelector
-						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
-				}
-				else if (ValueSelectorFactory.TryCreate<T>(selectorPart, out var valueSelector))
-				{
-					propertySelector = valueSelector;
-				}
-				else
-				{
-					propertySelector = new PropertySelector<T>(selectorPart);
-				}
+					return ValueSelectorFactory.TryCreate<T>(selectorPart, out var valueSelector)
+						? valueSelector
+						: new PropertySelector<T>(selectorPart);
+				});
 
 				if (result is null)
 					result = (PropertySelector<T>)propertySelector;
@@ -152,32 +149,29 @@ namespace Steverzag.PropertySelectors
 			var analysis = selector.AnalyzePropertySelector();
 			if (analysis.IsTopLevelArithmetic)
 			{
-				return PropertySelectorUtils.CreateArithmeticOperationSelector(selector);
+				return PropertySelectorUtils.ParseArithmetic(selector, () => PropertySelectorUtils.CreateArithmeticOperationSelector(selector));
 			}
 			var selectorParts = analysis.Parts;
 			PropertySelector result = null!;
 			string? pipedText = null;
 
-			foreach (var selectorPart in selectorParts)
+			foreach (var (selectorPart, offset) in selectorParts)
 			{
 				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.FunctionStart);
 
-				PropertySelector propertySelector;
+				var propertySelector = PropertySelectorUtils.ParsePart(selector, selectorPart, offset, () =>
+				{
+					if (isFunctionPart)
+					{
+						return SelectorRegistry.TryResolveNonGeneric(selectorPart, pipedText, out var registeredSelector)
+							? registeredSelector
+							: throw PropertySelectorUtils.UnknownFunction(selectorPart);
+					}
 
-				if (isFunctionPart)
-				{
-					propertySelector = SelectorRegistry.TryResolveNonGeneric(selectorPart, pipedText, out var registeredSelector)
-						? registeredSelector
-						: throw new NotSupportedException($"The function '{selectorPart}' is not supported.");
-				}
-				else if (ValueSelectorFactory.TryCreate(selectorPart, out var valueSelector))
-				{
-					propertySelector = valueSelector;
-				}
-				else
-				{
-					propertySelector = new PropertySelector(selectorPart);
-				}
+					return ValueSelectorFactory.TryCreate(selectorPart, out var valueSelector)
+						? valueSelector
+						: new PropertySelector(selectorPart);
+				});
 
 				if (result is null)
 					result = propertySelector;

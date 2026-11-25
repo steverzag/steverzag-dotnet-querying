@@ -3,42 +3,27 @@ using System.Buffers;
 
 namespace Steverzag.PropertySelectors.Extensions
 {
-	/// <summary>
-	/// Result of a single scan over a selector string: whether it is a top-level arithmetic
-	/// expression and, when it is not, its parts split on the top-level property delimiter.
-	/// </summary>
-	internal readonly record struct SelectorExpressionAnalysis(bool IsTopLevelArithmetic, List<string> Parts);
+	internal readonly record struct SelectorPartText(string Text, int Offset);
+
+	internal readonly record struct SelectorExpressionAnalysis(bool IsTopLevelArithmetic, List<SelectorPartText> Parts);
 
 	internal static class PropertySelectorExtensionsInternal
 	{
 		private static readonly SearchValues<char> ArithmeticOperatorChars = SearchValues.Create("+-*/");
 
-		/// <summary>
-		/// Classifies <paramref name="expression"/> in a single pass: detects an arithmetic
-		/// operator outside parentheses and, when none is found, splits the expression on
-		/// top-level <see cref="SelectorDefaults.PropertyDelimiter"/> occurrences.
-		/// </summary>
-		/// <exception cref="ArgumentException">
-		/// The parentheses of <paramref name="expression"/> do not balance. Both checks exist so
-		/// that malformed input fails as a syntax error here instead of being reclassified as a
-		/// property path: an unbalanced depth makes the scan skip the very operators and
-		/// delimiters it is looking for, and the whole string would then be looked up as a
-		/// single property name.
-		/// </exception>
 		internal static SelectorExpressionAnalysis AnalyzePropertySelector(this string expression)
 		{
 			if (expression.Length == 0)
 				return new SelectorExpressionAnalysis(false, []);
 
 			if (ValueSelectorFactory.IsNumberLiteral(expression.Trim()))
-				return new SelectorExpressionAnalysis(false, [expression.Trim()]);
+				return new SelectorExpressionAnalysis(false, [Trimmed(expression, 0, expression.Length)]);
 
-			// Vectorized pre-check: without any operator character the expression cannot be
-			// arithmetic, so the per-character operator test below is skipped entirely.
 			var mayBeArithmetic = expression.AsSpan().ContainsAny(ArithmeticOperatorChars);
 
-			var parts = new List<string>();
+			var parts = new List<SelectorPartText>();
 			var parenthesesDepth = 0;
+			var lastOpenParenthesis = -1;
 			var partStartIndex = 0;
 			var selectorDelimiter = SelectorDefaults.PropertyDelimiter[0];
 
@@ -48,24 +33,20 @@ namespace Steverzag.PropertySelectors.Extensions
 
 				if (c == '"')
 				{
-					i = expression.EndOfQuotedLiteral(i);
+					i = expression.EndOfQuotedLiteralOrThrow(i);
 					continue;
 				}
 
 				if (c == '(')
 				{
 					parenthesesDepth++;
+					lastOpenParenthesis = i;
 					continue;
 				}
 				if (c == ')')
 				{
-					// A stray ')' would drive the depth negative, which passes the "> 0" guard
-					// below but fails the "depth is zero" premise the operator test relies on,
-					// silently disabling detection for the rest of the scan.
 					if (parenthesesDepth == 0)
-						throw new ArgumentException(
-							$"Unbalanced parentheses in selector '{expression}': unexpected ')' at index {i}.",
-							nameof(expression));
+						throw new SelectorParseException("Unbalanced parentheses: unexpected ')'.", expression, i, ")");
 
 					parenthesesDepth--;
 					continue;
@@ -73,29 +54,52 @@ namespace Steverzag.PropertySelectors.Extensions
 				if (parenthesesDepth > 0)
 					continue;
 
-				// Past the guards the depth is always exactly zero.
 				if (mayBeArithmetic && (c is '+' or '-' or '*' or '/'))
 					return new SelectorExpressionAnalysis(true, []);
 
 				if (c == selectorDelimiter)
 				{
-					parts.Add(expression[partStartIndex..i].Trim());
+					parts.Add(Part(expression, partStartIndex, i));
 					partStartIndex = i + 1;
 				}
 			}
 
-			// An unclosed '(' swallows every operator and delimiter after it.
 			if (parenthesesDepth != 0)
-				throw new ArgumentException(
-					$"Unbalanced parentheses in selector '{expression}': {parenthesesDepth} unclosed '('.",
-					nameof(expression));
+				throw new SelectorParseException($"Unbalanced parentheses: {parenthesesDepth} unclosed '('.", expression, lastOpenParenthesis, "(");
 
-			parts.Add(expression[partStartIndex..].Trim());
+			parts.Add(Part(expression, partStartIndex, expression.Length));
 
 			return new SelectorExpressionAnalysis(false, parts);
 		}
 
+		private static SelectorPartText Part(string expression, int start, int end)
+		{
+			var part = Trimmed(expression, start, end);
+			if (part.Text.Length == 0)
+				throw new SelectorParseException($"Empty part: '{SelectorDefaults.PropertyDelimiter}' must sit between two parts.", expression, start, SelectorDefaults.PropertyDelimiter);
+
+			return part;
+		}
+
+		private static SelectorPartText Trimmed(string expression, int start, int end)
+		{
+			while (start < end && char.IsWhiteSpace(expression[start]))
+				start++;
+			while (end > start && char.IsWhiteSpace(expression[end - 1]))
+				end--;
+
+			return new SelectorPartText(expression[start..end], start);
+		}
+
 		internal static int EndOfQuotedLiteral(this string text, int openingQuoteIndex)
+			=> text.TryFindEndOfQuotedLiteral(openingQuoteIndex, out var end) ? end : text.Length - 1;
+
+		internal static int EndOfQuotedLiteralOrThrow(this string text, int openingQuoteIndex)
+			=> text.TryFindEndOfQuotedLiteral(openingQuoteIndex, out var end)
+				? end
+				: throw new SelectorParseException("Unterminated string literal: a '\"' is never closed.", text, openingQuoteIndex, text[openingQuoteIndex..]);
+
+		private static bool TryFindEndOfQuotedLiteral(this string text, int openingQuoteIndex, out int end)
 		{
 			var index = openingQuoteIndex + 1;
 
@@ -103,7 +107,10 @@ namespace Steverzag.PropertySelectors.Extensions
 			{
 				var closingQuoteIndex = text.IndexOf('"', index);
 				if (closingQuoteIndex == -1)
-					return text.Length - 1;
+				{
+					end = -1;
+					return false;
+				}
 
 				if (closingQuoteIndex + 1 < text.Length && text[closingQuoteIndex + 1] == '"')
 				{
@@ -111,7 +118,8 @@ namespace Steverzag.PropertySelectors.Extensions
 					continue;
 				}
 
-				return closingQuoteIndex;
+				end = closingQuoteIndex;
+				return true;
 			}
 		}
 	}

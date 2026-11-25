@@ -1,10 +1,5 @@
 ﻿using Steverzag.PropertySelectors.ArithmeticSelectors;
 using Steverzag.PropertySelectors.Extensions;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Steverzag.PropertySelectors
 {
@@ -16,10 +11,8 @@ namespace Steverzag.PropertySelectors
 			var tokens = tokenizer.Tokenize();
 			tokens = tokenizer.SanitizeNegations(tokens);
 
-			var parser = new ArithmeticOperationParser(tokens);
-			var arithmeticOperationSelector = parser.Parse<T>();
-
-			return arithmeticOperationSelector;
+			var parser = new ArithmeticOperationParser(selector, tokens);
+			return parser.Parse<T>();
 		}
 
 		internal static PropertySelector CreateArithmeticOperationSelector(string selector)
@@ -28,13 +21,47 @@ namespace Steverzag.PropertySelectors
 			var tokens = tokenizer.Tokenize();
 			tokens = tokenizer.SanitizeNegations(tokens);
 
-			var parser = new ArithmeticOperationParser(tokens);
-			var arithmeticOperationSelector = parser.Parse();
-
-			return arithmeticOperationSelector;
+			var parser = new ArithmeticOperationParser(selector, tokens);
+			return parser.Parse();
 		}
 
-		internal static bool TryGetParameters(string selector, Func<string, PropertySelector> parse, out List<PropertySelector> parameters)
+		internal static PropertySelector ParseArithmetic(string selector, Func<PropertySelector> parse)
+		{
+			try
+			{
+				return parse();
+			}
+			catch (Exception e) when (e is not SelectorParseException && SelectorParseException.IsSelectorError(e))
+			{
+				throw SelectorParseException.From(e, selector, 0, selector);
+			}
+		}
+
+		internal static PropertySelector ParsePart(string selector, string part, int offset, Func<PropertySelector> parse)
+		{
+			try
+			{
+				return parse();
+			}
+			catch (Exception e) when (SelectorParseException.IsSelectorError(e))
+			{
+				throw SelectorParseException.From(e, selector, offset, part);
+			}
+		}
+
+		internal static SelectorParseException UnknownFunction(string selectorPart)
+		{
+			var name = FunctionName(selectorPart);
+			return new SelectorParseException($"Unknown function '{name}'.", selectorPart, 0, name);
+		}
+
+		internal static string FunctionName(string selectorPart)
+		{
+			var parenthesesIndex = selectorPart.IndexOf('(');
+			return parenthesesIndex < 0 ? selectorPart : selectorPart[..parenthesesIndex];
+		}
+
+		internal static bool TryGetParameters(string selector, Func<string, int, PropertySelector> parse, out List<PropertySelector> parameters)
 		{
 			var startingParenthesesIndex = selector.IndexOf('(');
 			if (startingParenthesesIndex is -1)
@@ -43,12 +70,18 @@ namespace Steverzag.PropertySelectors
 				return false;
 			}
 
-			var result = new List<PropertySelector>();
 			var endingParenthesesIndex = selector.LastIndexOf(')');
+			if (endingParenthesesIndex < startingParenthesesIndex)
+				throw new SelectorParseException("Unbalanced parentheses: 1 unclosed '('.", selector, startingParenthesesIndex, "(");
 
-			var innerParameters = selector.Substring(startingParenthesesIndex + 1,
-				endingParenthesesIndex - startingParenthesesIndex - 1);
+			var trailing = selector[(endingParenthesesIndex + 1)..];
+			if (!string.IsNullOrWhiteSpace(trailing))
+				throw new SelectorParseException($"Unexpected '{trailing.Trim()}' after the closing ')'.", selector, endingParenthesesIndex + 1 + (trailing.Length - trailing.TrimStart().Length), trailing.Trim());
 
+			var argumentsStart = startingParenthesesIndex + 1;
+			var innerParameters = selector[argumentsStart..endingParenthesesIndex];
+
+			var segments = new List<(int Start, int End)>();
 			var nestedParenthesesCount = 0;
 			var parameterStartIndex = 0;
 			for (var i = 0; i < innerParameters.Length; i++)
@@ -68,26 +101,45 @@ namespace Steverzag.PropertySelectors
 				}
 				else if (nestedParenthesesCount == 0 && ch == ',')
 				{
-					var parameter = innerParameters[parameterStartIndex..i].Trim();
-					if (!string.IsNullOrEmpty(parameter))
-					{
-						var propertySelector = parse(parameter);
-						result.Add(propertySelector);
-					}
+					segments.Add((parameterStartIndex, i));
 					parameterStartIndex = i + 1;
 				}
 			}
+			segments.Add((parameterStartIndex, innerParameters.Length));
 
-			var lastParameter = innerParameters[parameterStartIndex..].Trim();
-			if (!string.IsNullOrEmpty(lastParameter))
+			var result = new List<PropertySelector>();
+			if (segments.Count == 1 && string.IsNullOrWhiteSpace(innerParameters))
 			{
-				var propertySelector = parse(lastParameter);
-				result.Add(propertySelector);
+				parameters = result;
+				return false;
+			}
+
+			foreach (var (start, end) in segments)
+			{
+				var raw = innerParameters[start..end];
+				var text = raw.Trim();
+				var offset = argumentsStart + start + (raw.Length - raw.TrimStart().Length);
+
+				if (text.Length == 0)
+					throw new SelectorParseException($"Empty argument {result.Count + 1}.", selector, argumentsStart + start, ",");
+
+				result.Add(parse(text, offset));
 			}
 
 			parameters = result;
+			return true;
+		}
 
-			return parameters.Count > 0;
+		internal static PropertySelector ParseArgument(Func<string, PropertySelector> parse, string selectorPart, string text, int offset)
+		{
+			try
+			{
+				return parse(text);
+			}
+			catch (Exception e) when (SelectorParseException.IsSelectorError(e))
+			{
+				throw SelectorParseException.From(e, selectorPart, offset, text);
+			}
 		}
 	}
 }
