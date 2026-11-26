@@ -1,4 +1,5 @@
 ﻿using Steverzag.PropertySelectors.Extensions;
+using Steverzag.PropertySelectors.ValueSelectors;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -41,7 +42,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				{
 					var start = _pos;
 					_pos = _text.EndOfQuotedLiteralOrThrow(_pos) + 1;
-					tokens.Add(new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start));
+					tokens.Add(ReadChainTail(start));
 					continue;
 				}
 
@@ -106,7 +107,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				var next = tokens[i + 1];
 
 				if (tokens[i].Type == ArithmeticOperationTokenType.Minus && isUnaryPosition
-					&& next.Type == ArithmeticOperationTokenType.Selector && next.Value.Length > 0 && char.IsDigit(next.Value[0]))
+					&& next.Type == ArithmeticOperationTokenType.Selector && ValueSelectorFactory.IsNumberLiteral(next.Value))
 				{
 					tokens[i] = new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, "-" + next.Value, tokens[i].Position);
 					tokens.RemoveAt(i + 1);
@@ -117,113 +118,112 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		private ArithmeticOperationToken ReadSelector()
 		{
 			var start = _pos;
+			var c = _text[_pos];
 
-			if (char.IsDigit(_text[_pos]))
+			if (char.IsDigit(c))
 			{
-				while (_pos < _text.Length &&
-					   (char.IsDigit(_text[_pos]) || _text[_pos] == '.'))
-				{
-					_pos++;
-				}
-
-				if (_pos < _text.Length && _text[_pos] is 'e' or 'E')
-				{
-					var exponentDigits = _pos + 1 < _text.Length && _text[_pos + 1] is '+' or '-' ? _pos + 2 : _pos + 1;
-					if (exponentDigits < _text.Length && char.IsDigit(_text[exponentDigits]))
-					{
-						_pos = exponentDigits;
-						while (_pos < _text.Length && char.IsDigit(_text[_pos]))
-							_pos++;
-					}
-				}
-
-				if (_pos < _text.Length && _text[_pos] is 'l' or 'L' or 'm' or 'M')
-					_pos++;
-
-				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start);
+				ReadNumber();
+				return ReadChainTail(start);
 			}
 
-			var complexSelectorStart = SelectorDefaults.ComplexSelectorStart[0];
-			var isComplexSelectorCandidate = _text[_pos] == complexSelectorStart;
-			if (isComplexSelectorCandidate)
-			{
-				_pos++;
+			if (c == SelectorDefaults.ComplexSelectorStart[0] || char.IsLetter(c) || c is '_' or '@')
+				return ReadChain(start, isFunction: c == SelectorDefaults.ComplexSelectorStart[0]);
 
-				int parenDepth = 0;
-
-				while (_pos < _text.Length)
-				{
-					var c = _text[_pos];
-
-					if (c == '"')
-					{
-						_pos = _text.EndOfQuotedLiteralOrThrow(_pos);
-					}
-					else if (c == '(')
-					{
-						parenDepth++;
-					}
-					else if (c == ')')
-					{
-						if (parenDepth == 0)
-							break;
-						parenDepth--;
-					}
-					else if (parenDepth == 0 &&
-							 (c == '+' || c == '-' || c == '*' || c == '/' || char.IsWhiteSpace(c)))
-					{
-						break;
-					}
-
-					_pos++;
-				}
-
-				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start);
-			}
-
-			var isPropertySelectorCandidate = char.IsLetter(_text[_pos]) || (_text[_pos] is '_' or '@');
-			if (isPropertySelectorCandidate)
-			{
-				_pos++;
-
-				var delimiter = SelectorDefaults.PropertyDelimiter[0];
-				var inComplexSegment = false;
-				var parenDepth = 0;
-
-				while (_pos < _text.Length)
-				{
-					var c = _text[_pos];
-
-					if (c == '"')
-					{
-						_pos = _text.EndOfQuotedLiteralOrThrow(_pos);
-					}
-					else if (parenDepth > 0)
-					{
-						if (c == '(') parenDepth++;
-						else if (c == ')') parenDepth--;
-					}
-					else if (c == delimiter)
-					{
-						inComplexSegment = _pos + 1 < _text.Length && _text[_pos + 1] == complexSelectorStart;
-					}
-					else if (c == '(' && inComplexSegment)
-					{
-						parenDepth++;
-					}
-					else if ((c is '+' or '-' or '*' or '/' or '(' or ')') || char.IsWhiteSpace(c))
-					{
-						break;
-					}
-
-					_pos++;
-				}
-
-				return new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, _text[start.._pos], start);
-			}
-
-			throw new SelectorParseException($"Unexpected character '{_text[_pos]}'.", _text, _pos, _text[_pos].ToString());
+			throw new SelectorParseException($"Unexpected character '{c}'.", _text, _pos, c.ToString());
 		}
+
+		private void ReadNumber()
+		{
+			while (_pos < _text.Length && (char.IsDigit(_text[_pos]) || _text[_pos] == '.'))
+				_pos++;
+
+			if (_pos < _text.Length && _text[_pos] is 'e' or 'E')
+			{
+				var exponentDigits = _pos + 1 < _text.Length && _text[_pos + 1] is '+' or '-' ? _pos + 2 : _pos + 1;
+				if (exponentDigits < _text.Length && char.IsDigit(_text[exponentDigits]))
+				{
+					_pos = exponentDigits;
+					while (_pos < _text.Length && char.IsDigit(_text[_pos]))
+						_pos++;
+				}
+			}
+
+			if (_pos < _text.Length && _text[_pos] is 'l' or 'L' or 'm' or 'M')
+				_pos++;
+		}
+
+		private ArithmeticOperationToken ReadChainTail(int start)
+			=> PipeFollows() ? ReadChain(start, isFunction: false) : Token(start);
+
+		private ArithmeticOperationToken ReadChain(int start, bool isFunction)
+		{
+			var delimiter = SelectorDefaults.PropertyDelimiter[0];
+			var parenDepth = 0;
+
+			while (_pos < _text.Length)
+			{
+				var c = _text[_pos];
+
+				if (c == '"')
+				{
+					_pos = _text.EndOfQuotedLiteralOrThrow(_pos) + 1;
+					continue;
+				}
+
+				if (parenDepth > 0)
+				{
+					if (c == '(') parenDepth++;
+					else if (c == ')') parenDepth--;
+				}
+				else if (c == delimiter)
+				{
+					_pos++;
+					SkipWhitespace();
+					isFunction = _pos < _text.Length && _text[_pos] == SelectorDefaults.ComplexSelectorStart[0];
+					continue;
+				}
+				else if (char.IsWhiteSpace(c))
+				{
+					if (!PipeFollows())
+						break;
+					continue;
+				}
+				else if (c == '(' && isFunction)
+				{
+					parenDepth++;
+				}
+				else if (c is '+' or '-' or '*' or '/' or '(' or ')')
+				{
+					break;
+				}
+
+				_pos++;
+			}
+
+			return Token(start);
+		}
+
+		private bool PipeFollows()
+		{
+			var next = _pos;
+			while (next < _text.Length && char.IsWhiteSpace(_text[next]))
+				next++;
+
+			if (next >= _text.Length || _text[next] != SelectorDefaults.PropertyDelimiter[0])
+				return false;
+
+			_pos = next;
+			return true;
+		}
+
+		private void SkipWhitespace()
+		{
+			while (_pos < _text.Length && char.IsWhiteSpace(_text[_pos]))
+				_pos++;
+		}
+
+		private ArithmeticOperationToken Token(int start)
+			=> new(ArithmeticOperationTokenType.Selector, _text[start.._pos].TrimEnd(), start);
 	}
 
 }

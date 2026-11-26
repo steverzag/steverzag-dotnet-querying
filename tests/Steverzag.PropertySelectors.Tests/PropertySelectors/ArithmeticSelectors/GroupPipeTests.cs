@@ -177,11 +177,15 @@ public class GroupPipeTests
         Assert.IsNotType<NullReferenceException>(exception);
     }
 
-    [Fact]
-    public void APipeAfterAPlainOperand_InsideArithmetic_IsStillAnUnexpectedCharacter()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void APipeAfterWhitespace_InsideArithmetic_BindsToTheOperand(bool generic)
     {
-        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<Order>)"1 + Quantity |$FN_MATH_MAX(10)");
+        var spaced = Parse("1 + Quantity |$FN_MATH_MAX(10)", generic);
+        var plain = Parse("1 + Quantity|$FN_MATH_MAX(10)", generic);
 
-        Assert.StartsWith("Unexpected character '|'.", exception.Message);
+        Assert.Equal(Body(plain, out _).ToString(), Body(spaced, out _).ToString());
+        Assert.Equal(11, Evaluate(spaced));
     }
 }
