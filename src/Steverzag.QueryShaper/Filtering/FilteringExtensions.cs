@@ -30,6 +30,10 @@ namespace Steverzag.QueryShaper.Filtering
 			.GetMethods()
 			.Where(m => m.Name == METHOD_NAME_ALL && m.GetParameters().Length == 2)
 			.First();
+		private static MethodInfo ContainsMethodInfo = typeof(Enumerable)
+			.GetMethods()
+			.Where(m => m.Name == METHOD_NAME_CONTAINS && m.GetParameters().Length == 2)
+			.First();
 		
 
 		public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue, IEnumerable<FilterNode> logicFilters)
@@ -149,7 +153,7 @@ namespace Steverzag.QueryShaper.Filtering
 			else if (propertyType == typeof(Guid) && !isInOrNotInCondition)
 			{
 				var constantType = isNullableType ? typeof(Guid?) : typeof(Guid);
-				ConstantExpression Value() => Expression.Constant((Guid)RequireValue(filter, propertyType), constantType);
+				Expression Value() => FilterValue.Parameter((Guid)RequireValue(filter, propertyType), constantType);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
@@ -164,7 +168,7 @@ namespace Steverzag.QueryShaper.Filtering
 			else if (propertyType == typeof(bool) && !isInOrNotInCondition)
 			{
 				var constantType = isNullableType ? typeof(bool?) : typeof(bool);
-				ConstantExpression Value() => Expression.Constant((bool)RequireValue(filter, propertyType), constantType);
+				Expression Value() => FilterValue.Parameter((bool)RequireValue(filter, propertyType), constantType);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
@@ -182,7 +186,7 @@ namespace Steverzag.QueryShaper.Filtering
 				Expression Empty() => isNullableType
 					? Expression.Equal(Expression.Coalesce(propertyExpression, zero), zero)
 					: Expression.Equal(propertyExpression, zero);
-				ConstantExpression Value() => Expression.Constant(ReadNumber(filter, numberType), propertyExpression.Type);
+				Expression Value() => FilterValue.Parameter(ReadNumber(filter, numberType), propertyExpression.Type);
 
 				return filter.FilterCondition switch
 				{
@@ -199,7 +203,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(DateTime) && !isInOrNotInCondition)
 			{
-				ConstantExpression Value() => Expression.Constant((DateTime)RequireValue(filter, propertyType), propertyExpression.Type);
+				Expression Value() => FilterValue.Parameter((DateTime)RequireValue(filter, propertyType), propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
@@ -217,7 +221,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(DateOnly) && !isInOrNotInCondition)
 			{
-				ConstantExpression Value() => Expression.Constant((DateOnly)RequireValue(filter, propertyType), propertyExpression.Type);
+				Expression Value() => FilterValue.Parameter((DateOnly)RequireValue(filter, propertyType), propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
@@ -235,7 +239,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 			else if (propertyType == typeof(TimeOnly) && !isInOrNotInCondition)
 			{
-				ConstantExpression Value() => Expression.Constant((TimeOnly)RequireValue(filter, propertyType), propertyExpression.Type);
+				Expression Value() => FilterValue.Parameter((TimeOnly)RequireValue(filter, propertyType), propertyExpression.Type);
 				return filter.FilterCondition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
@@ -275,7 +279,7 @@ namespace Steverzag.QueryShaper.Filtering
 					};
 
 				object? enumValue = rawEnumValue is null ? null : ParseEnumValue(propertyType, rawEnumValue);
-				var enumConstant = Expression.Constant(enumValue, propertyExpression.Type);
+				var enumConstant = FilterValue.Parameter(enumValue, propertyExpression.Type);
 
 				return filter.FilterCondition switch
 				{
@@ -328,20 +332,15 @@ namespace Steverzag.QueryShaper.Filtering
 				throw new ArgumentException("Values List must contain at least one value", nameof(valuesList));
 			}
 
-			// x.Collection.Any(y => y == v1 || y == v2 || ...)
-			BinaryExpression? combinedExpression = null;
+			// x.Collection.Any(y => values.Contains(y))
+			var list = CreateTypedValueList(elementType, valuesList, condition);
 			ParameterExpression parameter = Expression.Parameter(elementType, "y");
 
-			foreach (var value in CreateTypedValueList(elementType, valuesList, condition))
-			{
-				var equalsValue = Expression.Equal(parameter, Expression.Constant(value, elementType));
-				combinedExpression = combinedExpression is null
-					? equalsValue
-					: Expression.OrElse(combinedExpression, equalsValue);
-			}
+			var containsMethod = ContainsMethodInfo.MakeGenericMethod(elementType);
+			var containsCall = Expression.Call(containsMethod, FilterValue.List(list), parameter);
 
 			var anyMethod = AnyMethodInfo.MakeGenericMethod(elementType);
-			var lambda = Expression.Lambda(combinedExpression!, parameter);
+			var lambda = Expression.Lambda(containsCall, parameter);
 			return Expression.Call(anyMethod, propertyExpression, lambda);
 		}
 
@@ -366,7 +365,7 @@ namespace Steverzag.QueryShaper.Filtering
 			var anyMethodCall = Expression.Call(anyMethod, propertyExpression, anyLambda);
 
 			var allLambda = Expression.Lambda(anyMethodCall, parameter);
-			var allMethodCall = Expression.Call(allMethod, Expression.Constant(list), allLambda);
+			var allMethodCall = Expression.Call(allMethod, FilterValue.List(list), allLambda);
 
 			return allMethodCall;
 		}
@@ -384,11 +383,8 @@ namespace Steverzag.QueryShaper.Filtering
 			var itemType = propertyExpression.Type;
 			var list = CreateTypedValueList(itemType, valuesList, condition);
 
-			var containsMethod = typeof(Enumerable).GetMethods()
-				.Where(m => m.Name == METHOD_NAME_CONTAINS && m.GetParameters().Length == 2)
-				.First()
-				.MakeGenericMethod(itemType);
-			var containsMethodCall = Expression.Call(containsMethod, Expression.Constant(list), propertyExpression);
+			var containsMethod = ContainsMethodInfo.MakeGenericMethod(itemType);
+			var containsMethodCall = Expression.Call(containsMethod, FilterValue.List(list), propertyExpression);
 
 			return containsMethodCall;
 		}
@@ -507,14 +503,12 @@ namespace Steverzag.QueryShaper.Filtering
 			static bool IsInfinity(object number) => number is double d && double.IsInfinity(d);
 		}
 
-		// Decision 013.2: a condition that compares with a value needs one, whatever the property type.
 		private static ValueResult2 RequireValue(ConditionNode filter, Type propertyType)
 			=> filter.SearchValue is { } value && value.ToObject() is not null
 				? value
 				: throw new FilterConditionAndValueNotSupportedException(
 					$"{filter.FilterCondition} on type {propertyType.Name} needs a value; only {nameof(FilterCondition.IsEmpty)} and {nameof(FilterCondition.IsNotEmpty)} work without one.");
 
-		// Decision 013.1: single values convert like list values.
 		private static object ReadNumber(ConditionNode filter, Type numberType)
 		{
 			var value = RequireValue(filter, numberType).ToObject()!;
@@ -594,43 +588,43 @@ namespace Steverzag.QueryShaper.Filtering
 
 		public static Expression<Func<T, bool>> CreateBaseSearchLambdaExpression<T>(IEnumerable<string>? searchLookups, string? searchValue)
 		{
+			var parameterExpression = Expression.Parameter(typeof(T), "x");
+			var body = CreateBaseSearchBody(parameterExpression, searchLookups, FilterValue.Parameter(searchValue, typeof(string)));
+
+			return Expression.Lambda<Func<T, bool>>(body, parameterExpression);
+		}
+
+		internal static Expression CreateBaseSearchBody(ParameterExpression entityParameter, IEnumerable<string>? searchLookups, Expression searchValue)
+		{
 			ArgumentNullException.ThrowIfNull(searchLookups);
 			if (!searchLookups.Any())
 			{
 				throw new ArgumentException("At least one search lookup is required.", nameof(searchLookups));
 			}
 
-			var parameterExpressio = Expression.Parameter(typeof(T), "x");
-			var searchValueConstantExpression = Expression.Constant(searchValue, typeof(string));
-
 			Expression? combinedExpression = null;
 
 			foreach (var field in searchLookups)
 			{
-				var propertyExpression = ExpressionUtils.CreateMemberAccess(parameterExpressio, field);
-				var containingExpression = CreateContainsExpression(propertyExpression, searchValueConstantExpression);
-				if (combinedExpression == null)
-				{
-					combinedExpression = containingExpression;
-				}
-				else
-				{
-					combinedExpression = Expression.OrElse(combinedExpression, containingExpression);
-				}
+				var propertyExpression = ExpressionUtils.CreateMemberAccess(entityParameter, field);
+				var containingExpression = CreateContainsExpression(propertyExpression, searchValue);
+				combinedExpression = combinedExpression is null
+					? containingExpression
+					: Expression.OrElse(combinedExpression, containingExpression);
 			}
 
-			return Expression.Lambda<Func<T, bool>>(combinedExpression!, parameterExpressio);
+			return combinedExpression!;
 		}
 
 
-		private static MethodCallExpression CreateContainsExpression(Expression propertyExpression, ConstantExpression constantExpression)
+		private static MethodCallExpression CreateContainsExpression(Expression propertyExpression, Expression valueExpression)
 		{
 			var method = typeof(string).GetMethod(METHOD_NAME_CONTAINS, [typeof(string)])!;
 
 			if (propertyExpression.Type != typeof(string))
 				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
 
-			return Expression.Call(propertyExpression, method, constantExpression);
+			return Expression.Call(propertyExpression, method, valueExpression);
 		}
 
 		private static MethodCallExpression CreateContainsExpression(Expression propertyExpression, string value)
@@ -640,7 +634,7 @@ namespace Steverzag.QueryShaper.Filtering
 			if (propertyExpression.Type != typeof(string))
 				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
 
-			return Expression.Call(propertyExpression, method, Expression.Constant(value, typeof(string)));
+			return Expression.Call(propertyExpression, method, FilterValue.Parameter(value, typeof(string)));
 		}
 
 		private static MethodCallExpression CreateEnumerableContainsExpression(Expression propertyExpression, string value)
@@ -650,7 +644,7 @@ namespace Steverzag.QueryShaper.Filtering
 
 			var parameter = Expression.Parameter(typeof(string), "y");
 
-			var containsMethodCall = Expression.Call(parameter, containMethod, Expression.Constant(value, typeof(string)));
+			var containsMethodCall = Expression.Call(parameter, containMethod, FilterValue.Parameter(value, typeof(string)));
 			var lambda = Expression.Lambda(containsMethodCall, parameter);
 			var anyMethodCall = Expression.Call(anyMethod, propertyExpression, lambda);
 			return anyMethodCall;
@@ -663,7 +657,7 @@ namespace Steverzag.QueryShaper.Filtering
 			if (propertyExpression.Type != typeof(string))
 				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
 
-			return Expression.Call(propertyExpression, method, Expression.Constant(value, typeof(string)));
+			return Expression.Call(propertyExpression, method, FilterValue.Parameter(value, typeof(string)));
 		}
 
 		private static MethodCallExpression CreateStartsWithExpression(Expression propertyExpression, string value)
@@ -673,7 +667,7 @@ namespace Steverzag.QueryShaper.Filtering
 			if (propertyExpression.Type != typeof(string))
 				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
 
-			return Expression.Call(propertyExpression, method, Expression.Constant(value, typeof(string)));
+			return Expression.Call(propertyExpression, method, FilterValue.Parameter(value, typeof(string)));
 		}
 
 		private static MethodCallExpression CreateEndsWithExpression(Expression propertyExpression, string value)
@@ -683,7 +677,7 @@ namespace Steverzag.QueryShaper.Filtering
 			if (propertyExpression.Type != typeof(string))
 				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
 
-			return Expression.Call(propertyExpression, method, Expression.Constant(value, typeof(string)));
+			return Expression.Call(propertyExpression, method, FilterValue.Parameter(value, typeof(string)));
 		}
 	}
 }

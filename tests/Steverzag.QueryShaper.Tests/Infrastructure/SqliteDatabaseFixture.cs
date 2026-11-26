@@ -41,6 +41,16 @@ namespace Steverzag.QueryShaper.Tests.Infrastructure
 			return context;
 		}
 
+		/// <summary>Options over the shared database with extra configuration, e.g. logging. Build contexts from them with <c>new TestDbContext(options)</c>.</summary>
+		public DbContextOptions<TestDbContext> CreateOptions(Action<DbContextOptionsBuilder<TestDbContext>> configure)
+		{
+			var builder = new DbContextOptionsBuilder<TestDbContext>()
+				.UseSqlite(_connection)
+				.UseDecimalMathAsDouble();
+			configure(builder);
+			return builder.Options;
+		}
+
 		public void Dispose() => _connection.Dispose();
 	}
 

@@ -20,11 +20,9 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 		/// </summary>
 		public BaseSearchConfiguration Configure<T>(IEnumerable<string> searchLookups)
 		{
-			var lambda = FilteringExtensions.CreateBaseSearchLambdaExpression<T>(searchLookups, string.Empty);
-
-			var entityParameter = lambda.Parameters[0];
+			var entityParameter = Expression.Parameter(typeof(T), "x");
 			var searchParameter = Expression.Parameter(typeof(string), "_search_");
-			var body = new ConstantReplacer(string.Empty, searchParameter).Visit(lambda.Body);
+			var body = FilteringExtensions.CreateBaseSearchBody(entityParameter, searchLookups, searchParameter);
 
 			_expressions[typeof(T)] = Expression.Lambda<Func<T, string, bool>>(body, entityParameter, searchParameter);
 			return this;
@@ -43,8 +41,7 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 			var entityParameter = expression.Parameters[0];
 			var searchParameter = expression.Parameters[1];
 
-			var searchConstant = Expression.Constant(searchValue, typeof(string));
-			var body = new ParameterReplacer(searchParameter, searchConstant).Visit(expression.Body);
+			var body = new ParameterReplacer(searchParameter, FilterValue.Parameter(searchValue, typeof(string))).Visit(expression.Body);
 
 			return Expression.Lambda<Func<T, bool>>(body, entityParameter);
 		}
@@ -74,12 +71,6 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 		{
 			protected override Expression VisitParameter(ParameterExpression node)
 				=> node == target ? replacement : base.VisitParameter(node);
-		}
-
-		private sealed class ConstantReplacer(string target, Expression replacement) : ExpressionVisitor
-		{
-			protected override Expression VisitConstant(ConstantExpression node)
-				=> node.Type == typeof(string) && Equals(node.Value, target) ? replacement : base.VisitConstant(node);
 		}
 	}
 }

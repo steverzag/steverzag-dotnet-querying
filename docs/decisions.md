@@ -742,3 +742,24 @@ Rejected for now: operators with .NET's rules (depends on `TimeSpan` support tha
 translation behaviour we haven't checked; taking operators back after release would be breaking).
 **Consequence:** no code change. The grammar spec states that arithmetic is numeric-only. The error for a date
 operand could point to the date functions once `DT_DIFF*` exists.
+
+### 028: Client filter values are query parameters; time-typed lists stay inlined (2026-11-25)
+**Status:** accepted; implemented (2026-11-25).
+**Context:** filters and the base search embedded each client value with `Expression.Constant`. EF Core makes
+constants part of the query-cache key and inlines them into the SQL, so every distinct value compiled a new query
+and the cache grew with each one. A value list was inlined element by element, and `ContainsAny` had one shape per
+list length.
+**Decision:**
+1. Every value that comes from the client is read from a closure-style holder (`FilterValue<T>.Value`), which EF Core
+   sends as a SQL parameter. Values the filter fixes itself (`0`, `null`, `""`, `true`/`false` in `IsEmpty` and
+   friends) stay constants.
+2. A value list (`In`, `NotIn`, `ContainsAny`, `ContainsAll`) is one parameter, which EF Core 8+ sends as JSON
+   (`json_each` on SQLite, `OPENJSON` on SQL Server). `ContainsAny` is built as `collection.Any(y => values.Contains(y))`.
+3. **Exception:** a list whose element type is `TimeOnly`, `TimeSpan` or `DateTimeOffset` stays inlined. On SQLite,
+   EF Core writes `TimeOnly`/`TimeSpan` JSON elements in a different text format from the column (`0:00:00` vs
+   `00:00:00`), so a parameterized `In` silently matches nothing. `DateTimeOffset` isn't in the test model, so it
+   can't be checked and stays on the old, correct path.
+**Consequence:** one compiled query per filter shape instead of per value. A list compiles once whatever its length,
+except for the three inlined element types. The SQL now shows `@__Value_N` instead of the literal, which matters
+for anyone reading logs. Revisit the exception when EF Core fixes the provider, or when SQL Server/PostgreSQL get
+their own test run.

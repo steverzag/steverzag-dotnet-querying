@@ -82,6 +82,12 @@ is null as "not in" the list. A `null` in the list for a non-nullable property t
   enums, and their nullable forms). On entities or nested collections they throw `FilterNotSupportedException`.
 - An empty list throws `ArgumentException`.
 
+**Values are SQL parameters** (decision 028). A filter value, a value list and the base search text reach the
+database as parameters (`@__Value_0`), not as literals. So the same filter with another value reuses the query EF
+Core already compiled, and a list is one JSON parameter whatever its length. Lists of `TimeOnly`, `TimeSpan` and
+`DateTimeOffset` are the exception: they're inlined, because EF Core's SQLite provider compares those JSON elements
+in the wrong text format.
+
 ## What "empty" means
 
 `IsEmpty` / `IsNotEmpty` test for "no meaningful value", not just for null (decision 008):
