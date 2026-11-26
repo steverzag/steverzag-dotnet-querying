@@ -43,6 +43,12 @@ Expression body = avgId.PropertyAccess(parameter);
 value later. An unquoted `:` anywhere, in either form, is a `SelectorParseException`: "':' is reserved; write it
 inside a quoted string to use it as text." Inside quotes it's ordinary text (`"a:b"`, `$FN_DT_TIMEONLY("08:30")`).
 
+**Reserved prefix.** A part that starts with `$` is always a function (decision 030.3), never a property lookup. If no
+function is registered under that token, it's "Unknown function '…'", in either form and wherever the part appears
+(head of a chain, after `|`, in arithmetic, as an argument). Tokens are case-sensitive; a token that matches a
+registered one except for case says so: "Unknown function '$fn_str_trim'. Function names are case-sensitive:
+'$FN_STR_TRIM'."
+
 `SelectorLiteral.Format(value)` writes any of these literals from a .NET value (`int`, `long`, `double`, `float`,
 `decimal`, `bool`, `string`, `DateTime`, `DateOnly`, `TimeOnly`). Use it instead of building literal text by hand.
 Values typed by end users should travel as filter values (QueryShaper's `ConditionNode.Value`), not inside selector text.

@@ -46,7 +46,7 @@ namespace Steverzag.PropertySelectors
 
 			foreach (var (selectorPart, offset) in selectorParts)
 			{
-				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.FunctionStart);
+				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.ComplexSelectorStart);
 
 				var propertySelector = PropertySelectorUtils.ParsePart(selector, selectorPart, offset, () =>
 				{
@@ -169,7 +169,7 @@ namespace Steverzag.PropertySelectors
 
 			foreach (var (selectorPart, offset) in selectorParts)
 			{
-				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.FunctionStart);
+				var isFunctionPart = selectorPart.StartsWith(SelectorDefaults.ComplexSelectorStart);
 
 				var propertySelector = PropertySelectorUtils.ParsePart(selector, selectorPart, offset, () =>
 				{

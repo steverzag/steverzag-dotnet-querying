@@ -229,6 +229,13 @@ namespace Steverzag.PropertySelectors.Registration
 
 		internal static bool IsRegistered(string token) => TryGetEntry(token, out _);
 
+		internal static string? FindTokenIgnoringCase(string token)
+		{
+			Initialize();
+
+			return Entries.Keys.FirstOrDefault(key => string.Equals(key, token, StringComparison.OrdinalIgnoreCase));
+		}
+
 		private static bool TryGetEntry(string selectorPart, [NotNullWhen(true)] out SelectorRegistration? entry)
 		{
 			Initialize();

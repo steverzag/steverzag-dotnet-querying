@@ -9,7 +9,7 @@ namespace Steverzag.PropertySelectors
 		public const string PropertyDelimiter = "|";
 		public const string ComplexSelectorStart = "$";
 		public const string FunctionStart = ComplexSelectorStart + "FN_";
-		public const string ArithmeticStart = ComplexSelectorStart + "ARITH_";
+		internal const string ArithmeticStart = ComplexSelectorStart + "ARITH_";
 
 
 		public const string CountAggregateFunction = FunctionStart + "AGGR_COUNT";
@@ -84,7 +84,7 @@ namespace Steverzag.PropertySelectors
 		public const string Coalesce = FunctionStart + "COALESCE";
 
 
-		public const string ArithmeticOperation = ArithmeticStart + "OPERATION";
+		internal const string ArithmeticOperation = ArithmeticStart + "OPERATION";
 		public const char ReservedCharacter = ':';
 	}
 }

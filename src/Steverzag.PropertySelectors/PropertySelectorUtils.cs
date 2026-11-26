@@ -78,7 +78,10 @@ namespace Steverzag.PropertySelectors
 			if (dot > 0 && SelectorRegistry.IsRegistered(name[..dot]))
 				return MemberAfterFunction(selectorPart, name[..dot], name[(dot + 1)..], dot);
 
-			return new SelectorParseException($"Unknown function '{name}'.", selectorPart, 0, name);
+			var differentlyCased = SelectorRegistry.FindTokenIgnoringCase(name);
+			var hint = differentlyCased is null ? string.Empty : $" Function names are case-sensitive: '{differentlyCased}'.";
+
+			return new SelectorParseException($"Unknown function '{name}'.{hint}", selectorPart, 0, name);
 		}
 
 		internal static SelectorParseException MemberAfterFunction(string selectorPart, string function, string member, int dotPosition)

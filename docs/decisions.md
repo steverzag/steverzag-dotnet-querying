@@ -784,7 +784,7 @@ used to match `Guid.Empty` or null on a bad `Guid` string now throws. The JSON c
 condition's value as `value`.
 
 ### 030: Lexical rules for the grammar freeze: limits, case, `$`, escapes, the root (2026-11-25)
-**Status:** accepted; not implemented yet (roadmap Phase 4, "Grammar freeze: lexical rules").
+**Status:** accepted; 1, 3 and 5 implemented, 2 and 4 not yet (roadmap Phase 4, "Grammar freeze: lexical rules").
 **Context:** before freezing the grammar, its open points were checked against the parser and probed with about
 120 selectors through both forms. Most rules were already settled by the code. Five weren't, and the probe found that
 a long or deeply nested selector overflows the stack: 2,000 nested parentheses (4 KB), 1,000 nested functions
@@ -816,6 +816,15 @@ were settled while building it:
   every level, and that has to fit on the stack too.
 - **A limit error carries the whole selector and no position**, instead of being re-wrapped at each level with an
   offset. The text at fault is the selector as a whole.
+
+**Implementation note (2026-11-25), 030.3:** both chain loops (`PropertySelector.Chain`, `PropertySelector<T>.Chain`)
+now send any part that starts with `SelectorDefaults.ComplexSelectorStart` (`$`) to the registry, not only `$FN_`, so
+an unregistered token is `UnknownFunction` wherever it appears. Two details:
+- **A wrongly cased token names the registered one** ("Function names are case-sensitive: '$FN_STR_TRIM'."), found
+  with an ordinal-ignore-case scan of the registry that runs only on the error path.
+- **`SelectorDefaults.ArithmeticStart` and `ArithmeticOperation` are now `internal`.** `$ARITH_OPERATION` is only the
+  `PlainValue` sentinel of an arithmetic node; nothing parses or compares it, and it can no longer be written in a
+  selector. Breaking only for code that read the constants.
 
 ### 031: Function arguments resolve against the scope root; `:` is reserved for aliases (2026-11-25)
 **Status:** accepted. Part 1 confirms what is implemented; part 2 implemented (2026-11-25); part 3 is an experiment for later.
