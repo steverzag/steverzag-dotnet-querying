@@ -147,13 +147,9 @@ public class ArithmeticOperationSelectorTests
     }
 
     [Fact]
-    public void ArithmeticSelector_OnANonNumericOperand_StillFailsWhenBuilt()
+    public void ArithmeticSelector_OnANonNumericOperand_IsRejectedWhenParsed()
     {
-        PropertySelector<TypedItem> selector = "Name + 1";
-
-        Assert.Null(selector.Type);
-        Assert.ThrowsAny<Exception>(() =>
-            ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(TypedItem), "x"), selector));
+        Assert.Throws<SelectorParseException>(() => (PropertySelector<TypedItem>)"Name + 1");
     }
 
     // ── Evaluation ──────────────────────────────────────────────────────────
@@ -205,6 +201,29 @@ public class ArithmeticOperationSelectorTests
         PropertySelector<TestItem> selector = "-Amount";
 
         Assert.Equal(-10, Evaluate<int>(selector, new TestItem { Amount = 10 }));
+    }
+
+    [Theory]
+    [InlineData("--3", 3, true)]
+    [InlineData("--3", 3, false)]
+    [InlineData("- -3", 3, true)]
+    [InlineData("- -3", 3, false)]
+    [InlineData("---3", -3, true)]
+    [InlineData("---3", -3, false)]
+    [InlineData("2 - --3", -1, true)]
+    [InlineData("2 - --3", -1, false)]
+    [InlineData("--Amount", 10, true)]
+    [InlineData("--Amount", 10, false)]
+    public void RepeatedMinus_NegatesOncePerSign_AndRoundTrips(string text, int expected, bool generic)
+    {
+        PropertySelector selector = generic ? (PropertySelector<TestItem>)text : (PropertySelector)text;
+        var item = new TestItem { Amount = 10 };
+
+        Assert.Equal(expected, Evaluate<int>(selector, item));
+
+        var reparsed = selector.ToString();
+        PropertySelector again = generic ? (PropertySelector<TestItem>)reparsed : (PropertySelector)reparsed;
+        Assert.Equal(expected, Evaluate<int>(again, item));
     }
 
     [Fact]
@@ -370,15 +389,6 @@ public class ArithmeticOperationSelectorTests
     }
 
     // ── Failures ────────────────────────────────────────────────────────────
-
-    [Fact]
-    public void NonNumericOperand_ThrowsOnBuild()
-    {
-        // Operand types are only checked when the expression is built.
-        PropertySelector<TestItem> selector = "Name + 1";
-
-        Assert.Throws<ArgumentException>(() => Evaluate<string>(selector, new TestItem()));
-    }
 
     [Fact]
     public void UnbalancedOpeningParenthesis_ThrowsAsASyntaxError()

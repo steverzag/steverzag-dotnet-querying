@@ -86,5 +86,6 @@ namespace Steverzag.PropertySelectors
 
 		internal const string ArithmeticOperation = ArithmeticStart + "OPERATION";
 		public const char ReservedCharacter = ':';
+		public const char PropertyNameEscape = '@';
 	}
 }

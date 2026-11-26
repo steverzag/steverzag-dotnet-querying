@@ -784,7 +784,7 @@ used to match `Guid.Empty` or null on a bad `Guid` string now throws. The JSON c
 condition's value as `value`.
 
 ### 030: Lexical rules for the grammar freeze: limits, case, `$`, escapes, the root (2026-11-25)
-**Status:** accepted; 1, 3 and 5 implemented, 2 and 4 not yet (roadmap Phase 4, "Grammar freeze: lexical rules").
+**Status:** accepted; implemented (1–5); versioning settled by 032 (roadmap Phase 4, "Grammar freeze: lexical rules").
 **Context:** before freezing the grammar, its open points were checked against the parser and probed with about
 120 selectors through both forms. Most rules were already settled by the code. Five weren't, and the probe found that
 a long or deeply nested selector overflows the stack: 2,000 nested parentheses (4 KB), 1,000 nested functions
@@ -826,6 +826,33 @@ an unregistered token is `UnknownFunction` wherever it appears. Two details:
   `PlainValue` sentinel of an arithmetic node; nothing parses or compares it, and it can no longer be written in a
   selector. Breaking only for code that read the constants.
 
+**Implementation note (2026-11-25), 030.2:** both forms now look a member up through one resolver,
+`TypesExtensions.FindProperty`: public instance, non-indexed properties, exact (ordinal) name, walking from the type
+up its base types (and, for an interface, its inherited interfaces) and taking the first match. The generic form used
+it already, with `IgnoreCase`; the non-generic build (`ExpressionUtils.CreateMemberAccessRec`) used
+`Expression.Property(expression, name)`, which ignores case too. Three details:
+- **The two forms disagreed on visibility.** `Expression.Property(expression, name)` falls back to non-public
+  properties, so an `internal` property was reachable in the non-generic form only. Both forms now reject it.
+- **Walking the hierarchy fixes `new`.** A property hidden with `new` (same name in a base and a derived class) made
+  `GetProperty` and `Expression.Property` throw a raw `AmbiguousMatchException`; the most derived one wins now, as in
+  C#. Two properties that differ only by case did the same, and are now simply two properties.
+- **A wrongly cased name names the real one** ("Property names are case-sensitive: 'Age'."), like a wrongly cased
+  function token (030.3). The ignore-case scan runs only on the error path, in `TypesExtensions.PropertyNotFound`.
+
+**Implementation note (2026-11-25), 030.4:** the `@` form is confirmed (`SelectorDefaults.PropertyNameEscape`).
+Four details:
+- **The escape stays in `PlainValue` and is removed where a name is looked up.** Both lookups (`GetPropertyType`
+  in the generic form, `CreateMemberAccessRec` in the non-generic build) go through
+  `TypesExtensions.UnescapePropertyName`. So `ToString()` round-trips with no extra code, and error positions point
+  at the name itself, one past the `@`. The parser needs no change: a part starting with `@` is never a literal and
+  never a function, so it already reaches the property path.
+- **Per segment, not per part.** `Inner.@True` and `@Inner.@True` are allowed, as in C# (`a.@class`). Only the first
+  segment of a part can collide with a literal, but allowing it everywhere keeps the rule one sentence.
+- **Allowed on any name.** `@Age` is `Age`. Rejecting a "needless" escape would make callers know the literal list.
+- **Known gap:** a selector built in code with a literal-looking name (`new PropertySelector<T>("True")`) prints
+  `True`, which parses back as the literal. `ToString()` doesn't add the escape, because the base `SegmentToString`
+  is shared with the value selectors. Parsed selectors aren't affected.
+
 ### 031: Function arguments resolve against the scope root; `:` is reserved for aliases (2026-11-25)
 **Status:** accepted. Part 1 confirms what is implemented; part 2 implemented (2026-11-25); part 3 is an experiment for later.
 **Context:** after the root-lost fix (030.5), the question was what an argument should resolve against when the chain
@@ -855,3 +882,59 @@ the chain.
 **Consequence:** no behaviour change from part 1. Part 2 adds one rejection to the freeze work. The unused public
 `SelectorDefaults.ArithmeticOperationEncloser` (`"::"`) should go in the public-API audit, so it isn't mistaken for a
 use of the reserved character.
+
+### 032: What the grammar freeze promises: versioning for `0.1.0-preview` (2026-11-25)
+**Status:** accepted (2026-11-25). Closes the versioning point left open by 030.
+**Context:** the lexical rules (030) are implemented, and the grammar spec is to be written next. "Frozen" needs a
+definition before the spec is written, so the spec can say what it guarantees. Selectors are a wire format: they're
+stored in saved reports and sent by clients that upgrade on their own schedule, so a change in what a selector
+*means* is worse than a C# compile error, because nothing catches it.
+**Decision:**
+1. **SemVer per package, with the 0.x convention made explicit.** PropertySelectors and QueryShaper version
+   independently (D6). While the major version is 0, a release that breaks anything bumps the **minor** (`0.1` → `0.2`),
+   and an additive or fix-only release bumps the **patch**. Pre-release builds (`0.1.0-preview.N`) may break between
+   each other, but every break is listed in the CHANGELOG under "Breaking".
+2. **The grammar contract is the selector text and what it builds.** For a selector that parses today, these are the
+   contract: whether it parses, the expression's result value, the declared type (generic form) and the built type,
+   and `ToString()` round-tripping. Changing any of them is breaking. So are: removing or renaming a function token,
+   changing a function's argument meaning or order, lowering a limit default (`SelectorLimits`), and changing the
+   exception type or `Position`/`Token` of an error.
+3. **Additive, so allowed in a patch:**
+   - a new built-in function, a new overload, or a new literal form, **as long as every selector that already parses
+     resolves exactly as before** (an overload that makes an existing call ambiguous or pick a different overload is
+     breaking, 019);
+   - giving meaning to text that's rejected today. This is what `$` (030.3), `:` (031.2) and `@` (030.4) are reserved
+     for, and why the reserved forms reject instead of falling through;
+   - raising a limit default;
+   - a different SQL shape for the same result.
+4. **Not part of the contract:** the wording of error messages (`Detail`/`Message`), the exact shape of the
+   expression tree (as long as value, types and provider translation hold), and anything `internal`.
+5. **Third-party function tokens.** A new built-in token can collide with one an application registered, and the
+   registry throws on a collision at start-up. To keep this additive, built-ins never use a vendor-scoped name: the
+   built-in families are `AGGR_`, `ELM_`, `ORDER_`/`THEN_ORDER_`, `MATH_`, `STR_`, `DT_` and the bare `COALESCE`, and
+   applications are told to use `$FN_<VENDOR>_…` (already the advice on `SelectorRegistry`). A new built-in family
+   prefix is a breaking change.
+6. **The grammar spec is versioned with the package.** The "Grammar" section of `property-selectors.md` states the
+   version it describes, and the CHANGELOG lists grammar changes separately from C# API changes.
+7. **QueryShaper pins a PropertySelectors minor.** It depends on `[0.1.0, 0.2.0)`, since a 0.x minor may break.
+**Consequence:** the reserved-prefix rules become load-bearing: anything that falls through to a property lookup
+today can't be given meaning later without a breaking release. The public-API audit (Phase 4) should run before
+`0.1.0-preview`, because whatever is public then is under rule 2 from 0.1 onwards.
+
+### 033: A literal can't follow `|` (2026-11-25)
+**Status:** accepted and implemented (2026-11-25).
+**Context:** writing the grammar spec (grammar 0.1) showed that a literal after a pipe was accepted in both forms and
+silently replaced the piped value: `Age|5` built `5`, `Name|"x"` built `"x"`. Nothing used it, and a selector like
+that is almost certainly a mistake (a missing function, or a value meant as an argument). Under 032, rejecting
+accepted text after `0.1.0-preview` would be breaking, so it had to be settled before the release.
+**Decision:** a literal (number, string or boolean) can only start a chain. After `|` it's a `SelectorParseException`,
+"A literal can't follow '|': it would discard the value before it.", positioned at the literal. This holds wherever
+a chain appears: at the top level, after a group (`(Age + 1)|5`), as an arithmetic operand (`Age + Name|"x"`) and as an
+argument (`$FN_MATH_MAX(Age|2, 1)`). A literal at the head of a chain keeps working (`5|$FN_MATH_SQRT`), and a property
+named like a literal is reached with `@` (`Inner|@True`, 030.4).
+**Implementation:** both chain loops (`PropertySelector.Chain`, `PropertySelector<T>.Chain`) throw
+`PropertySelectorUtils.LiteralAfterPipe` when a part after the first classifies as a literal. Group tails go through
+the same loops, so they need nothing extra. Tests: 36 in `LiteralAfterPipeTests`, both forms (all 22 rejections
+failed on the old code; the 14 allowed cases pass on both).
+**Consequence:** breaking only for selectors that relied on the replacement, which no test or doc example did.
+Giving a literal after `|` a meaning later stays possible as an additive change.

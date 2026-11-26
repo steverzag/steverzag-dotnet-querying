@@ -204,12 +204,12 @@ public class FirstElementSelectorTests
     }
 
     [Fact]
-    public void NonGeneric_Evaluate_OnNonEnumerableTarget_ThrowsInvalidOperationException()
+    public void NonGeneric_Evaluate_OnNonEnumerableTarget_ThrowsSelectorParseException()
     {
         // The non-generic selector has no type to validate at construction time, so the
         // enumerability check only happens when the expression is built.
         var selector = new FirstElementSelector();
 
-        Assert.Throws<InvalidOperationException>(() => Evaluate<int, int>(selector, 1));
+        Assert.Throws<SelectorParseException>(() => Evaluate<int, int>(selector, 1));
     }
 }

@@ -110,7 +110,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				var next = tokens[i + 1];
 
 				if (tokens[i].Type == ArithmeticOperationTokenType.Minus && isUnaryPosition
-					&& next.Type == ArithmeticOperationTokenType.Selector && ValueSelectorFactory.IsNumberLiteral(next.Value))
+					&& next.Type == ArithmeticOperationTokenType.Selector && !next.Value.StartsWith('-') && ValueSelectorFactory.IsNumberLiteral(next.Value))
 				{
 					tokens[i] = new ArithmeticOperationToken(ArithmeticOperationTokenType.Selector, "-" + next.Value, tokens[i].Position);
 					tokens.RemoveAt(i + 1);
@@ -162,6 +162,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		{
 			var delimiter = SelectorDefaults.PropertyDelimiter[0];
 			var parenDepth = 0;
+			var functionStart = start;
+			var hasArguments = false;
 
 			while (_pos < _text.Length)
 			{
@@ -183,10 +185,14 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 					_pos++;
 					SkipWhitespace();
 					isFunction = _pos < _text.Length && _text[_pos] == SelectorDefaults.ComplexSelectorStart[0];
+					functionStart = _pos;
+					hasArguments = false;
 					continue;
 				}
 				else if (char.IsWhiteSpace(c))
 				{
+					if (isFunction && !hasArguments)
+						ThrowIfArgumentsFollow(functionStart);
 					if (!PipeFollows())
 						break;
 					continue;
@@ -194,6 +200,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				else if (c == '(' && isFunction)
 				{
 					parenDepth++;
+					hasArguments = true;
 				}
 				else if (c is '+' or '-' or '*' or '/' or '(' or ')')
 				{
@@ -204,6 +211,17 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			}
 
 			return Token(start);
+		}
+
+		private void ThrowIfArgumentsFollow(int functionStart)
+		{
+			var next = _pos;
+			while (next < _text.Length && char.IsWhiteSpace(_text[next]))
+				next++;
+
+			if (next < _text.Length && _text[next] == '(')
+				throw new SelectorParseException(
+					$"No space is allowed between a function and its '(': write '{_text[functionStart.._pos]}('.", _text, _pos, _text[_pos..next]);
 		}
 
 		private bool PipeFollows()

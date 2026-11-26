@@ -57,9 +57,11 @@ namespace Steverzag.PropertySelectors
 							: throw PropertySelectorUtils.UnknownFunction(selectorPart);
 					}
 
-					return ValueSelectorFactory.TryCreate<T>(selectorPart, out var valueSelector)
-						? valueSelector
-						: PropertySelectorUtils.CreatePropertySegment(selectorPart, currentIterationType);
+					if (ValueSelectorFactory.TryCreate<T>(selectorPart, out var valueSelector))
+						return result is null ? valueSelector : throw PropertySelectorUtils.LiteralAfterPipe(selectorPart);
+
+					PropertySelectorUtils.ValidatePropertyPath(selectorPart);
+					return PropertySelectorUtils.CreatePropertySegment(selectorPart, currentIterationType);
 				});
 
 				if (result is null)
@@ -180,9 +182,11 @@ namespace Steverzag.PropertySelectors
 							: throw PropertySelectorUtils.UnknownFunction(selectorPart);
 					}
 
-					return ValueSelectorFactory.TryCreate(selectorPart, out var valueSelector)
-						? valueSelector
-						: new PropertySelector(selectorPart);
+					if (ValueSelectorFactory.TryCreate(selectorPart, out var valueSelector))
+						return result is null ? valueSelector : throw PropertySelectorUtils.LiteralAfterPipe(selectorPart);
+
+					PropertySelectorUtils.ValidatePropertyPath(selectorPart);
+					return new PropertySelector(selectorPart);
 				});
 
 				if (result is null)

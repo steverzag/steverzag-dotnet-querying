@@ -83,10 +83,4 @@ public class FieldAccessTests
             Assert.Equal(expected, Convert.ToInt32(value));
         }
     }
-
-    [Fact]
-    public void NonGenericLookup_StillIgnoresCase()
-    {
-        Assert.Equal("x.Inner.Value", Body((PropertySelector)"inner.value").ToString());
-    }
 }

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -74,6 +75,38 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			return left is not null && right is not null && IsNumericType(left) && IsNumericType(right)
 				? GetWiderNumericType(left, right)
 				: null;
+		}
+
+		internal static (PropertySelector Operand, Type Type)? FindNonNumericOperand(PropertySelector left, Type? leftType, PropertySelector? right, Type? rightType)
+		{
+			if (leftType is not null && !IsNumericType(leftType))
+				return (left, leftType);
+
+			if (right is not null && rightType is not null && !IsNumericType(rightType))
+				return (right, rightType);
+
+			return null;
+		}
+
+		internal static string NonNumericDetail(ArithmeticOperator op, PropertySelector operand, Type type)
+		{
+			var typeName = Nullable.GetUnderlyingType(type) is { } underlying ? underlying.Name + "?" : type.Name;
+
+			return op == ArithmeticOperator.Negation
+				? $"'-' needs a numeric operand: '{operand}' is {typeName}."
+				: $"'{ArithmeticOperationFormatter.Symbol(op)}' needs numeric operands: '{operand}' is {typeName}.";
+		}
+
+		internal static void RequireNumericOperands(IArithmeticOperationSelector operation, Expression left, Expression? right)
+		{
+			if (FindNonNumericOperand(operation.LeftExpression, left.Type, operation.RightExpression, right?.Type) is not { } bad)
+				return;
+
+			throw new SelectorParseException(
+				NonNumericDetail(operation.Operator, bad.Operand, bad.Type),
+				ArithmeticOperationFormatter.Format(operation),
+				ArithmeticOperationFormatter.OperatorPosition(operation),
+				operation.Operator == ArithmeticOperator.Negation ? "-" : ArithmeticOperationFormatter.Symbol(operation.Operator).ToString());
 		}
 
 		public static Type GetWiderNumericType(params List<Type?> types)

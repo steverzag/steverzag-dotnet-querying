@@ -58,6 +58,11 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			return $"{left} {Symbol(operation.Operator)} {right}";
 		}
 
+		internal static int OperatorPosition(IArithmeticOperationSelector operation)
+			=> operation.Operator == ArithmeticOperator.Negation
+				? 0
+				: FormatOperand(operation.LeftExpression, Precedence(operation.Operator), wrapOnEqual: false).Length + 1;
+
 		private static string FormatOperand(PropertySelector operand, int parentPrecedence, bool wrapOnEqual)
 		{
 			var text = operand.ToString();
@@ -78,7 +83,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			_ => 3
 		};
 
-		private static char Symbol(ArithmeticOperator op) => op switch
+		internal static char Symbol(ArithmeticOperator op) => op switch
 		{
 			ArithmeticOperator.Addition => '+',
 			ArithmeticOperator.Subtraction => '-',

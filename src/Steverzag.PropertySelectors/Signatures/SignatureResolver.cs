@@ -15,17 +15,28 @@ namespace Steverzag.PropertySelectors
 			var argumentTypes = arguments.Select(a => a.Type).ToList();
 			var signature = SignatureResolver.Resolve(token, signatures, arguments, targetType, argumentTypes);
 
-			if (signature is not null)
+			if (signature is not null && SignatureResolver.IsFullyKnown(signature, arguments, targetType, argumentTypes))
 				return new(signature, signature.ResultType(targetType, argumentTypes), signature.Bind(arguments));
 
 			var scope = Scopes.GetOrAdd(selectorType, static type => type.GetCustomAttribute<SelectorTokenAttribute>()?.Arguments ?? ArgumentScope.Root);
+			var parsedBinding = signature?.Bind(arguments);
 
-			return new(null, null, target =>
+			return new(signature, signature?.ResultType(targetType, argumentTypes), target =>
 			{
 				var builtTypes = arguments.Select(a => BuiltType(target, a, scope)).ToList();
-				var resolved = SignatureResolver.Resolve(token, signatures, arguments, target?.Type, builtTypes)
-					?? throw new InvalidOperationException($"{token} could not be resolved from the built argument types.");
-				return resolved.Bind(arguments)(target);
+				FunctionSignature resolved;
+				try
+				{
+					resolved = SignatureResolver.Resolve(token, signatures, arguments, target?.Type, builtTypes)
+						?? throw new InvalidOperationException($"{token} could not be resolved from the built argument types.");
+					resolved.ResultType(target?.Type, builtTypes);
+				}
+				catch (Exception e) when (e is InvalidOperationException or ArgumentException && e is not SelectorParseException)
+				{
+					throw SignatureResolver.BuildError(token, arguments, e);
+				}
+				var binding = parsedBinding is not null && ReferenceEquals(resolved, signature) ? parsedBinding : resolved.Bind(arguments);
+				return binding(target);
 			});
 		}
 
@@ -74,6 +85,17 @@ namespace Steverzag.PropertySelectors
 
 			throw new InvalidOperationException(
 				$"{Written(token, arguments)} is ambiguous between {string.Join(" and ", candidates.Select(c => c.Signature))}.");
+		}
+
+		internal static bool IsFullyKnown(FunctionSignature signature, IReadOnlyList<PropertySelector> arguments, Type? targetType, IReadOnlyList<Type?> argumentTypes)
+			=> !Match(signature, arguments, targetType, argumentTypes).Contains(ConstraintMatch.Unknown);
+
+		internal static SelectorParseException BuildError(string token, IReadOnlyList<PropertySelector> arguments, Exception error)
+		{
+			var function = FunctionSelectorFormatter.Format(token, arguments);
+			var position = arguments.Count > 0 && arguments[0] is PipedValueSelector piped ? piped.PipedText.Length + 1 : 0;
+
+			return new SelectorParseException(error.Message, Written(token, arguments), position, function, error);
 		}
 
 		private static ConstraintMatch[] Match(FunctionSignature signature, IReadOnlyList<PropertySelector> arguments, Type? targetType, IReadOnlyList<Type?> argumentTypes)

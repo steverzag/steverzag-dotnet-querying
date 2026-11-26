@@ -326,7 +326,7 @@ public class MathSelectorTests
         Assert.Equal("$FN_MATH_SQRT: argument 1 ('Name') must be a number, not a String: '$FN_MATH_SQRT(Name)'.", exception.Detail);
 
         PropertySelector nonGeneric = $"{SelectorDefaults.MathSqrt}(Name)";
-        Assert.Throws<InvalidOperationException>(() => Evaluate<double>(nonGeneric, new TestItem()));
+        Assert.Throws<SelectorParseException>(() => Evaluate<double>(nonGeneric, new TestItem()));
     }
 
     [Fact]

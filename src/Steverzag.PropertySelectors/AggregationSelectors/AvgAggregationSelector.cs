@@ -16,7 +16,7 @@ public record AvgAggregationSelector : FunctionPropertySelector
 	[
 		new([], (t, _) => Implementations.LiftedAggregateType(nameof(Enumerable.Average), ResultTypes.ElementOf(t)),
 			_ => target => target!.CreateAggregateAvgFunction())
-		{ Target = ArgumentConstraint.Collection },
+		{ Target = ArgumentConstraint.NumericCollection },
 	];
 
 	public AvgAggregationSelector() : base(SelectorDefaults.AvgAggregateFunction) { }

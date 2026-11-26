@@ -497,7 +497,7 @@ public class AggregationSelectorTests
         {
             PropertySelector<TestOrder> selector = $"Names{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
         });
-        Assert.Contains("Average is not supported for elements of type String", exception.Message);
+        Assert.Equal("$FN_AGGR_AVG must be applied to a collection of numbers, not a List<String>: '$FN_AGGR_AVG'.", exception.Detail);
     }
 
     [Theory]
@@ -509,10 +509,11 @@ public class AggregationSelectorTests
         var text = $"{collection}{Delimiter}{SelectorDefaults.AvgAggregateFunction}";
 
         var generic = Assert.Throws<SelectorParseException>(() => { PropertySelector<TestOrder> selector = text; });
-        var nonGeneric = Assert.ThrowsAny<Exception>(() => Evaluate<object>((PropertySelector)text, new TestOrder()));
+        var nonGeneric = Assert.Throws<SelectorParseException>(() => Evaluate<object>((PropertySelector)text, new TestOrder()));
 
-        Assert.Equal($"Average is not supported for elements of type {elementType}.", generic.Detail);
-        Assert.Equal($"Average is not supported for elements of type {elementType}.", nonGeneric.Message);
+        var expected = $"$FN_AGGR_AVG must be applied to a collection of numbers, not a List<{elementType}>: '$FN_AGGR_AVG'.";
+        Assert.Equal(expected, generic.Detail);
+        Assert.Equal(expected, nonGeneric.Detail);
     }
 
     [Theory]
@@ -528,13 +529,16 @@ public class AggregationSelectorTests
     }
 
     [Fact]
-    public void Sum_OnNonNumericElements_ThrowsOnBuild()
+    public void Sum_OnNonNumericElements_IsRejectedInBothForms()
     {
-        // Sum declares the element type without checking it, so a string list fails when the call is built.
-        PropertySelector<TestOrder> selector = $"Names{Delimiter}{SelectorDefaults.SumAggregateFunction}";
+        var text = $"Names{Delimiter}{SelectorDefaults.SumAggregateFunction}";
+        const string expected = "$FN_AGGR_SUM must be applied to a collection of numbers, not a List<String>: '$FN_AGGR_SUM'.";
 
-        var exception = Assert.Throws<InvalidOperationException>(() => Evaluate<object>(selector, new TestOrder()));
-        Assert.Contains("Sum is not supported for elements of type String", exception.Message);
+        var generic = Assert.Throws<SelectorParseException>(() => { PropertySelector<TestOrder> selector = text; });
+        var nonGeneric = Assert.Throws<SelectorParseException>(() => Evaluate<object>((PropertySelector)text, new TestOrder()));
+
+        Assert.Equal(expected, generic.Detail);
+        Assert.Equal(expected, nonGeneric.Detail);
     }
 
     // ── Combined with the other families ────────────────────────────────────

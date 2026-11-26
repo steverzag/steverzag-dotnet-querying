@@ -132,14 +132,12 @@ namespace Steverzag.PropertySelectors
 
 			for (int i = index; i < parts.Length; i++)
 			{
-				var part = parts[i];
-				MemberExpression property = null!; // assigned in try; the catch path always breaks
+				var part = parts[i].StartsWith(SelectorDefaults.PropertyNameEscape)
+					? Extensions.TypesExtensions.UnescapePropertyName(parts[i], string.Join('.', parts), parts.Take(i).Sum(p => p.Length + 1))
+					: parts[i];
+				var propertyInfo = Extensions.TypesExtensions.FindProperty(current.Type, part);
 
-				try
-				{
-					property = Expression.Property(current, part);
-				}
-				catch (ArgumentException e)
+				if (propertyInfo is null)
 				{
 					if (Nullable.GetUnderlyingType(current.Type) is not null)
 						return CreateLiftedMemberAccess(current, parts, i);
@@ -147,7 +145,7 @@ namespace Steverzag.PropertySelectors
 					if (!TryGetGroupingTypes(target.Type, out var _, out var groupElementType) || groupElementType is null)
 					{
 						if (i != index || !TryGetEnumerableElementType(target.Type, out groupElementType) || groupElementType is null)
-							throw Extensions.TypesExtensions.PropertyNotFound(part, current.Type, string.Join('.', parts), parts.Take(i).Sum(p => p.Length + 1), e);
+							throw Extensions.TypesExtensions.PropertyNotFound(part, current.Type, string.Join('.', parts), parts.Take(i).Sum(p => p.Length + 1) + parts[i].Length - part.Length);
 					}
 
 					var param = Expression.Parameter(groupElementType, "y");
@@ -174,6 +172,7 @@ namespace Steverzag.PropertySelectors
 					break;
 				}
 
+				var property = Expression.Property(current, propertyInfo);
 				var propertyType = property.Type;
 
 				if (TryGetEnumerableElementType(propertyType, out var elementType) && elementType != null)

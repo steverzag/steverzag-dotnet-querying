@@ -16,7 +16,7 @@ public record SumAggregationSelector : FunctionPropertySelector
 	[
 		new([], (t, _) => ResultTypes.ElementOf(t),
 			_ => target => target!.CreateAggregateSumFunction())
-		{ Target = ArgumentConstraint.Collection },
+		{ Target = ArgumentConstraint.NumericCollection },
 	];
 
 	public SumAggregationSelector() : base(SelectorDefaults.SumAggregateFunction) { }

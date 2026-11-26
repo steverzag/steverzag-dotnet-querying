@@ -173,8 +173,8 @@ public class SignatureResolutionTests
         Assert.Equal(message, generic.Detail);
 
         PropertySelector nonGeneric = text;
-        var whenBuilt = Assert.Throws<InvalidOperationException>(() => Body(nonGeneric));
-        Assert.Equal(message, whenBuilt.Message);
+        var whenBuilt = Assert.Throws<SelectorParseException>(() => Body(nonGeneric));
+        Assert.Equal(message, whenBuilt.Detail);
     }
 
     [Fact]
@@ -190,7 +190,7 @@ public class SignatureResolutionTests
     {
         var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<Item>)"Name|$FN_AGGR_SUM");
 
-        Assert.Equal("$FN_AGGR_SUM must be applied to a collection, not a String: '$FN_AGGR_SUM'.", exception.Detail);
+        Assert.Equal("$FN_AGGR_SUM must be applied to a collection of numbers, not a String: '$FN_AGGR_SUM'.", exception.Detail);
     }
 
     [Fact]

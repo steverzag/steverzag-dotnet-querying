@@ -48,6 +48,18 @@ namespace Steverzag.PropertySelectors
 			? ConstraintMatch.Unknown
 			: ExpressionUtils.TryGetEnumerableElementType(type, out var _) ? ConstraintMatch.Implicit : ConstraintMatch.None);
 
+		public static ArgumentConstraint NumericCollection { get; } = new("a collection of numbers", (argument, type) =>
+		{
+			if (type is null)
+				return ConstraintMatch.Unknown;
+
+			if (!ExpressionUtils.TryGetEnumerableElementType(type, out var element) || element is null)
+				return ConstraintMatch.None;
+
+			var underlying = Nullable.GetUnderlyingType(element) ?? element;
+			return !underlying.IsEnum && ArithmeticUtils.IsNumericType(underlying) ? ConstraintMatch.Implicit : ConstraintMatch.None;
+		});
+
 		public static ArgumentConstraint StringLiteral { get; } = new("a quoted string",
 			(argument, _) => argument is IStringLiteralSelector ? ConstraintMatch.Exact : ConstraintMatch.None, isLiteral: true);
 

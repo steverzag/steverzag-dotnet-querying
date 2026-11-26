@@ -51,7 +51,7 @@ public class StringSelectorTests
         Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"Id{Delimiter}{SelectorDefaults.StringLength}");
 
         PropertySelector nonGeneric = $"Id{Delimiter}{SelectorDefaults.StringLength}";
-        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(nonGeneric, new TestItem { Id = 1 }));
+        Assert.Throws<SelectorParseException>(() => Evaluate<int>(nonGeneric, new TestItem { Id = 1 }));
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public class StringSelectorTests
         Assert.Equal("$FN_STR_LENGTH must be applied to a string, not a TestItem: '$FN_STR_LENGTH'.", exception.Detail);
 
         PropertySelector nonGeneric = SelectorDefaults.StringLength;
-        Assert.Throws<InvalidOperationException>(() => Evaluate<int>(nonGeneric, new TestItem()));
+        Assert.Throws<SelectorParseException>(() => Evaluate<int>(nonGeneric, new TestItem()));
     }
 
     // ── Casing ──────────────────────────────────────────────────────────────
@@ -347,7 +347,7 @@ public class StringSelectorTests
         Assert.Equal("$FN_STR_ISNULLOREMPTY: argument 1 ('Id') must be a string, not an Int32: '$FN_STR_ISNULLOREMPTY(Id)'.", exception.Detail);
 
         PropertySelector nonGeneric = $"{SelectorDefaults.StringIsNullOrEmpty}(Id)";
-        Assert.Throws<InvalidOperationException>(() => Evaluate<bool>(nonGeneric, new TestItem { Id = 1 }));
+        Assert.Throws<SelectorParseException>(() => Evaluate<bool>(nonGeneric, new TestItem { Id = 1 }));
     }
 
     // ── Compare ─────────────────────────────────────────────────────────────
@@ -435,7 +435,7 @@ public class StringSelectorTests
         Assert.Equal("$FN_STR_JOIN: argument 3 ('Id') must be a string, not an Int32: '$FN_STR_JOIN(\"-\", Name, Id)'.", exception.Detail);
 
         PropertySelector nonGeneric = $"{SelectorDefaults.StringJoin}(\"-\", Name, Id)";
-        Assert.Throws<InvalidOperationException>(() => Evaluate<string>(nonGeneric, new TestItem { Id = 1 }));
+        Assert.Throws<SelectorParseException>(() => Evaluate<string>(nonGeneric, new TestItem { Id = 1 }));
     }
 
     [Fact]

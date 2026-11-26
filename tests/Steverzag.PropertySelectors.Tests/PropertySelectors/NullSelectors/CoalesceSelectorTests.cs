@@ -253,7 +253,7 @@ public class CoalesceSelectorTests
     {
         PropertySelector selector = $"Quantity|{Coalesce}(0)";
 
-        var ex = Assert.Throws<InvalidOperationException>(() => Build(selector, out _));
+        var ex = Assert.Throws<SelectorParseException>(() => Build(selector, out _));
         Assert.Contains("the piped value", ex.Message);
     }
 
@@ -269,9 +269,7 @@ public class CoalesceSelectorTests
     [MemberData(nameof(BothForms))]
     public void NonNullablePropertyBeforeTheLast_IsRejectedWhenBuilt(bool generic)
     {
-        Exception ex = generic
-            ? Assert.Throws<SelectorParseException>(() => Build(Parse($"First|{Coalesce}(Quantity, 0)", generic), out _))
-            : Assert.Throws<InvalidOperationException>(() => Build(Parse($"First|{Coalesce}(Quantity, 0)", generic), out _));
+        var ex = Assert.Throws<SelectorParseException>(() => Build(Parse($"First|{Coalesce}(Quantity, 0)", generic), out _));
         Assert.Contains("argument 1", ex.Message);
     }
 
@@ -285,7 +283,7 @@ public class CoalesceSelectorTests
         Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"{property}|{Coalesce}({fallback})");
 
         PropertySelector nonGeneric = $"{property}|{Coalesce}({fallback})";
-        Assert.Throws<InvalidOperationException>(() => Build(nonGeneric, out _));
+        Assert.Throws<SelectorParseException>(() => Build(nonGeneric, out _));
     }
 
     [Fact]
@@ -294,7 +292,7 @@ public class CoalesceSelectorTests
         Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"LastUpdated|{Coalesce}(Name)");
 
         PropertySelector nonGeneric = $"LastUpdated|{Coalesce}(Name)";
-        Assert.Throws<InvalidOperationException>(() => Build(nonGeneric, out _));
+        Assert.Throws<SelectorParseException>(() => Build(nonGeneric, out _));
     }
 
     [Fact]
@@ -303,7 +301,7 @@ public class CoalesceSelectorTests
         Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)$"NullableNumbers|{Coalesce}(0)");
 
         PropertySelector nonGeneric = $"NullableNumbers|{Coalesce}(0)";
-        Assert.Throws<InvalidOperationException>(() => Build(nonGeneric, out _));
+        Assert.Throws<SelectorParseException>(() => Build(nonGeneric, out _));
     }
 
     [Fact]
@@ -311,7 +309,7 @@ public class CoalesceSelectorTests
     {
         PropertySelector selector = $"{Coalesce}(First, 0)";
 
-        var ex = Assert.Throws<InvalidOperationException>(() => Build(selector, out _));
+        var ex = Assert.Throws<SelectorParseException>(() => Build(selector, out _));
         Assert.Contains("piped value", ex.Message);
     }
 

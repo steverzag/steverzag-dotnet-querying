@@ -14,11 +14,13 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			if (selector.Operator == ArithmeticOperator.Negation)
 			{
 				var operand = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
+				ArithmeticUtils.RequireNumericOperands(selector, operand, null);
 				return Expression.Negate(operand);
 			}
 
 			var left = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
 			var right = ExpressionUtils.CreateMemberAccess(target, selector.RightExpression!);
+			ArithmeticUtils.RequireNumericOperands(selector, left, right);
 
 			var widerType = ArithmeticUtils.GetWiderNumericType(left.Type, right.Type);
 
@@ -46,11 +48,13 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			if (selector.Operator == ArithmeticOperator.Negation)
 			{
 				var operand = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
+				ArithmeticUtils.RequireNumericOperands(selector, operand, null);
 				return Expression.Negate(operand);
 			}
 
 			var left = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
 			var right = ExpressionUtils.CreateMemberAccess(target, selector.RightExpression!);
+			ArithmeticUtils.RequireNumericOperands(selector, left, right);
 
 			var widerType = ArithmeticUtils.GetWiderNumericType(left.Type, right.Type);
 

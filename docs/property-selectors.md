@@ -26,7 +26,115 @@ PropertySelector<Person> since  = "$FN_DT_DATEONLY(\"2024-01-01\")";    // date 
 Expression body = avgId.PropertyAccess(parameter);
 ```
 
-## Grammar (informal, not frozen yet; see roadmap Phase 4)
+## Grammar
+
+This section is the specification of the selector language, **grammar 0.1**, shipped with PropertySelectors
+`0.1.0-preview`. What it promises across versions is set by decision 032: for any selector that parses, whether it
+parses, its value, its declared and built types, its `ToString()` round trip and the type and position of its errors
+are contract; new functions and new meanings for text that's rejected today are additive. Both forms (generic and
+non-generic) follow the same grammar.
+
+### Syntax
+
+In EBNF, with whitespace rules below. A selector is read in this order: an exact number literal first, then
+arithmetic, then a chain (see "Which rule applies").
+
+```ebnf
+selector   = empty | number | arithmetic | chain ;
+empty      = "" ;                                   (* the root itself *)
+
+chain      = part , { "|" , step } ;
+part       = function | literal | path ;
+step       = function | path ;                      (* a literal can't follow "|" *)
+path       = name , { "." , name } ;
+name       = [ "@" ] , identifier ;                 (* matched exactly against a public instance property *)
+identifier = ( letter | "_" ) , { letter | digit | "_" | mark | connector | format } ;
+                                                    (* a C# identifier; Unicode letters count *)
+function   = token , [ "(" , [ argument , { "," , argument } ] , ")" ] ;
+token      = "$" , { character - "(" } ;            (* built-ins and registered tokens start with "$FN_" *)
+argument   = selector - empty ;                     (* resolved against the scope root *)
+
+literal    = number | boolean | string ;
+number     = [ "-" ] , digits , [ "." , digits ] , [ ( "e" | "E" ) , [ "+" | "-" ] , digits ] ,
+             [ "L" | "l" | "m" | "M" ] ;
+digits     = digit , { digit } ;
+boolean    = "true" | "false" ;                     (* any case *)
+string     = '"' , { character - '"' | '""' } , '"' ;
+
+arithmetic = sum ;
+sum        = product , { ( "+" | "-" ) , product } ;
+product    = unary , { ( "*" | "/" ) , unary } ;
+unary      = "-" , unary | primary ;
+primary    = group , { "|" , step } | operand ;
+group      = "(" , sum , ")" ;
+operand    = chain ;                                (* with no "+ - * /" outside quotes and parentheses *)
+```
+
+Date and time literals are functions (`$FN_DT_DATETIME("…")`), so they need no rule of their own.
+
+### Which rule applies
+
+1. **A selector that is exactly a number literal is that literal**, so `-3` and `1e-3` aren't arithmetic.
+2. **A selector is arithmetic** when it has a `+`, `-`, `*` or `/` outside quoted strings and parentheses, or when
+   it starts with `(`. `$FN_DT_ADDDAYS(Created, -3)` isn't arithmetic: the `-` is inside parentheses.
+3. **Otherwise it's a chain**, split at every `|` outside quoted strings and parentheses. Each part is, in order:
+   a **function** if it starts with `$` (an unregistered token is "Unknown function", never a property); a
+   **literal** if it's a whole string, boolean or number literal; otherwise a **path**. A leading `@` on a name
+   makes it a path segment even when it reads as a literal (`@True`).
+4. **A literal can only start a chain** (decision 033). After `|` it's rejected, because it would discard the value
+   before it: `Age|5` and `Name|"x"` are "A literal can't follow '|': it would discard the value before it.",
+   positioned at the literal. At the head it can be piped as usual (`5|$FN_MATH_SQRT`, `"ab"|$FN_STR_LENGTH`), and
+   a property named like a literal is reached with `@` (`Inner|@True`).
+5. **A group can only start a selector.** `(Age + 1)|$FN_MATH_ROUND` is allowed; `Age|(Age + 1)` is rejected.
+
+### Precedence and associativity
+
+| Binds | Construct | Notes |
+|---|---|---|
+| tightest | `.` | member access inside one path |
+| | `\|` | `A + B\|$FN_X` is `A + (B\|$FN_X)`; `-Age\|$FN_MATH_SQRT` is `-(sqrt(Age))` |
+| | unary `-` | `--3` is `3` |
+| | `*` `/` | left-associative |
+| loosest | `+` `-` | left-associative: `Amount - 3 - 2` is `(Amount - 3) - 2` |
+
+A `-` directly before a number, where an operand is expected, is part of the number: `2 * -3` and `- 3` hold the
+literal `-3`. Anywhere else, a `-` where an operand is expected is negation.
+
+### Whitespace
+
+Allowed, and ignored, at both ends of a selector, around `|`, around operators, around `,` and inside a group's
+parentheses. Not allowed inside a name, a number, a token, or between a token and its `(`:
+`$FN_MATH_MAX (Age, 1)` is "No space is allowed between a function and its '(': write '$FN_MATH_MAX('.", at the space, also inside arithmetic and arguments. A selector made only of whitespace is rejected
+(it's an empty part), while the empty string is the root itself.
+
+### Functions and arguments
+
+- The `(` after a token opens the arguments, and the **last** `)` of the part closes them. Nothing but whitespace
+  may follow it: `$FN_MATH_MAX(Age, 1)x` is "Unexpected 'x' after the closing ')'"; `$FN_ELM_FIRST.Number` and
+  `$FN_ELM_FIRST(…).Number` are "A member can't follow a function with '.'" (use `|`).
+- Arguments are split at `,` outside quoted strings and parentheses. An empty argument (`f(a,,b)`) is rejected.
+  Empty parentheses are the same as none: `Items|$FN_AGGR_COUNT()` ≡ `Items|$FN_AGGR_COUNT`.
+- Each argument is a full selector, resolved against the scope root (decision 031), except the ordering functions,
+  whose arguments resolve against the collection's element. The piped value is the first argument (decision 016).
+
+### Size and depth
+
+A selector longer than `SelectorLimits.MaxLength` (default 2,000 characters) or deeper than `SelectorLimits.MaxDepth`
+(default 32) is rejected before it's built; see [Limits](#limits).
+
+### Names
+
+A path is checked when the selector is parsed, in both forms, before any property is looked up:
+- Each name is an `identifier` (above), optionally escaped with `@`. Anything else is rejected at the character:
+  `Age#` is "Unexpected character '#' in a property name.", `Inner . Value` is "A property name can't contain
+  whitespace.", `Age()` is "'(' can't follow a property name: only a function ('$FN_…') takes arguments.", and
+  `Inner.1st` is "A property name can't start with a digit."
+- An empty name (`.Age`, `Inner.`, `Age..Age`) is "Empty property name: '.' must sit between two names."
+- A part that starts like a number but isn't one is a malformed number, not a name: `1.` and `.5` are "'1.' isn't a
+  valid number. A '.' needs a digit on both sides ('0.5', '1.0').", `1e` names the missing exponent digits, and
+  `0x10` or `1_000` are "'0x10' isn't a valid number."
+
+### Constructs
 
 | Construct | Form | Example |
 |---|---|---|
@@ -34,7 +142,7 @@ Expression body = avgId.PropertyAccess(parameter);
 | Pipe / chain | `part\|part\|…`. A pipe separates two selectors. Each part applies to the previous result: it's resolved against the piped value's type exactly as if that type were the root. A property after a function goes after a pipe, because `.` is only for navigation inside a path. See [Dot and pipe](#dot-and-pipe). | `Phones.Id\|$FN_AGGR_SUM`, `Phones\|$FN_ELM_FIRST\|Number`, `Created\|$FN_DT_ADDDAYS(3)\|Year` |
 | Function | `$FN_<NAME>` or `$FN_<NAME>(arg, …)`. Arguments are selectors themselves, resolved against the scope root. A function gets its subject from the pipe or from its first argument; see [Piped and static forms](#piped-and-static-forms). | `$FN_STR_SUBSTRING(0, 3)`, `Price\|$FN_MATH_ROUND(2)` |
 | Number literal | Read with the invariant culture on every machine (decision 017). An integer is `int`, or `long` if it doesn't fit. A `.` or an exponent makes it `double`. The suffix `L` gives `long` and `m` gives `decimal`. A minus sign in front of a number is part of it. A number that doesn't fit its type is rejected. | `55`, `-3`, `1.5`, `1e-3`, `5L`, `9.99m` |
-| Boolean literal | `true` / `false`, in any case. | `true` |
+| Boolean literal | `true` / `false`, in any case. A property with one of these names is written with the `@` escape (`@True`). | `true` |
 | String literal | `"quoted string"`. Everything between the quotes is text, including `\| + - * / ( ) ,`. Write a `"` inside as `""`. | `"Hi"`, `"n/a"`, `"say ""hi"""` |
 | Date/time literal | A constructor function taking one quoted string, read with the invariant culture and checked when the selector is parsed. A date-time keeps its kind (a trailing `Z` stays UTC). | `$FN_DT_DATETIME("2025-01-31T08:30:00")`, `$FN_DT_DATEONLY("2025-01-31")`, `$FN_DT_TIMEONLY("08:30")` |
 | Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths, literals or chains, and `\|` binds tighter than every operator (`A + B\|$FN_X` is `A + (B\|$FN_X)`), unary `-` included (`-4\|$FN_MATH_SQRT` is `-(sqrt(4))`). Any operand can be piped, a literal too (`Age + 2\|$FN_MATH_POW(3)`, `Age + "ab"\|$FN_STR_LENGTH`), and whitespace is allowed around `\|`. A parenthesized group can start a chain (decision 026), and a selector wrapped entirely in parentheses is arithmetic too. Operands must be numeric; dates and durations go through the date functions (decision 027). Both operands are widened to their common type, which is the result type (`Quantity + 1` → `int`, `Price * 3` → `decimal`, nullable if either operand is). | `Amount - 3 - 2`, `(Age + 1)\|$FN_MATH_ROUND` |
@@ -48,6 +156,19 @@ function is registered under that token, it's "Unknown function '…'", in eithe
 (head of a chain, after `|`, in arithmetic, as an argument). Tokens are case-sensitive; a token that matches a
 registered one except for case says so: "Unknown function '$fn_str_trim'. Function names are case-sensitive:
 '$FN_STR_TRIM'."
+
+**Case.** Property names are case-sensitive in both forms (decision 030.2): `age` doesn't find `Age`, and two
+properties that differ only by case (`Code`, `code`) are two properties. A name that matches a public property
+except for case says so: "Property 'age' was not found on type 'Item'. Property names are case-sensitive: 'Age'."
+Only public instance properties are members; a property hidden with `new` resolves to the most derived one.
+
+**Escaping a name.** A leading `@` on a name segment makes it a property name, never a literal (decision 030.4), as
+with C# verbatim identifiers. It's needed only for a property named like a boolean literal (`True`, `false`), which
+would otherwise be read as `true`/`false`; on any other name it's allowed and changes nothing (`@Age` ≡ `Age`). It
+works on any segment and anywhere a property can appear: `@True`, `Inner.@True`, `Inner|@True`, `@True + 1`,
+`$FN_MATH_MAX(@True, 1)`. `ToString()` keeps it. A `@` with no name after it (`@`, `@@True`, `Inner.@`) is "'@' must
+be followed by a property name."; an unknown escaped name is reported without the `@` ("Property 'Missing' was not
+found", positioned at the name).
 
 `SelectorLiteral.Format(value)` writes any of these literals from a .NET value (`int`, `long`, `double`, `float`,
 `decimal`, `bool`, `string`, `DateTime`, `DateOnly`, `TimeOnly`). Use it instead of building literal text by hand.
@@ -105,9 +226,10 @@ in SQL (decision 014):
 | `AGGR_MIN`, `AGGR_MAX` on other comparable types | `DateTime` → `DateTime?` (any value type is lifted); reference types such as `string` stay as they are, through the generic overload |
 
 `AGGR_SUM` and `AGGR_AVG` support the numeric types `int`, `long`, `float`, `double` and `decimal`, and their nullable
-forms. Anything else is rejected: `AGGR_AVG` when the selector is parsed (`SelectorParseException`), and `AGGR_SUM` when the
-expression is built (`InvalidOperationException`). The message names the element type as written, such as
-"Average is not supported for elements of type TimeSpan." (or `TimeSpan?` for a nullable element).
+forms. Anything else is rejected by their signature, which takes "a collection of numbers", with the collection type as
+written: "$FN_AGGR_AVG must be applied to a collection of numbers, not a List<TimeSpan>: '$FN_AGGR_AVG'." (or
+`List<TimeSpan?>` for a nullable element). It's a `SelectorParseException` in both forms: when parsed in the generic
+form, and when built in the non-generic form.
 
 **Math result types.** `ROUND`, `CEILING`, `FLOOR` and `TRUNCATE` use the `Math` overload for the operand type when
 there is one, and `double` otherwise (`CEILING` on an `int` → `double`). **On a `decimal` they are exact** and return
@@ -213,8 +335,8 @@ PropertySelector<Item>    first   = "First|$FN_COALESCE(Second, Third, 0)";     
 - Every argument is a selector (a literal, a property, a chain, a function), resolved against the scope root.
   EF translates the result to SQL `COALESCE`.
 - Every operand except the last must be able to be null (`Nullable<>` or a reference type). Otherwise the selector is
-  rejected, including a non-nullable piped value (`Quantity|$FN_COALESCE(0)` on an `int`): with `SelectorParseException`
-  when parsed, or `InvalidOperationException` when the non-generic form only finds out as the expression is built.
+  rejected, including a non-nullable piped value (`Quantity|$FN_COALESCE(0)` on an `int`), with a
+  `SelectorParseException`: when parsed, or when built if the non-generic form only finds out then.
 - Types unify like C#'s `??`: numbers widen (`decimal? ?? 0` → `decimal`, `int? ?? long` → `long`), and other types
   must match exactly (`DateTime?` with `DateTime`, an enum with the same enum). The result is nullable only if the last
   operand is.
@@ -264,11 +386,18 @@ Anything wrong with the selector text is a `SelectorParseException`, which deriv
   leftover operand in arithmetic), unknown functions, unknown properties in the generic form, invalid literals,
   argument count and type errors, ambiguous overloads and rejected pipes.
 - **Positions** point at the token for syntax, property and arithmetic errors, at the argument for errors inside an
-  argument, and at the function for count and type errors.
+  argument, at the function for count and type errors, and at the operator for a non-numeric operand.
+- **A non-numeric arithmetic operand** is "'+' needs numeric operands: '"a"' is String." (or "'-' needs a numeric
+  operand: …" for negation), at the operator. It's found when the selector is parsed whenever the operand's type is
+  known there: always for literals, and for every operand in the generic form (`Name + 1`, `Created * 2`,
+  `Deleted + 1` → `DateTime?`).
 - **When the expression is built**, in the non-generic form: an unknown property is a `SelectorParseException` too,
   with the generic form's message. `Selector` is then the property path and `Position` an offset into it, because
-  the full text isn't known at that point. Other errors found while building (a type mismatch the non-generic form
-  couldn't see earlier) are still `InvalidOperationException`s.
+  the full text isn't known at that point. A non-numeric property operand is found here too, with `Selector` the
+  operation's canonical text (`ToString()`) and `Position` its operator: `Age + Name * 2` reports
+  `'Name * 2'`, position 5. A function's type mismatch is found here too, with the generic form's detail: `Selector`
+  is the function as written with its piped value when that value is an argument (`Name|$FN_MATH_SQRT`, position 5),
+  or the function alone when it's the target (`true|$FN_STR_LENGTH` → `'$FN_STR_LENGTH'`, position 0).
 
 ## Limits
 
@@ -353,9 +482,10 @@ expression is built (the non-generic form with an untyped argument).
 **Error messages.** A wrong count says which counts are accepted ("$FN_MATH_ROUND can't be called with 3 arguments:
 '$FN_MATH_ROUND(1, 2, 3)'. It takes 1 or 2 arguments."). A wrong type names the argument, what it is, and what was
 expected ("$FN_MATH_SQRT: argument 1 ('Name') must be a number, not a String: '$FN_MATH_SQRT(Name)'."), the piped
-value ("the piped value 'Name' must be a number") or the target ("$FN_AGGR_SUM must be applied to a collection, not a
-String"). Both are `SelectorParseException`s when the selector is parsed (see "Errors"). A type error found only when
-the expression is built, in the non-generic form, is an `InvalidOperationException` with the same message.
+value ("the piped value 'Name' must be a number") or the target ("$FN_AGGR_SUM must be applied to a collection of
+numbers, not a String"). Both are `SelectorParseException`s when the selector is parsed (see "Errors"). In the
+non-generic form, where a type is unknown until the expression is built, the signature is resolved again then with
+the built types, so a type error found only then is a `SelectorParseException` with the same detail.
 
 A function that doesn't override `Signatures` keeps the older model: it overrides `InitializeOverloads` and adds the
 overload for the count it was given. Its declared type is whatever it sets itself.

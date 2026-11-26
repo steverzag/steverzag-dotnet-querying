@@ -140,6 +140,9 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		private PropertySelector CreateOperation(ArithmeticOperationToken op, PropertySelector left, PropertySelector? right, ArithmeticOperator @operator)
 		{
+			if (ArithmeticUtils.FindNonNumericOperand(left, LeafType(left), right, right is null ? null : LeafType(right)) is { } bad)
+				throw new SelectorParseException(ArithmeticUtils.NonNumericDetail(@operator, bad.Operand, bad.Type), _text, op.Position, op.Value);
+
 			try
 			{
 				return _createOperation(left, right, @operator);
@@ -149,6 +152,9 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				throw SelectorParseException.From(e, _text, op.Position, op.Value);
 			}
 		}
+
+		private static Type? LeafType(PropertySelector operand)
+			=> operand is IArithmeticOperationSelector && operand.ChildSelector is null ? null : operand.Type;
 
 		private PropertySelector ParseNestedFactor()
 		{
