@@ -782,3 +782,29 @@ extra kinds (nothing reads them).
 **Consequence:** breaking renames before the first release. `FilterValueKind`'s numeric values change. A filter that
 used to match `Guid.Empty` or null on a bad `Guid` string now throws. The JSON contract for `QueryRequest` will bind a
 condition's value as `value`.
+
+### 030: Lexical rules for the grammar freeze: limits, case, `$`, escapes, the root (2026-11-25)
+**Status:** accepted; not implemented yet (roadmap Phase 4, "Grammar freeze: lexical rules").
+**Context:** before freezing the grammar, its open points were checked against the parser and probed with about
+120 selectors through both forms. Most rules were already settled by the code. Five weren't, and the probe found that
+a long or deeply nested selector overflows the stack: 2,000 nested parentheses (4 KB), 1,000 nested functions
+(15 KB) or a flat sum of 3,000 terms (18 KB) crash the process, and .NET can't catch a stack overflow.
+**Decision:**
+1. **Limits, checked when the selector is parsed:** a maximum length (default 2,000 characters) and a maximum depth of
+   the selector tree (default 32), configurable, with the defaults in PropertySelectors itself so they hold without
+   QueryShaper. Depth counts the tree, not the parentheses, so a flat sum of n terms (a left-deep tree) has depth n.
+   The length is checked before anything else is scanned. Exceeding either is a `SelectorParseException`.
+2. **Property names and function tokens are case-sensitive**, in both forms. Today property lookup ignores case
+   (`age` finds `Age`), and two properties that differ only by case throw a raw `AmbiguousMatchException`.
+3. **`$` is reserved.** Anything starting with `$` that isn't a registered function is "Unknown function '…'", never
+   a property lookup. This also covers a wrongly cased token (`$fn_str_trim`) and the removed `$VAL_` forms.
+4. **A property name can be escaped**, so a property whose name is also a literal (`True`, `false`) is reachable.
+   Proposed form: a leading `@`, as with C# verbatim identifiers (`@True`). The arithmetic tokenizer already
+   accepts `@` at the start of an operand. To confirm when implemented.
+5. **Function arguments always resolve against the scope root, even when the chain starts with a literal or a
+   function without a subject.** Today `5|$FN_MATH_MAX(Age)`, `"x"|$FN_STR_CONCAT(Name)` and
+   `$FN_DT_NOW|$FN_DT_ADDDAYS(Age)` look the argument up on the piped value's type, because the root is searched for
+   inside the piped expression and a constant has none. Fix by passing the root down instead of searching for it;
+   if that turns out not to be possible, document it as a limit of the spec.
+**Consequence:** breaking for any caller that relied on case-insensitive property names, and for selectors longer or
+deeper than the limits. Still open for the freeze: what "frozen" promises for `0.1.0-preview` (versioning).
