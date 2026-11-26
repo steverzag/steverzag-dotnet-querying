@@ -41,7 +41,7 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 			var entityParameter = expression.Parameters[0];
 			var searchParameter = expression.Parameters[1];
 
-			var body = new ParameterReplacer(searchParameter, FilterValue.Parameter(searchValue, typeof(string))).Visit(expression.Body);
+			var body = new ParameterReplacer(searchParameter, ParameterHolder.Parameter(searchValue, typeof(string))).Visit(expression.Body);
 
 			return Expression.Lambda<Func<T, bool>>(body, entityParameter);
 		}

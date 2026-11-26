@@ -41,7 +41,7 @@ Expression body = avgId.PropertyAccess(parameter);
 
 `SelectorLiteral.Format(value)` writes any of these literals from a .NET value (`int`, `long`, `double`, `float`,
 `decimal`, `bool`, `string`, `DateTime`, `DateOnly`, `TimeOnly`). Use it instead of building literal text by hand.
-Values typed by end users should travel as filter values (QueryShaper's `SearchValue`), not inside selector text.
+Values typed by end users should travel as filter values (QueryShaper's `ConditionNode.Value`), not inside selector text.
 
 All tokens are constants on `SelectorDefaults`. Prefer those constants to string literals in your code.
 

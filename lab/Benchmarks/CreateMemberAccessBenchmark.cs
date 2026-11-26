@@ -1,7 +1,6 @@
 ﻿using BenchmarkDotNet.Attributes;
 using ExpDataWorker.Data.Models;
 using Steverzag.PropertySelectors;
-using Steverzag.QueryShaper.Utils;
 using System;
 using System.Collections.Generic;
 using System.Linq;

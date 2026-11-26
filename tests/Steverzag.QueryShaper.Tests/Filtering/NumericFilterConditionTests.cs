@@ -81,7 +81,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		[Fact]
 		public void TypedNullValue_Throws()
 		{
-			// A ValueResult2 that holds a null (from an int? variable) is a missing value too.
+			// A FilterValue that holds a null (from an int? variable) is a missing value too.
 			int? missing = null;
 			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Quantity), FilterCondition.Equals, missing));
 		}

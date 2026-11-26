@@ -181,7 +181,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			// search "en" → 2, 3, 4. And quantity > 10 → 3, 4.
 			Assert.Equal([3, 4], Ids(q => q.ApplyFilters(
 				[nameof(Product.Name), "Category.Name"], "en",
-				[new ConditionNode { FieldSelector = nameof(Product.Quantity), FilterCondition = FilterCondition.GreaterThan, SearchValue = 10 }])));
+				[new ConditionNode { FieldSelector = nameof(Product.Quantity), FilterCondition = FilterCondition.GreaterThan, Value = 10 }])));
 		}
 
 		[Fact]
@@ -189,7 +189,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		{
 			Assert.Equal([1, 4], Ids(q => q.ApplyFilters(
 				null, "ignored",
-				[new ConditionNode { FieldSelector = nameof(Product.Quantity), FilterCondition = FilterCondition.GreaterThan, SearchValue = 50 }])));
+				[new ConditionNode { FieldSelector = nameof(Product.Quantity), FilterCondition = FilterCondition.GreaterThan, Value = 50 }])));
 		}
 	}
 }

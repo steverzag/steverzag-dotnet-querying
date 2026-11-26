@@ -95,7 +95,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		}
 
 		// Batch (long-backed): 1 Current (5_000_000_000), 2 Legacy (1), 3 Next (long.MaxValue), 4 Current.
-		// ValueResult2 stores every integer as a long, so values beyond int range must survive intact.
+		// FilterValue stores every integer as a long, so values beyond int range must survive intact.
 
 		[Fact]
 		public void LongBacked_Equals_ValueBeyondIntRange()

@@ -39,13 +39,13 @@ var logicFilters = new List<FilterNode>
 	//		new()
 	//		{
 	//			FilterField = nameof(AppPerson.Email),
-	//			SearchValue = null,
+	//			Value = null,
 	//			FilterCondition = FilterCondition.IsEmpty,
 	//		},
 	//		new()
 	//		{
 	//			FilterField = nameof(AppPerson.MaritalStatus),
-	//			SearchValue = (int)MaritalStatus.Married,
+	//			Value = (int)MaritalStatus.Married,
 	//			FilterCondition = FilterCondition.Equals,
 	//			FilterLogicOption = LogicalConnector.And,
 	//		},
@@ -57,13 +57,13 @@ var logicFilters = new List<FilterNode>
 	//		new()
 	//		{
 	//			FilterField = string.Join(".", [nameof(AppPerson.Affiliations), nameof(AffiliationPersonMap.Affiliation), nameof(Affiliation.WorkingHours)]),
-	//			SearchValue = null,
+	//			Value = null,
 	//			FilterCondition = FilterCondition.IsNotEmpty,
 	//		},
 	//		new()
 	//		{
 	//			FilterField = string.Join(".", [nameof(AppPerson.Phones), nameof(Phone.Number)]),
-	//			SearchValue = null,
+	//			Value = null,
 	//			FilterCondition = FilterCondition.IsEmpty,
 	//			FilterLogicOption = LogicalConnector.Or,
 	//		}
@@ -80,7 +80,7 @@ var logicFilters = new List<FilterNode>
 	new ConditionNode()
 	{
 		FieldSelector = string.Join(".", [nameof(AppPerson.Phones), nameof(Phone.PhoneType)]),
-		SearchValue = new List<object>() { PhoneType.Home, PhoneType.Work },
+		Value = new List<object>() { PhoneType.Home, PhoneType.Work },
 		FilterCondition = FilterCondition.ContainsAll,
 		FilterLogicOption = LogicalConnector.And,
 	},
@@ -88,14 +88,14 @@ var logicFilters = new List<FilterNode>
 	{
 		FieldSelector = string.Join(".", [nameof(AppPerson.Id)]),
 		FilterCondition = FilterCondition.NotIn,
-		SearchValue = new List<object>() { 1, 2, 3, 4, 5 },
+		Value = new List<object>() { 1, 2, 3, 4, 5 },
 		FilterLogicOption = LogicalConnector.And,
 	},
 	new ConditionNode()
 	{
 		FieldSelector = nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.AvgAggregateFunction,
 		FilterCondition = FilterCondition.Equals,
-		SearchValue = 12044.5,
+		Value = 12044.5,
 		FilterLogicOption = LogicalConnector.And,
 	}
 };

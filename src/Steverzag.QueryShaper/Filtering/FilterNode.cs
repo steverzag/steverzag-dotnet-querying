@@ -1,5 +1,4 @@
 ﻿using Steverzag.PropertySelectors;
-using Steverzag.QueryShaper.Utils;
 
 namespace Steverzag.QueryShaper.Filtering
 {
@@ -22,7 +21,7 @@ namespace Steverzag.QueryShaper.Filtering
 
 		public FilterCondition FilterCondition { get; init; }
 
-		public ValueResult2? SearchValue { get; init; }
+		public FilterValue? Value { get; init; }
 	}
 
 	public sealed record GroupNode : FilterNode

@@ -286,7 +286,7 @@ namespace Steverzag.QueryShaper.Tests.Mapping
 			// active: Hammer, Shovel, Rake. By name desc: Shovel, Rake, Hammer.
 			using var context = Database.CreateContext();
 			var page = context.Products
-				.ApplyLogicsFilter([new ConditionNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, SearchValue = true }])
+				.ApplyLogicsFilter([new ConditionNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, Value = true }])
 				.ApplyOrder([new OrderParameters(nameof(Product.Name), OrderDirection.Descending)])
 				.ApplySelect<Product, ProductSummary>(SummaryMapper())
 				.Paginate(1, 2);

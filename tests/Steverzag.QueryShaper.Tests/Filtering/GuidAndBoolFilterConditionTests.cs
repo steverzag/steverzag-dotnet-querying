@@ -90,6 +90,25 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, FilterCondition.Equals));
 		}
 
+		[Theory]
+		[InlineData(nameof(Product.Code), FilterCondition.Equals)]
+		[InlineData(nameof(Product.Code), FilterCondition.NotEquals)]
+		[InlineData(nameof(Product.OptionalCode), FilterCondition.Equals)]
+		[InlineData(nameof(Product.OptionalCode), FilterCondition.NotEquals)]
+		public void Guid_InvalidString_Throws(string field, FilterCondition condition)
+		{
+			// It used to filter on Guid.Empty (non-nullable) or on null (nullable).
+			var exception = Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(field, condition, "not-a-guid"));
+
+			Assert.Equal($"The filter value for '{field}' is not a valid Guid: 'not-a-guid'.", exception.Message);
+		}
+
+		[Fact]
+		public void Guid_EmptyString_Throws()
+		{
+			Assert.Throws<FilterConditionAndValueNotSupportedException>(() => FilterIds(nameof(Product.Code), FilterCondition.Equals, ""));
+		}
+
 		[Fact]
 		public void NullableBool_Equals()
 		{

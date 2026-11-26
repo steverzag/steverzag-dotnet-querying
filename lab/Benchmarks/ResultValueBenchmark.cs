@@ -1,5 +1,5 @@
-﻿using BenchmarkDotNet.Attributes;
-using Steverzag.QueryShaper.Utils;
+﻿using Steverzag.QueryShaper.Filtering;
+using BenchmarkDotNet.Attributes;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -15,7 +15,7 @@ namespace ExpDataWorker.Benchmark
 		//[Benchmark]
 		//public byte ValueResultOnByte()
 		//{
-		//	ValueResult2 byteValueResult = byte.MaxValue;
+		//	FilterValue byteValueResult = byte.MaxValue;
 
 		//	byte result = (byte)byteValueResult;
 
@@ -25,7 +25,7 @@ namespace ExpDataWorker.Benchmark
 		//[Benchmark]
 		//public short ValueResultOnShort()
 		//{
-		//	ValueResult2 byteValueResult = short.MaxValue;
+		//	FilterValue byteValueResult = short.MaxValue;
 
 		//	short result = (short)byteValueResult;
 
@@ -35,7 +35,7 @@ namespace ExpDataWorker.Benchmark
 		//[Benchmark]
 		//public int ValueResultOnInt()
 		//{
-		//	ValueResult2 intValueResult = int.MaxValue;
+		//	FilterValue intValueResult = int.MaxValue;
 
 		//	int result = (int)intValueResult;
 
@@ -45,7 +45,7 @@ namespace ExpDataWorker.Benchmark
 		//[Benchmark]
 		//public long ValueResultOnLong()
 		//{
-		//	ValueResult2 longValueResult = long.MaxValue;
+		//	FilterValue longValueResult = long.MaxValue;
 
 		//	long result = (long)longValueResult;
 
@@ -55,7 +55,7 @@ namespace ExpDataWorker.Benchmark
 		[Benchmark]
 		public float ValueResultOnFloat()
 		{
-			ValueResult2 floatValueResult = float.MaxValue;
+			FilterValue floatValueResult = float.MaxValue;
 
 			float result = (float)floatValueResult;
 
@@ -65,7 +65,7 @@ namespace ExpDataWorker.Benchmark
 		[Benchmark]
 		public double ValueResultOnDouble()
 		{
-			ValueResult2 doubleValueResult = double.MaxValue;
+			FilterValue doubleValueResult = double.MaxValue;
 
 			double result = (double)doubleValueResult;
 
@@ -75,7 +75,7 @@ namespace ExpDataWorker.Benchmark
 		[Benchmark]
 		public decimal ValueResultOnDecimal()
 		{
-			ValueResult2 decimalValueResult = decimal.MaxValue;
+			FilterValue decimalValueResult = decimal.MaxValue;
 
 			decimal result = (decimal)decimalValueResult;
 

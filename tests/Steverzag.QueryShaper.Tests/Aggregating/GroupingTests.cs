@@ -26,7 +26,7 @@ namespace Steverzag.QueryShaper.Tests.Aggregating
 			IQueryable<Product> query = context.Products;
 			if (onlyActive)
 			{
-				query = query.ApplyLogicsFilter([new ConditionNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, SearchValue = true }]);
+				query = query.ApplyLogicsFilter([new ConditionNode { FieldSelector = nameof(Product.IsActive), FilterCondition = FilterCondition.Equals, Value = true }]);
 			}
 
 			return query.ApplyGrouping(groupBy).ApplySelect(select).ToList();

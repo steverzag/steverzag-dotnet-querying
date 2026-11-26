@@ -763,3 +763,22 @@ list length.
 except for the three inlined element types. The SQL now shows `@__Value_N` instead of the literal, which matters
 for anyone reading logs. Revisit the exception when EF Core fixes the provider, or when SQL Server/PostgreSQL get
 their own test run.
+
+### 029: `ValueResult2` becomes `FilterValue`; an invalid `Guid` string is rejected (2026-11-25)
+**Status:** accepted; implemented (2026-11-25).
+**Context:** `ValueResult2` (file `Utils/SearchValue.cs`) and `ResultValueKind` were temporary names, and
+`ConditionNode.SearchValue` used "search" for a filter value while the base search uses it for its text. The type also
+reported only some of its kinds: every integer was `Integer` and `float` was `Double`, so `Byte`, `Short`, `Long` and
+`Float` were never produced. A `Guid` cast from an unparseable string returned `Guid.Empty` (or null for `Guid?`).
+**Decision:**
+1. `ValueResult2` → `FilterValue`, `ResultValueKind` → `FilterValueKind`, both in `Steverzag.QueryShaper.Filtering`.
+   `ConditionNode.SearchValue` → `ConditionNode.Value`. "Search" now means only the base search.
+2. `FilterValueKind` lists only the kinds `FilterValue` produces: `Integer` for every integer type, `Double` for `float`
+   and `double`. Consumers only need the category; the exact type is converted against the property (013).
+3. An unparseable string cast to `Guid` or `Guid?` throws `FormatException`; a filter reports it as
+   `FilterConditionAndValueNotSupportedException`. A valid string still works.
+Rejected: `SearchValue` (keeps "search" ambiguous); `FilterOperand` (precise, but less familiar); reporting the four
+extra kinds (nothing reads them).
+**Consequence:** breaking renames before the first release. `FilterValueKind`'s numeric values change. A filter that
+used to match `Guid.Empty` or null on a bad `Guid` string now throws. The JSON contract for `QueryRequest` will bind a
+condition's value as `value`.

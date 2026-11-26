@@ -15,7 +15,7 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 
 | Feature | Entry point | Input model |
 |---|---|---|
-| Logic filters | `query.ApplyLogicsFilter(nodes)` | `FilterNode` = `ConditionNode { FieldSelector, FilterCondition, SearchValue }` or `GroupNode { Filters[] }`, both with `FilterLogicOption` |
+| Logic filters | `query.ApplyLogicsFilter(nodes)` | `FilterNode` = `ConditionNode { FieldSelector, FilterCondition, Value }` or `GroupNode { Filters[] }`, both with `FilterLogicOption` |
 | Base (global) search | `query.ApplyBaseFilter(searchValue[, config])` or `ApplyBaseFilter(lookups, value)` | configured with `ConfigureSearch<T>(…)` |
 | Combined | `query.ApplyFilters(lookups, searchValue, nodes)` | |
 | Ordering | `query.ApplyOrder(orderParameters)` | `OrderParameters(string OrderBy, OrderDirection)` |
@@ -50,7 +50,7 @@ These rules are pinned by `tests/Steverzag.QueryShaper.Tests/Filtering/FilterNod
 
 ## Filter values
 
-A `ConditionNode.SearchValue` is converted to the property's type when the filter is built (decision 008). Every
+A `ConditionNode.Value` (a `FilterValue`) is converted to the property's type when the filter is built (decision 008). Every
 rejection below happens before the query runs.
 
 **Numbers.** Single values and lists (`In`, `NotIn`, `ContainsAny`, `ContainsAll`) follow the same rules
@@ -68,7 +68,7 @@ rejection below happens before the query runs.
   any combination of declared bits, including 0.
 - Other kinds of values (`bool`, `double`, `Guid`, …) throw `FilterConditionAndValueNotSupportedException`.
 
-**A missing value** (`SearchValue = null`, or a `ValueResult2` that holds null) works only with `IsEmpty` and
+**A missing value** (`Value = null`, or a `FilterValue` that holds null) works only with `IsEmpty` and
 `IsNotEmpty`. With `Equals`, `NotEquals` or a comparison it throws `FilterConditionAndValueNotSupportedException`,
 for every property type and also on nullable properties (decision 013). To match nulls, use `IsEmpty`. A missing
 value is never read as 0 or `false`. A non-nullable enum also rejects `IsEmpty`, because it has no empty state.
@@ -178,14 +178,14 @@ var totals = db.Products
 var page = await db.Persons
     .ApplyLogicsFilter([
         new ConditionNode { FieldSelector = "Phones.PhoneType", FilterCondition = FilterCondition.ContainsAll,
-                SearchValue = new List<object> { PhoneType.Home, PhoneType.Work } },
+                Value = new List<object> { PhoneType.Home, PhoneType.Work } },
         new GroupNode
         {
             FilterLogicOption = LogicalConnector.And,
             Filters =
             [
                 new ConditionNode { FieldSelector = "Phones.Id|" + SelectorDefaults.AvgAggregateFunction,
-                        FilterCondition = FilterCondition.GreaterThan, SearchValue = 100 },
+                        FilterCondition = FilterCondition.GreaterThan, Value = 100 },
                 new ConditionNode { FieldSelector = "Email", FilterCondition = FilterCondition.IsEmpty,
                         FilterLogicOption = LogicalConnector.Or },
             ],
