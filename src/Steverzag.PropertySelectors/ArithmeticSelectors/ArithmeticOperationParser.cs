@@ -92,7 +92,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			if (Match(ArithmeticOperationTokenType.Minus))
 			{
 				var op = Previous();
-				var operand = ParseFactor();
+				var operand = ParseNestedFactor();
 				return CreateOperation(op, operand, null, ArithmeticOperator.Negation);
 			}
 
@@ -101,7 +101,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 				var operand = Previous();
 				try
 				{
-					return _createOperand(operand.Value);
+					return ParseOperand(operand.Value);
 				}
 				catch (Exception e) when (SelectorParseException.IsSelectorError(e))
 				{
@@ -112,7 +112,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			if (Match(ArithmeticOperationTokenType.LParen))
 			{
 				var open = Previous();
-				var expr = ParseExpression();
+				var expr = open.Synthetic ? ParseExpression() : ParseNestedExpression();
 				if (!Match(ArithmeticOperationTokenType.RParen))
 					throw new SelectorParseException("Unbalanced parentheses: 1 unclosed '('.", _text, open.Position, "(");
 
@@ -147,6 +147,45 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			catch (Exception e) when (SelectorParseException.IsSelectorError(e))
 			{
 				throw SelectorParseException.From(e, _text, op.Position, op.Value);
+			}
+		}
+
+		private PropertySelector ParseNestedFactor()
+		{
+			SelectorLimits.Enter(SelectorLimits.MaxDepth);
+			try
+			{
+				return ParseFactor();
+			}
+			finally
+			{
+				SelectorLimits.Exit();
+			}
+		}
+
+		private PropertySelector ParseNestedExpression()
+		{
+			SelectorLimits.Enter(SelectorLimits.MaxDepth);
+			try
+			{
+				return ParseExpression();
+			}
+			finally
+			{
+				SelectorLimits.Exit();
+			}
+		}
+
+		private PropertySelector ParseOperand(string text)
+		{
+			SelectorLimits.Exit();
+			try
+			{
+				return _createOperand(text);
+			}
+			finally
+			{
+				SelectorLimits.Resume();
 			}
 		}
 

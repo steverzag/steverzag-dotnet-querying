@@ -5,6 +5,11 @@ namespace Steverzag.PropertySelectors
 		bool IsPiped { get; set; }
 	}
 
+	internal interface IFunctionSelector
+	{
+		IReadOnlyList<PropertySelector> Parameters { get; }
+	}
+
 	internal sealed record PipedValueSelector : PropertySelector
 	{
 		public string PipedText { get; }
@@ -16,7 +21,7 @@ namespace Steverzag.PropertySelectors
 		}
 	}
 
-	public abstract record FunctionPropertySelector<T> : PropertySelector<T>, IPipeableFunctionSelector
+	public abstract record FunctionPropertySelector<T> : PropertySelector<T>, IPipeableFunctionSelector, IFunctionSelector
 	{
 		private readonly Type? _declaredType;
 
@@ -57,7 +62,7 @@ namespace Steverzag.PropertySelectors
 		protected override string SegmentToString() => FunctionSelectorFormatter.Format(PlainValue, Parameters);
 	}
 
-	public abstract record FunctionPropertySelector : PropertySelector, IPipeableFunctionSelector
+	public abstract record FunctionPropertySelector : PropertySelector, IPipeableFunctionSelector, IFunctionSelector
 	{
 		private readonly Type? _declaredType;
 

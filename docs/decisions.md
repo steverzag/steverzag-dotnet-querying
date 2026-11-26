@@ -808,3 +808,11 @@ a long or deeply nested selector overflows the stack: 2,000 nested parentheses (
    if that turns out not to be possible, document it as a limit of the spec.
 **Consequence:** breaking for any caller that relied on case-insensitive property names, and for selectors longer or
 deeper than the limits. Still open for the freeze: what "frozen" promises for `0.1.0-preview` (versioning).
+**Implementation note (2026-11-25), 030.1:** implemented as `SelectorLimits` (`MaxLength`, `MaxDepth`). Three details
+were settled while building it:
+- **Parentheses count toward depth**, although they add no node to the tree. Otherwise nesting could hide in redundant
+  parentheses, which only the parser sees. The parentheses the tokenizer adds around a negated operand don't count.
+- **`MaxDepth` can't be set above 256** (`MaxDepthCeiling`). An error found deep down has to travel back up through
+  every level, and that has to fit on the stack too.
+- **A limit error carries the whole selector and no position**, instead of being re-wrapped at each level with an
+  offset. The text at fault is the selector as a whole.

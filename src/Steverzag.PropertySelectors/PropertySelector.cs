@@ -26,6 +26,9 @@ namespace Steverzag.PropertySelectors
 		}
 
 		public static implicit operator PropertySelector<T>(string selector)
+			=> SelectorLimits.Parse(selector, ParseText);
+
+		private static PropertySelector<T> ParseText(string selector)
 		{
 			var analysis = selector.AnalyzePropertySelector();
 			if (analysis.IsTopLevelArithmetic)
@@ -148,6 +151,9 @@ namespace Steverzag.PropertySelectors
 		protected virtual string SegmentToString() => PlainValue;
 
 		public static implicit operator PropertySelector(string selector)
+			=> SelectorLimits.Parse(selector, ParseText);
+
+		private static PropertySelector ParseText(string selector)
 		{
 			var analysis = selector.AnalyzePropertySelector();
 			if (analysis.IsTopLevelArithmetic)

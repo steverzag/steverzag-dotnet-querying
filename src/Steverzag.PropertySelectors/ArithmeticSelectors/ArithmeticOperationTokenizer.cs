@@ -91,8 +91,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 			foreach (var index in unaryMinusIndices)
 			{
-				tokens.Insert(index + 1, new ArithmeticOperationToken(ArithmeticOperationTokenType.LParen, "(", tokens[index + 1].Position));
-				tokens.Insert(index + 3, new ArithmeticOperationToken(ArithmeticOperationTokenType.RParen, ")", tokens[index + 2].Position + tokens[index + 2].Value.Length));
+				tokens.Insert(index + 1, new ArithmeticOperationToken(ArithmeticOperationTokenType.LParen, "(", tokens[index + 1].Position, Synthetic: true));
+				tokens.Insert(index + 3, new ArithmeticOperationToken(ArithmeticOperationTokenType.RParen, ")", tokens[index + 2].Position + tokens[index + 2].Value.Length, Synthetic: true));
 			}
 
 			return tokens;

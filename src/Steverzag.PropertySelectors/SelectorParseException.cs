@@ -15,6 +15,7 @@ namespace Steverzag.PropertySelectors
 		public string Selector { get; }
 		public int? Position { get; }
 		public string? Token { get; }
+		internal bool IsLimit { get; init; }
 
 		public override string Message
 		{
@@ -32,8 +33,8 @@ namespace Steverzag.PropertySelectors
 			=> new(Detail, outerSelector, (Position ?? 0) + offset, Token ?? Selector, InnerException ?? this);
 
 		internal static bool IsSelectorError(Exception exception)
-			=> exception is SelectorParseException
-				|| (exception is ArgumentException and not ArgumentNullException)
+			=> exception is SelectorParseException { IsLimit: false }
+				|| (exception is ArgumentException and not SelectorParseException and not ArgumentNullException)
 				|| exception is InvalidOperationException or NotSupportedException or FormatException;
 
 		internal static SelectorParseException From(Exception exception, string selector, int offset, string token)

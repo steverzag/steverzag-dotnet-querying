@@ -251,6 +251,31 @@ Anything wrong with the selector text is a `SelectorParseException`, which deriv
   the full text isn't known at that point. Other errors found while building (a type mismatch the non-generic form
   couldn't see earlier) are still `InvalidOperationException`s.
 
+## Limits
+
+Selectors usually arrive from clients, so parsing has two limits (decision 030). Both are checked when the selector
+is parsed, and going over either is a `SelectorParseException`:
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `SelectorLimits.MaxLength` | 2,000 | Characters in the whole selector. Checked before anything else is read. |
+| `SelectorLimits.MaxDepth` | 32 (at most `MaxDepthCeiling`, 256) | How deeply the selector nests. |
+
+**Depth** is the depth of the expression the selector builds. A property path counts one level per segment
+(`Next.Next.Age` is 3). A function, an arithmetic operation and a negation each count one, plus their deepest operand.
+A chain step adds to what it receives: `Name|$FN_STR_TRIM` is 2, and `Age|$FN_MATH_MAX(Next.Age)` is 3. So a flat sum
+of 33 terms is too deep, because each `+` wraps the sum before it. Parentheses count one level each, even though they
+add nothing to the expression.
+
+Without these limits, a long or deeply nested selector would overflow the stack and end the process, which .NET can't
+catch. The limits are global settings, read on every parse. Raising them is allowed, up to the ceiling for depth. A
+limit error has no `Position`, and its `Selector` is the whole text.
+
+```
+"$FN_MATH_SQRT(" × 32 + "Age" + ")" × 32  → The selector is nested more than 32 levels deep (SelectorLimits.MaxDepth).
+a 2,001-character selector               → The selector is 2001 characters long; the limit is 2000 (SelectorLimits.MaxLength).
+```
+
 ## Back to text: `ToString()`
 
 `ToString()` returns selector text that parses back to an equivalent selector, in either form. Both

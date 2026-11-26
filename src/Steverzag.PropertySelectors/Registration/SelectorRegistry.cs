@@ -126,7 +126,7 @@ namespace Steverzag.PropertySelectors.Registration
 					{
 						return PropertySelectorUtils.ParseArgument(GenericArgumentParser(argumentScopeType), selectorPart, text, offset);
 					}
-					catch (Exception e)
+					catch (Exception e) when (e is not SelectorParseException { IsLimit: true })
 					{
 						argumentError ??= ExceptionDispatchInfo.Capture(e);
 						return PropertySelectorUtils.ParseArgument(ParseNonGeneric, selectorPart, text, offset);
