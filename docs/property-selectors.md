@@ -39,6 +39,10 @@ Expression body = avgId.PropertyAccess(parameter);
 | Date/time literal | A constructor function taking one quoted string, read with the invariant culture and checked when the selector is parsed. A date-time keeps its kind (a trailing `Z` stays UTC). | `$FN_DT_DATETIME("2025-01-31T08:30:00")`, `$FN_DT_DATEONLY("2025-01-31")`, `$FN_DT_TIMEONLY("08:30")` |
 | Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths, literals or chains, and `\|` binds tighter than every operator (`A + B\|$FN_X` is `A + (B\|$FN_X)`), unary `-` included (`-4\|$FN_MATH_SQRT` is `-(sqrt(4))`). Any operand can be piped, a literal too (`Age + 2\|$FN_MATH_POW(3)`, `Age + "ab"\|$FN_STR_LENGTH`), and whitespace is allowed around `\|`. A parenthesized group can start a chain (decision 026), and a selector wrapped entirely in parentheses is arithmetic too. Operands must be numeric; dates and durations go through the date functions (decision 027). Both operands are widened to their common type, which is the result type (`Quantity + 1` → `int`, `Price * 3` → `decimal`, nullable if either operand is). | `Amount - 3 - 2`, `(Age + 1)\|$FN_MATH_ROUND` |
 
+**Reserved character.** `:` is reserved outside quoted strings (decision 031), for a possible way to name a chain
+value later. An unquoted `:` anywhere, in either form, is a `SelectorParseException`: "':' is reserved; write it
+inside a quoted string to use it as text." Inside quotes it's ordinary text (`"a:b"`, `$FN_DT_TIMEONLY("08:30")`).
+
 `SelectorLiteral.Format(value)` writes any of these literals from a .NET value (`int`, `long`, `double`, `float`,
 `decimal`, `bool`, `string`, `DateTime`, `DateOnly`, `TimeOnly`). Use it instead of building literal text by hand.
 Values typed by end users should travel as filter values (QueryShaper's `ConditionNode.Value`), not inside selector text.
@@ -177,8 +181,17 @@ resolves against the scope root in both forms, so `Details.Price|$FN_MATH_ROUND(
   the selector is parsed (`Day|$FN_DT_ADDDAYS(3)` declares `DateOnly`). Since decision 018 the static form does too,
   because its arguments are typed: `$FN_DT_ADDDAYS(Day, 3)` declares `DateOnly`, and `$FN_MATH_MAX(A, B)` the wider
   of the two types.
-- **Limit:** the root is found from the piped value, so it is lost when the chain doesn't start at a property. In
-  `$FN_DT_NOW|$FN_DT_ADDDAYS(Days)`, `Days` is looked up on `DateTime`.
+- **The chain moves the subject; the arguments stay on the root** (decision 031). Each `|` step works on the value
+  before it, but a function's arguments are always read from the scope root, the query's row type. On `AppPerson`,
+  `Phones|$FN_ELM_FIRST|Id|$FN_MATH_MIN(Id)` is `Math.Min(p.Phones.First().Id, p.Id)`: the subject is the phone's `Id`,
+  and the argument is the person's. To use a value from the chain, put it in the chain (`…|Id|$FN_MATH_MIN(5)`). The
+  ordering functions are the exception: their arguments read from the collection's element. (`:` is reserved
+  for a possible way to name a chain value in an argument; see the roadmap, Phase 6.)
+- **Wherever the chain starts**, arguments resolve against the scope root: after a literal or a function without a
+  subject too (decision 030.5). `5|$FN_MATH_MAX(Age)` builds `Math.Max(5, x.Age)`, and `$FN_DT_NOW|$FN_DT_ADDDAYS(Days)`
+  builds `DateTime.Now.AddDays(x.Days)`. Inside an ordering function's argument, the scope root is the element.
+  The root is the target that `ExpressionUtils.CreateMemberAccess` was given, so a caller that invokes a selector's
+  `PropertyAccess` directly, without it, still gets the root only from the piped value.
 - `ToString()` writes the form that was parsed.
 
 ## Coalesce: a default for null

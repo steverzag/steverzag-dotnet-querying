@@ -58,25 +58,40 @@ namespace Steverzag.PropertySelectors
 			return false;
 		}
 
+		[ThreadStatic]
+		private static Expression? _scopeRoot;
+
 		public static Expression ResolveArgument(Expression? target, PropertySelector argument) =>
 			argument is PipedValueSelector
 				? target!
-				: CreateMemberAccess(FindRootParameter(target) ?? target, argument);
+				: CreateMemberAccess(ArgumentRoot(target), argument);
+
+		internal static Expression? ArgumentRoot(Expression? target)
+			=> FindRootParameter(target) ?? _scopeRoot ?? target;
 
 		public static Expression CreateMemberAccess(Expression? target, PropertySelector selector)
 		{
 			if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target!;
 
-			var temp = selector;
-
-			Expression memberAccess = target!;
-			while (temp is not null)
+			var previousRoot = _scopeRoot;
+			_scopeRoot = target;
+			try
 			{
-				memberAccess = temp.PropertyAccess(memberAccess);
-				temp = temp.ChildSelector;
-			}
+				var temp = selector;
 
-			return memberAccess;
+				Expression memberAccess = target!;
+				while (temp is not null)
+				{
+					memberAccess = temp.PropertyAccess(memberAccess);
+					temp = temp.ChildSelector;
+				}
+
+				return memberAccess;
+			}
+			finally
+			{
+				_scopeRoot = previousRoot;
+			}
 		}
 
 		/// <summary>

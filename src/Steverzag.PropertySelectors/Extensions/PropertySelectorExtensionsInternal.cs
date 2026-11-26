@@ -37,6 +37,9 @@ namespace Steverzag.PropertySelectors.Extensions
 					continue;
 				}
 
+				if (c == SelectorDefaults.ReservedCharacter)
+					throw ReservedCharacter(expression, i);
+
 				if (c == '(')
 				{
 					parenthesesDepth++;
@@ -80,6 +83,9 @@ namespace Steverzag.PropertySelectors.Extensions
 
 			return new SelectorExpressionAnalysis(false, parts);
 		}
+
+		internal static SelectorParseException ReservedCharacter(string expression, int position)
+			=> new($"'{SelectorDefaults.ReservedCharacter}' is reserved; write it inside a quoted string to use it as text.", expression, position, SelectorDefaults.ReservedCharacter.ToString());
 
 		private static SelectorPartText Part(string expression, int start, int end)
 		{

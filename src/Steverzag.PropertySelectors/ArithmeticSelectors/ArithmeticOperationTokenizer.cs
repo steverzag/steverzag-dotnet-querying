@@ -46,6 +46,9 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 					continue;
 				}
 
+				if (c == SelectorDefaults.ReservedCharacter)
+					throw PropertySelectorExtensionsInternal.ReservedCharacter(_text, _pos);
+
 				if (c == SelectorDefaults.PropertyDelimiter[0] && tokens.Count > 0 && tokens[^1].Type == ArithmeticOperationTokenType.RParen)
 				{
 					tokens.Add(new ArithmeticOperationToken(ArithmeticOperationTokenType.Pipe, SelectorDefaults.PropertyDelimiter, _pos));

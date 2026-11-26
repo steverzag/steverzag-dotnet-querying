@@ -11,7 +11,7 @@ namespace Steverzag.PropertySelectors.NullSelectors
 				throw new InvalidOperationException(
 					$"{SelectorDefaults.Coalesce} must be applied to a piped value, e.g. 'Value{SelectorDefaults.PropertyDelimiter}{SelectorDefaults.Coalesce}(0)'.");
 
-			var argumentRoot = ExpressionUtils.FindRootParameter(target) ?? target;
+			var argumentRoot = ExpressionUtils.ArgumentRoot(target);
 
 			var operands = new Expression[fallbacks.Count + 1];
 			operands[0] = target;

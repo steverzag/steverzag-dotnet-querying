@@ -816,3 +816,33 @@ were settled while building it:
   every level, and that has to fit on the stack too.
 - **A limit error carries the whole selector and no position**, instead of being re-wrapped at each level with an
   offset. The text at fault is the selector as a whole.
+
+### 031: Function arguments resolve against the scope root; `:` is reserved for aliases (2026-11-25)
+**Status:** accepted. Part 1 confirms what is implemented; part 2 implemented (2026-11-25); part 3 is an experiment for later.
+**Context:** after the root-lost fix (030.5), the question was what an argument should resolve against when the chain
+has moved into something else: in `Phones|$FN_ELM_FIRST|Id|$FN_MATH_MIN(Id)` on `AppPerson`, is the argument's `Id`
+the phone's or the person's? The generic chain carries two types: the piped value's type (`currentIterationType`),
+which is the function's subject, the type of the piped placeholder and what a property part after `|` is looked up on
+(022); and the root type (`T`), which the arguments are typed against (018). Three options were weighed: (A)
+arguments against the root, (B) arguments against the piped value, (C) A plus an explicit way to name a value from
+the chain.
+**Decision:**
+1. **Keep A.** The chain moves the subject; every function argument resolves against the scope root, which is the
+   query's row type, wherever the function sits in the chain. The ordering functions are the exception: their arguments
+   resolve against the collection's element (018, `ArgumentScope.TargetElement`). So in the example above the
+   argument's `Id` is `AppPerson.Id`, and the phone's `Id` is reached through the chain (`…|Id|$FN_MATH_MIN(5)`).
+   Why: it keeps D7's equivalence `X|$FN_F(a)` ≡ `$FN_F(X, a)` (in the static form `a` can only mean the root's `a`),
+   and it serves the common case of combining a value with another column of the row (`Created|$FN_DT_ADDDAYS(TrialDays)`).
+   B was rejected: it breaks that equivalence and makes the column case impossible.
+2. **Reserve `:`** outside quoted strings, before the grammar freeze, so that aliases can be added later without
+   changing what any valid selector means. Today an unquoted `:` has no meaning (it is read as part of a property name
+   and fails as "not found").
+3. **Experiment for later: aliases** (option C). A chain step could be named and an argument could start from it, for
+   example `Phones|$FN_ELM_FIRST:a|Id|$FN_MATH_MIN(:a|Id - 1)`: `:a` after a step names its value, and `:a` at the start
+   of an argument refers to it. To settle when it's tried: the exact syntax, the scope of a name (inside the chain only,
+   or also in nested arguments), name rules, interaction with the ordering element scope, how the declared type flows
+   to the generic form, `ToString()`, and whether EF translates the repeated subexpression well (an alias is
+   re-evaluated, not stored, unless it's built with a `let`-style projection).
+**Consequence:** no behaviour change from part 1. Part 2 adds one rejection to the freeze work. The unused public
+`SelectorDefaults.ArithmeticOperationEncloser` (`"::"`) should go in the public-API audit, so it isn't mistaken for a
+use of the reserved character.

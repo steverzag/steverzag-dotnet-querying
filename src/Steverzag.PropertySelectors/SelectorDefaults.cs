@@ -85,6 +85,6 @@ namespace Steverzag.PropertySelectors
 
 
 		public const string ArithmeticOperation = ArithmeticStart + "OPERATION";
-		public const string ArithmeticOperationEncloser = "::";
+		public const char ReservedCharacter = ':';
 	}
 }

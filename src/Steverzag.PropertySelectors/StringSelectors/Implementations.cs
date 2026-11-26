@@ -27,7 +27,7 @@ namespace Steverzag.PropertySelectors.StringSelectors
 		public static Expression CreateStringInstanceFunction(this Expression? target, MethodInfo methodInfo, params PropertySelector[] parameters)
 		{
 			var instanceExpr = target.CreateStringInstanceExpression(methodInfo.Name);
-			var argumentRoot = ExpressionUtils.FindRootParameter(instanceExpr) ?? instanceExpr;
+			var argumentRoot = ExpressionUtils.ArgumentRoot(instanceExpr);
 			var arguments = argumentRoot.CreateStringFunctionArguments(methodInfo, parameters);
 
 			return Expression.Call(instanceExpr, methodInfo, arguments);

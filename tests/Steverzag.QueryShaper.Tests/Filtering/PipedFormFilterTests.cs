@@ -24,6 +24,8 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			{ "ReleaseDate|$FN_DT_ADDMONTHS(1)", "$FN_DT_ADDMONTHS(ReleaseDate, 1)", FilterCondition.Equals, new DateOnly(2024, 2, 1), [1] },
 			{ "Name|$FN_STR_CONCAT(\"!\")", "$FN_STR_CONCAT(Name, \"!\")", FilterCondition.Equals, "Hammer!", [1] },
 			{ "Description|$FN_STR_ISNULLOREMPTY", "$FN_STR_ISNULLOREMPTY(Description)", FilterCondition.Equals, true, [2, 3] },
+			{ "60|$FN_MATH_MAX(Quantity)", "$FN_MATH_MAX(60, Quantity)", FilterCondition.GreaterThan, 60, [1, 4] },
+			{ "\"#\"|$FN_STR_CONCAT(Name)", "$FN_STR_CONCAT(\"#\", Name)", FilterCondition.Equals, "#Hammer", [1] },
 			{
 				"Reviews.Stars|$FN_AGGR_MAX|$FN_COALESCE(0)|$FN_MATH_MAX(3)",
 				"$FN_MATH_MAX(Reviews.Stars|$FN_AGGR_MAX|$FN_COALESCE(0), 3)",

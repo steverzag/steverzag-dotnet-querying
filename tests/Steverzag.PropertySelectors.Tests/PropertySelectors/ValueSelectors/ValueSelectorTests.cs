@@ -422,12 +422,13 @@ public class ValueSelectorTests
     [Theory]
     [InlineData("$VAL_INT:5")]
     [InlineData("$VAL_STR:hello")]
-    public void Parse_RemovedValueSpecifier_IsNoLongerALiteral(string text)
+    public void Parse_RemovedValueSpecifier_IsRejectedForItsReservedColon(string text)
     {
-        PropertySelector selector = text;
+        var nonGeneric = Assert.Throws<SelectorParseException>(() => { PropertySelector _ = text; });
+        var generic = Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = text; });
 
-        Assert.IsType<PropertySelector>(selector);
-        Assert.Throws<SelectorParseException>(() => { PropertySelector<TestItem> _ = text; });
+        Assert.Equal(text.IndexOf(':'), nonGeneric.Position);
+        Assert.Equal(text.IndexOf(':'), generic.Position);
     }
 
     // ── Plain values reparse ────────────────────────────────────────────────
