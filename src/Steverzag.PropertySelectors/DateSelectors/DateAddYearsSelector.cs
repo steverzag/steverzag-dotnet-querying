@@ -2,24 +2,24 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.DateSelectors;
 
-[SelectorToken(SelectorDefaults.DateAddYears, Piped = PipedForm.FirstArgument)]
-internal record DateAddYearsSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.DateAddYears, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Date)]
+internal record DateAddYearsSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public DateAddYearsSelector() : base(SelectorDefaults.DateAddYears) { }
 	public DateAddYearsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddYears, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => DateAddYearsSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => DateAddYearsSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.DateAddYears, Piped = PipedForm.FirstArgument)]
-internal record DateAddYearsSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.DateAddYears, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Date)]
+internal record DateAddYearsSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
-		new([ArgumentConstraint.DateLike, ArgumentConstraint.Numeric], Implementations.DateAddResultType,
+		new([Implementations.DateWith("AddYears"), ArgumentConstraint.Numeric], Implementations.DateAddResultType,
 			p => target => target.CreateDateAddFunction("AddYears", p[0], p[1])),
 	];
 
 	public DateAddYearsSelector() : base(SelectorDefaults.DateAddYears) { }
 	public DateAddYearsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddYears, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

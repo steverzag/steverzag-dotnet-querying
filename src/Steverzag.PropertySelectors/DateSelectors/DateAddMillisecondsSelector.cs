@@ -2,24 +2,24 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.DateSelectors;
 
-[SelectorToken(SelectorDefaults.DateAddMilliseconds, Piped = PipedForm.FirstArgument)]
-internal record DateAddMillisecondsSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.DateAddMilliseconds, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Date)]
+internal record DateAddMillisecondsSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public DateAddMillisecondsSelector() : base(SelectorDefaults.DateAddMilliseconds) { }
 	public DateAddMillisecondsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddMilliseconds, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => DateAddMillisecondsSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => DateAddMillisecondsSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.DateAddMilliseconds, Piped = PipedForm.FirstArgument)]
-internal record DateAddMillisecondsSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.DateAddMilliseconds, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Date)]
+internal record DateAddMillisecondsSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
-		new([ArgumentConstraint.DateLike, ArgumentConstraint.Numeric], Implementations.DateAddResultType,
+		new([Implementations.DateWith("AddMilliseconds"), ArgumentConstraint.Numeric], Implementations.DateAddResultType,
 			p => target => target.CreateDateAddFunction("AddMilliseconds", p[0], p[1])),
 	];
 
 	public DateAddMillisecondsSelector() : base(SelectorDefaults.DateAddMilliseconds) { }
 	public DateAddMillisecondsSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateAddMilliseconds, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

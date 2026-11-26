@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringReplace)]
-internal record StringReplaceSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringReplace, Category = FunctionCategory.String)]
+internal record StringReplaceSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringReplaceSelector() : base(SelectorDefaults.StringReplace) { }
 	public StringReplaceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringReplace, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringReplaceSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringReplaceSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringReplace)]
-internal record StringReplaceSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringReplace, Category = FunctionCategory.String)]
+internal record StringReplaceSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -23,5 +23,5 @@ internal record StringReplaceSelector : FunctionPropertySelector
 
 	public StringReplaceSelector() : base(SelectorDefaults.StringReplace) { }
 	public StringReplaceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringReplace, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

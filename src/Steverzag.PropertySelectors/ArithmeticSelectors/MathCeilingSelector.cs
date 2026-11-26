@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathCeiling, Piped = PipedForm.FirstArgument)]
-internal record MathCeilingSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathCeiling, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathCeilingSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathCeilingSelector() : base(SelectorDefaults.MathCeiling) { }
 	public MathCeilingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathCeiling, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathCeilingSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathCeilingSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathCeiling, Piped = PipedForm.FirstArgument)]
-internal record MathCeilingSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathCeiling, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathCeilingSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record MathCeilingSelector : FunctionPropertySelector
 
 	public MathCeilingSelector() : base(SelectorDefaults.MathCeiling) { }
 	public MathCeilingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathCeiling, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

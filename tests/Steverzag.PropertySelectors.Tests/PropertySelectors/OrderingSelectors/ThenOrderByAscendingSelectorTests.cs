@@ -59,7 +59,7 @@ public class ThenOrderByAscendingSelectorTests
         Assert.NotNull(selector);
         Assert.NotNull(selector.PropertyAccess);
         Assert.Empty(selector.Parameters);
-        Assert.Single(selector.Overloads);
+        Assert.NotNull(selector.Signature);
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class ThenOrderByAscendingSelectorTests
         Assert.NotNull(selector);
         Assert.NotNull(selector.PropertyAccess);
         Assert.Single(selector.Parameters);
-        Assert.Single(selector.Overloads);
+        Assert.NotNull(selector.Signature);
     }
 
     [Fact]
@@ -106,18 +106,18 @@ public class ThenOrderByAscendingSelectorTests
     }
 
     [Fact]
-    public void InitializeOverloads_WithNoParameters_CreatesEmptyParameterOverload()
+    public void Constructor_WithNoParameters_ResolvesTheNoArgumentSignature()
     {
         // Act
         var selector = new ThenOrderByAscendingSelector();
 
         // Assert
-        Assert.Single(selector.Overloads);
-        Assert.Empty(selector.Overloads[0].Parameters);
+        Assert.NotNull(selector.Signature);
+        Assert.Empty(selector.Signature!.Parameters);
     }
 
     [Fact]
-    public void InitializeOverloads_WithOneParameter_CreatesSingleParameterOverload()
+    public void Constructor_WithOneParameter_ResolvesTheOneArgumentSignature()
     {
         // Arrange
         PropertySelector innerSelector = "Name";
@@ -127,9 +127,8 @@ public class ThenOrderByAscendingSelectorTests
         var selector = new ThenOrderByAscendingSelector(parameters);
 
         // Assert
-        Assert.Single(selector.Overloads);
-        Assert.Single(selector.Overloads[0].Parameters);
-        Assert.Equal(typeof(PropertySelector), selector.Overloads[0].Parameters[0]);
+        Assert.NotNull(selector.Signature);
+        Assert.Single(selector.Signature!.Parameters);
     }
 
     [Fact]
@@ -203,12 +202,14 @@ public class ThenOrderByAscendingSelectorTests
     }
 
     [Fact]
-    public void ThenOrderAscending_WithoutAPrecedingOrderBy_ThrowsOnBuild()
+    public void ThenOrderAscending_WithoutAPrecedingOrderBy_IsRejectedWhenParsed()
     {
-        // ThenBy is typed on IOrderedEnumerable; a plain list target only fails when the
-        // expression is built, not at parse time.
-        PropertySelector<TestOrder> selector = $"Lines{Delimiter}{SelectorDefaults.ThenOrderByAscending}(Amount)";
+        var text = $"Lines{Delimiter}{SelectorDefaults.ThenOrderByAscending}(Amount)";
 
-        Assert.ThrowsAny<ArgumentException>(() => Evaluate<IEnumerable<TestLine>>(selector, SampleOrder()));
+        var generic = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestOrder>)text);
+        var nonGeneric = Assert.Throws<SelectorParseException>(() => Evaluate<IEnumerable<TestLine>>((PropertySelector)text, SampleOrder()));
+
+        Assert.Contains("must be applied to an ordered collection (sorted first with $FN_ORDER_ASC or $FN_ORDER_DESC)", generic.Detail);
+        Assert.Equal(generic.Detail, nonGeneric.Detail);
     }
 }

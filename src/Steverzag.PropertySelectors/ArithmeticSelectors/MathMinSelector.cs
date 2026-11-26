@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathMin, Piped = PipedForm.FirstArgument)]
-internal record MathMinSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathMin, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathMinSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathMinSelector() : base(SelectorDefaults.MathMin) { }
 	public MathMinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathMin, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathMinSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathMinSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathMin, Piped = PipedForm.FirstArgument)]
-internal record MathMinSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathMin, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathMinSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record MathMinSelector : FunctionPropertySelector
 
 	public MathMinSelector() : base(SelectorDefaults.MathMin) { }
 	public MathMinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathMin, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

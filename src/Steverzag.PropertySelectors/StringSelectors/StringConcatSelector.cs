@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringConcat, Piped = PipedForm.FirstArgument)]
-internal record StringConcatSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringConcat, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringConcatSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringConcatSelector() : base(SelectorDefaults.StringConcat) { }
 	public StringConcatSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringConcat, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringConcatSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringConcatSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringConcat, Piped = PipedForm.FirstArgument)]
-internal record StringConcatSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringConcat, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringConcatSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -26,5 +26,5 @@ internal record StringConcatSelector : FunctionPropertySelector
 
 	public StringConcatSelector() : base(SelectorDefaults.StringConcat) { }
 	public StringConcatSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringConcat, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

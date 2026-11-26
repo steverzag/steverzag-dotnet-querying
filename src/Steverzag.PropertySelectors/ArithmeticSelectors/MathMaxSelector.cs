@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathMax, Piped = PipedForm.FirstArgument)]
-internal record MathMaxSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathMax, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathMaxSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathMaxSelector() : base(SelectorDefaults.MathMax) { }
 	public MathMaxSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathMax, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathMaxSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathMaxSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathMax, Piped = PipedForm.FirstArgument)]
-internal record MathMaxSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathMax, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathMaxSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record MathMaxSelector : FunctionPropertySelector
 
 	public MathMaxSelector() : base(SelectorDefaults.MathMax) { }
 	public MathMaxSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathMax, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

@@ -332,6 +332,7 @@ form. The static form stays where it exists today and is not added anywhere else
     `Price → Round` the same way it offers `Name → Trim`.
     - *Deferred (2026-11-24):* the metadata tree lists only properties, not functions, so there is nothing yet to
       add the piped form to. Moved to the Phase 4 item "Function metadata for UIs", which includes it.
+    - *Done (2026-11-26, decision 035):* the piped form comes from `FunctionCatalog.After(type)`, not from the tree.
 11. **The new date functions follow the same rule.** The parts (`DT_YEAR` …) and truncations (`DT_DATE` …) have
     one natural subject, so they are written piped first, `Created|$FN_DT_YEAR`, with the static form
     `$FN_DT_YEAR(Created)` as well, matching `DT_ADD*`. Two-date differences are symmetric, like `MATH_MAX`.
@@ -520,7 +521,8 @@ builds, and that drift had already caused several bugs.
 6. **The build-time checks in the `Implementations` helpers stay** as a backstop until the tables are trusted, and
    for the non-generic form.
 7. **Functions without a table keep count matching.** `InitializeOverloads` is now virtual with an empty default, so
-   external selectors written for the old model still work.
+   external selectors written for the old model still work. *Superseded by 034 (2026-11-26): every function declares a
+   table, and the count-matching model is removed.*
 
 **Considered:**
 - **Constraints on the existing count-based overloads.** A smaller change per file, but it keeps the duplicated
@@ -938,3 +940,104 @@ the same loops, so they need nothing extra. Tests: 36 in `LiteralAfterPipeTests`
 failed on the old code; the 14 allowed cases pass on both).
 **Consequence:** breaking only for selectors that relied on the replacement, which no test or doc example did.
 Giving a literal after `|` a meaning later stays possible as an additive change.
+
+### 034: A function's signatures are a static contract, and the table is the only model (2026-11-26)
+**Status:** accepted and implemented (2026-11-26).
+**Context:** the function metadata for UIs (Phase 4) has to list each function's overloads without creating it. The
+table was a `protected virtual` instance property, and the parameterless constructor runs overload resolution, so it
+throws for a function like `MATH_ROUND` that needs arguments. The built-ins kept the table in an `internal static
+Table`, a convention that external selectors couldn't follow. The count-matching model from before 019
+(`Overloads`, `InitializeOverloads`, `FunctionPropertySelectorOverload`) was still public, but no built-in used it.
+**Decision:**
+1. A public `IFunctionSignatures` interface with one `static abstract IReadOnlyList<FunctionSignature> Signatures`.
+   Both records of a function implement it and return the same table.
+2. The base records read the table through `FunctionSignatures.Of(GetType())`, cached per closed type. A selector
+   without the interface throws `InvalidOperationException` when constructed.
+3. `SelectorRegistry.Register` (and so `RegisterAssembly`) rejects a type without the interface with an
+   `ArgumentException`, before anything is registered.
+4. The count-matching model is removed: `Overloads`, `InitializeOverloads()` and `FunctionPropertySelectorOverload`.
+   This supersedes 019.7. `SelectorType` always comes from the table's result rule.
+**Considered:**
+- **A static `Signatures` found by naming convention.** No compile-time check, and a typo would only show at runtime.
+- **Creating the selector without running its constructor** (`RuntimeHelpers.GetUninitializedObject`) and reading the
+  virtual property. It works, but it relies on the property not touching instance state.
+- **Keeping the old model for external selectors.** Nothing outside the lab uses it before `0.1.0-preview`, and every
+  function in the catalog would then need an "unknown signatures" case.
+**Consequence:** breaking for an external selector written against the old model, which is acceptable before the first
+release. The function catalog (Phase 4) can read every registered function's table from its type alone. Tests: 70 in
+`FunctionSignaturesTests` (one table shared by both forms for every built-in, readable without an instance, the
+resolved `Signature` comes from it, and rejection at registration and construction). The `Overloads` asserts in the
+element and ordering tests now check `Signature`.
+
+### 035: The function catalog, function categories, and exact targets for `DT_ADD*` and `THEN_ORDER_*` (2026-11-26)
+**Status:** accepted and implemented (2026-11-26).
+**Context:** the Phase 4 item "Function metadata for UIs" (design agreed 2026-11-26). The property tree can't hold
+functions: they apply to a value's type, not to a property path, and a chain has no fixed length. Building the
+catalog showed that two tables accepted more than the functions support. Each `DT_ADD*` took any date-like type, so
+`Day|$FN_DT_ADDHOURS(1)` on a `DateOnly` and `$FN_DT_ADDSECONDS(OpensAt, 30)` on a `TimeOnly` failed only when built,
+with an `InvalidOperationException`. `THEN_ORDER_*` took any collection, so `Lines|$FN_THEN_ORDER_ASC(Amount)` failed
+when built with a raw `ArgumentException` from `Expression.Call`. A catalog read from those tables would offer them.
+**Decision:**
+1. **`FunctionCatalog`** (namespace `MetaData`), a static class over the registry:
+   - `All`: every registered function, ordered by token. `Find(token)`: one, or `null` (exact token, case-sensitive).
+   - A `FunctionDescriptor` has the token, category, piped form and hint, argument scope, which forms are registered,
+     and the signatures. The signatures are the non-generic record's table, or the generic one closed over `object`
+     when only that form is registered.
+   - `After(Type)`: the overloads that can follow a value of that type with `|`, as `FunctionMatch`es. Each match has
+     the arguments still to write (without the piped one) and the result type from the table's rule, given the piped
+     type and unknown other arguments; `null` when it depends on them. The rules are the parser's: the target must
+     match; for `PipedForm.FirstArgument` argument 0 must match too; `PipedForm.Rejected` is never listed; an overload
+     whose result rule rejects the type is left out.
+2. **`FunctionCategory`** on `[SelectorToken]` (`Category = …`): `Aggregation`, `Element`, `Ordering`, `Math`,
+   `String`, `Date`, `Null`, and `Other` as the default for custom functions. Every built-in sets one.
+3. **Each `DT_ADD*` accepts only the date types that have that method**, found by reflection the same way the call
+   is built. Its description lists them, so the parse error says what was expected ("must be a DateTime or
+   DateTimeOffset, not a TimeOnly").
+. **`ArgumentConstraint.Accepts(Type)`** (added the same day): true unless the constraint rejects the type, so a UI
+   can pick the properties that fit an argument. Literal-only constraints accept no type (`IsLiteral` says why).
+   `FunctionCatalog.After` uses it. `Match` stays public for now; whether it and `ConstraintMatch` become internal
+   is left to the public-API audit. Tests: 33 in `ArgumentConstraintAcceptsTests`.
+**Considered:**
+- **Functions as nodes of `SelectorsMetaDataTree`.** The tree would need every function under every node, and again
+  under each result, without end.
+- **Leaving the tables as they were and filtering in the catalog.** The catalog would then hold its own copy of the
+  rules, and the parse errors would stay late and raw.
+**Consequence:** 3 and 4 move errors from build time to parse time and make them `SelectorParseException`s. No selector
+that used to work is rejected. Tests: 43 in `FunctionCatalogTests`, including a cross-check that every match for
+twelve subjects (numbers, nullables, strings, dates, collections, an ordered collection) parses with sample arguments
+and declares the type the catalog reported. The two `THEN_ORDER_*` tests and the `DT_ADDSECONDS`-on-`TimeOnly` test
+that pinned the build-time error now expect the parse-time one, in both forms.
+
+### 036: The property tree follows the parser, flags collections, and carries display names (2026-11-26)
+**Status:** accepted and implemented (2026-11-26).
+**Context:** the last step of "Function metadata for UIs". A probe of `PropertiesExplorer<T>` showed that the tree
+didn't list what a selector can reach. Under a `List<Phone>` it listed `Capacity`, `Count` and the indexer `Item`
+(and `Item`'s properties); under an `int[]`, `Length`, `Rank` and `SyncRoot`. None of these parse: after the first
+segment a path projects over the elements (`Phones.Count` is "Property 'Count' was not found on type 'Phone'").
+Under a `DateTime?` it listed `HasValue` and `Value`, with the date parts under `Value`, while `Deleted.Year` is
+the form that works. Each node's `SelectorType` was the property's own type, but the parser lifts and projects:
+`Deleted.Year` declares `int?`, `Phones.Number` `IEnumerable<string>`, `Orders.Lines.Notes` `IEnumerable<string>`.
+A property whose type was already on the path (`Friends: List<Person>` on `Person`, `Deleted.Date`) was dropped.
+Nodes had no path, and `System.Type` doesn't serialize.
+**Decision:**
+1. Children follow the parser's lookup: a collection node lists its element's properties, a nullable node its
+   underlying type's. Indexers are skipped. Fields stay out (properties only, as for the non-generic form).
+2. Each node gets its `Path`, the selector text. A name that reads as a literal (`true`/`false` in any case) gets the
+   `@` escape (030.4).
+3. `SelectorType` is the type the path declares, computed by `TypesExtensions.GetPropertyType`, the same code the
+   parser uses, so the two can't drift.
+4. `IsCollection` and `ElementType` describe the node's own type, so `Phones.Number` is a collection of `string`.
+5. The cycle guard ends the walk instead of hiding the property: a type already on the path is listed as a leaf.
+6. Display names: a public `TypeDisplay.Name(Type)` writes C#-style names with keyword aliases (`int?`,
+   `List<Phone>`, `string[,]`). Nodes have `TypeName` and `ElementTypeName`, and `FunctionMatch` has
+   `ResultTypeName`. No built-in JSON shape: a caller maps to its own DTO. Error messages keep .NET names
+   (`String`, `Int32`), since they're read by developers.
+**Considered:**
+- **Keeping the property's own type on each node and adding the declared type beside it.** Two types per node, and
+  `After` needs the declared one anyway.
+- **Using .NET names (`Int32`) for display too**, to match the error messages. Names a UI shows its users should
+  read like the C# that declared the properties.
+**Consequence:** the tree's shape and types change for collections and nullable values, which nothing outside the
+tests used. Tests: 46 in `PropertiesExplorerTests` and `TypeDisplayTests`, including a cross-check that every
+node's path parses (generic form) and builds (both forms) to the node's type, and that every collection node is
+offered `AGGR_COUNT` by the catalog.

@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringTrim)]
-internal record StringTrimSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringTrim, Category = FunctionCategory.String)]
+internal record StringTrimSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringTrimSelector() : base(SelectorDefaults.StringTrim) { }
 	public StringTrimSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringTrim, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringTrimSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringTrimSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringTrim)]
-internal record StringTrimSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringTrim, Category = FunctionCategory.String)]
+internal record StringTrimSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -23,5 +23,5 @@ internal record StringTrimSelector : FunctionPropertySelector
 
 	public StringTrimSelector() : base(SelectorDefaults.StringTrim) { }
 	public StringTrimSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringTrim, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

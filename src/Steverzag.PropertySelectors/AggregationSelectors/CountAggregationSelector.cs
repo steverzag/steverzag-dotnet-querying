@@ -2,15 +2,15 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
-[SelectorToken(SelectorDefaults.CountAggregateFunction)]
-public record CountAggregationSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.CountAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record CountAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public CountAggregationSelector() : base(SelectorDefaults.CountAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => CountAggregationSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => CountAggregationSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.CountAggregateFunction)]
-public record CountAggregationSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.CountAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record CountAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ public record CountAggregationSelector : FunctionPropertySelector
 	];
 
 	public CountAggregationSelector() : base(SelectorDefaults.CountAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

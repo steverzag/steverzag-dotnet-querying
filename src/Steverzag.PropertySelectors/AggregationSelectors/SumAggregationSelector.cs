@@ -2,15 +2,15 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
-[SelectorToken(SelectorDefaults.SumAggregateFunction)]
-public record SumAggregationSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.SumAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record SumAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public SumAggregationSelector() : base(SelectorDefaults.SumAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => SumAggregationSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => SumAggregationSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.SumAggregateFunction)]
-public record SumAggregationSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.SumAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record SumAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ public record SumAggregationSelector : FunctionPropertySelector
 	];
 
 	public SumAggregationSelector() : base(SelectorDefaults.SumAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

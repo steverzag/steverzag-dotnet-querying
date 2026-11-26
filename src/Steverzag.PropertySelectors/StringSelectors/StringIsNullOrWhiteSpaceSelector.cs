@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringIsNullOrWhiteSpace, Piped = PipedForm.FirstArgument)]
-internal record StringIsNullOrWhiteSpaceSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringIsNullOrWhiteSpace, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringIsNullOrWhiteSpaceSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringIsNullOrWhiteSpaceSelector() : base(SelectorDefaults.StringIsNullOrWhiteSpace) { }
 	public StringIsNullOrWhiteSpaceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringIsNullOrWhiteSpace, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringIsNullOrWhiteSpaceSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringIsNullOrWhiteSpaceSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringIsNullOrWhiteSpace, Piped = PipedForm.FirstArgument)]
-internal record StringIsNullOrWhiteSpaceSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringIsNullOrWhiteSpace, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringIsNullOrWhiteSpaceSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record StringIsNullOrWhiteSpaceSelector : FunctionPropertySelector
 
 	public StringIsNullOrWhiteSpaceSelector() : base(SelectorDefaults.StringIsNullOrWhiteSpace) { }
 	public StringIsNullOrWhiteSpaceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringIsNullOrWhiteSpace, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

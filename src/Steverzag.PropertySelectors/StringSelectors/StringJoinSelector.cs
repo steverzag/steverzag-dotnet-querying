@@ -2,16 +2,16 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = StringJoinSelector.PipedHint)]
-internal record StringJoinSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = StringJoinSelector.PipedHint, Category = FunctionCategory.String)]
+internal record StringJoinSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringJoinSelector() : base(SelectorDefaults.StringJoin) { }
 	public StringJoinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringJoin, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringJoinSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringJoinSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = StringJoinSelector.PipedHint)]
-internal record StringJoinSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringJoin, Piped = PipedForm.Rejected, PipedHint = StringJoinSelector.PipedHint, Category = FunctionCategory.String)]
+internal record StringJoinSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal const string PipedHint = "Its first argument is the separator. To join the piped value, pass it as one of the values after the separator.";
 
@@ -24,5 +24,5 @@ internal record StringJoinSelector : FunctionPropertySelector
 
 	public StringJoinSelector() : base(SelectorDefaults.StringJoin) { }
 	public StringJoinSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringJoin, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

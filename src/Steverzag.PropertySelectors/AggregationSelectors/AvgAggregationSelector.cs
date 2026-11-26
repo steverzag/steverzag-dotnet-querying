@@ -2,15 +2,15 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
-[SelectorToken(SelectorDefaults.AvgAggregateFunction)]
-public record AvgAggregationSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.AvgAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record AvgAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public AvgAggregationSelector() : base(SelectorDefaults.AvgAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => AvgAggregationSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => AvgAggregationSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.AvgAggregateFunction)]
-public record AvgAggregationSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.AvgAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record AvgAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ public record AvgAggregationSelector : FunctionPropertySelector
 	];
 
 	public AvgAggregationSelector() : base(SelectorDefaults.AvgAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

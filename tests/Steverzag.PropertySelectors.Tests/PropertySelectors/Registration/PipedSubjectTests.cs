@@ -4,23 +4,21 @@ using System.Linq.Expressions;
 namespace Steverzag.PropertySelectors.Tests.Registration;
 
 [SelectorToken(Token, Piped = PipedForm.FirstArgument)]
-public record TestPipeSumSelector<T> : FunctionPropertySelector<T>
+public record TestPipeSumSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
     public const string Token = "$FN_TESTPIPE_SUM";
 
-    public override Type? SelectorType => typeof(int);
     public TestPipeSumSelector() : base(Token) { }
     public TestPipeSumSelector(List<PropertySelector> parameters) : base(Token, parameters) { }
-    public override void InitializeOverloads() => TestPipeSum.AddOverload(Overloads, () => Parameters);
+    public static IReadOnlyList<FunctionSignature> Signatures => TestPipeSum.Table;
 }
 
 [SelectorToken(TestPipeSumSelector<object>.Token, Piped = PipedForm.FirstArgument)]
-public record TestPipeSumSelector : FunctionPropertySelector
+public record TestPipeSumSelector : FunctionPropertySelector, IFunctionSignatures
 {
-    public override Type? SelectorType => typeof(int);
     public TestPipeSumSelector() : base(TestPipeSumSelector<object>.Token) { }
     public TestPipeSumSelector(List<PropertySelector> parameters) : base(TestPipeSumSelector<object>.Token, parameters) { }
-    public override void InitializeOverloads() => TestPipeSum.AddOverload(Overloads, () => Parameters);
+    public static IReadOnlyList<FunctionSignature> Signatures => TestPipeSum.Table;
 }
 
 internal static class TestPipeSum
@@ -28,17 +26,12 @@ internal static class TestPipeSum
     public static void Register() =>
         SelectorRegistry.Register(TestPipeSumSelector<object>.Token, typeof(TestPipeSumSelector<>), typeof(TestPipeSumSelector));
 
-    public static void AddOverload(List<FunctionPropertySelectorOverload> overloads, Func<IReadOnlyList<PropertySelector>> parameters)
-    {
-        if (parameters().Count != 2)
-            return;
-
-        overloads.Add(new FunctionPropertySelectorOverload(
-            new SortedList<int, Type> { { 0, typeof(PropertySelector) }, { 1, typeof(PropertySelector) } },
-            target => Expression.Add(
-                ExpressionUtils.ResolveArgument(target, parameters()[0]),
-                ExpressionUtils.ResolveArgument(target, parameters()[1]))));
-    }
+    public static readonly IReadOnlyList<FunctionSignature> Table =
+    [
+        new([ArgumentConstraint.Any, ArgumentConstraint.Any], (_, _) => typeof(int), p => target => Expression.Add(
+            ExpressionUtils.ResolveArgument(target, p[0]),
+            ExpressionUtils.ResolveArgument(target, p[1]))),
+    ];
 }
 
 public class PipedSubjectTests

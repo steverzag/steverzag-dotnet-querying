@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringStartsWith)]
-internal record StringStartsWithSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringStartsWith, Category = FunctionCategory.String)]
+internal record StringStartsWithSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringStartsWithSelector() : base(SelectorDefaults.StringStartsWith) { }
 	public StringStartsWithSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringStartsWith, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringStartsWithSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringStartsWithSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringStartsWith)]
-internal record StringStartsWithSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringStartsWith, Category = FunctionCategory.String)]
+internal record StringStartsWithSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -23,5 +23,5 @@ internal record StringStartsWithSelector : FunctionPropertySelector
 
 	public StringStartsWithSelector() : base(SelectorDefaults.StringStartsWith) { }
 	public StringStartsWithSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringStartsWith, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

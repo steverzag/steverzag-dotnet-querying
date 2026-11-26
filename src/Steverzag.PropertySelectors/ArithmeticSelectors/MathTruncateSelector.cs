@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument)]
-internal record MathTruncateSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathTruncateSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathTruncateSelector() : base(SelectorDefaults.MathTruncate) { }
 	public MathTruncateSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTruncate, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathTruncateSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathTruncateSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument)]
-internal record MathTruncateSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathTruncate, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathTruncateSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record MathTruncateSelector : FunctionPropertySelector
 
 	public MathTruncateSelector() : base(SelectorDefaults.MathTruncate) { }
 	public MathTruncateSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTruncate, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

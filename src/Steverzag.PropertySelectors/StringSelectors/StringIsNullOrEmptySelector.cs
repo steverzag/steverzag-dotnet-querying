@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringIsNullOrEmpty, Piped = PipedForm.FirstArgument)]
-internal record StringIsNullOrEmptySelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringIsNullOrEmpty, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringIsNullOrEmptySelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringIsNullOrEmptySelector() : base(SelectorDefaults.StringIsNullOrEmpty) { }
 	public StringIsNullOrEmptySelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringIsNullOrEmpty, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringIsNullOrEmptySelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringIsNullOrEmptySelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringIsNullOrEmpty, Piped = PipedForm.FirstArgument)]
-internal record StringIsNullOrEmptySelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringIsNullOrEmpty, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringIsNullOrEmptySelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record StringIsNullOrEmptySelector : FunctionPropertySelector
 
 	public StringIsNullOrEmptySelector() : base(SelectorDefaults.StringIsNullOrEmpty) { }
 	public StringIsNullOrEmptySelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringIsNullOrEmpty, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

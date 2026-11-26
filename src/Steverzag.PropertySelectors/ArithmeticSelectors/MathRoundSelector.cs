@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathRound, Piped = PipedForm.FirstArgument)]
-internal record MathRoundSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathRound, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathRoundSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathRoundSelector() : base(SelectorDefaults.MathRound) { }
 	public MathRoundSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathRound, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathRoundSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathRoundSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathRound, Piped = PipedForm.FirstArgument)]
-internal record MathRoundSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathRound, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathRoundSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -24,5 +24,5 @@ internal record MathRoundSelector : FunctionPropertySelector
 
 	public MathRoundSelector() : base(SelectorDefaults.MathRound) { }
 	public MathRoundSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathRound, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

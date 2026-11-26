@@ -2,16 +2,16 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.NullSelectors;
 
-[SelectorToken(SelectorDefaults.Coalesce)]
-internal record CoalesceSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.Coalesce, Category = FunctionCategory.Null)]
+internal record CoalesceSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public CoalesceSelector() : base(SelectorDefaults.Coalesce) { }
 	public CoalesceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.Coalesce, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => CoalesceSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => CoalesceSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.Coalesce)]
-internal record CoalesceSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.Coalesce, Category = FunctionCategory.Null)]
+internal record CoalesceSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record CoalesceSelector : FunctionPropertySelector
 
 	public CoalesceSelector() : base(SelectorDefaults.Coalesce) { }
 	public CoalesceSelector(List<PropertySelector> parameters) : base(SelectorDefaults.Coalesce, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

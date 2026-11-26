@@ -2,16 +2,16 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.OrderingSelectors;
 
-[SelectorToken(SelectorDefaults.OrderAscending, Arguments = ArgumentScope.TargetElement)]
-public record OrderByAscendingSelector<T> : OrderingFunctionSelector<T>
+[SelectorToken(SelectorDefaults.OrderAscending, Arguments = ArgumentScope.TargetElement, Category = FunctionCategory.Ordering)]
+public record OrderByAscendingSelector<T> : OrderingFunctionSelector<T>, IFunctionSignatures
 {
 	public OrderByAscendingSelector() : base(SelectorDefaults.OrderAscending) { }
 	public OrderByAscendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderAscending, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => OrderByAscendingSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => OrderByAscendingSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.OrderAscending, Arguments = ArgumentScope.TargetElement)]
-public record OrderByAscendingSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.OrderAscending, Arguments = ArgumentScope.TargetElement, Category = FunctionCategory.Ordering)]
+public record OrderByAscendingSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -23,5 +23,5 @@ public record OrderByAscendingSelector : FunctionPropertySelector
 
 	public OrderByAscendingSelector() : base(SelectorDefaults.OrderAscending) { }
 	public OrderByAscendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.OrderAscending, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

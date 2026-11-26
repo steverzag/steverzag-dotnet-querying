@@ -16,6 +16,8 @@ namespace Steverzag.PropertySelectors.Registration
 
 		public ArgumentScope Arguments { get; set; }
 
+		public FunctionCategory Category { get; set; }
+
 		public SelectorTokenAttribute(string token)
 		{
 			Token = token;

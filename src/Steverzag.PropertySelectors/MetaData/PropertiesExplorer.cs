@@ -1,4 +1,7 @@
-﻿namespace Steverzag.PropertySelectors.MetaData
+﻿using System.Reflection;
+using Steverzag.PropertySelectors.Extensions;
+
+namespace Steverzag.PropertySelectors.MetaData
 {
 	public class PropertiesExplorer<T> where T : class
 	{
@@ -13,38 +16,51 @@
 
 		public SelectorsMetaDataTree ExplorePropertiesTree(int maxDepth = 20)
 		{
-			ExploreProperties(_rootType, Result, maxDepth, includeCircularReferences: false);
+			ExploreProperties(_rootType, Result, maxDepth);
 			return Result;
 		}
 
-		private void ExploreProperties(Type t, SelectorsMetaDataTree result, int depth, bool includeCircularReferences)
+		private void ExploreProperties(Type t, SelectorsMetaDataTree result, int depth)
 		{
-			if (depth == 0) return;
-
-			var isSimpleType = t.IsPrimitive || t.IsEnum || t == typeof(string) || t == typeof(decimal) || t == typeof(Guid);
-
-			if(isSimpleType)
+			if (depth == 0 || IsSimpleType(t))
 				return;
 
-			var properties = t.GetProperties();
-
-			if (properties.Length == 0)
-				return;
-
-			for (int i = 0; i < properties.Length; i++)
+			foreach (var property in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
 			{
-				var property = properties[i];
-
-				if (!includeCircularReferences && _visitedTypes.Contains(property.PropertyType))
+				if (property.GetIndexParameters().Length > 0)
 					continue;
 
-				var child = new SelectorsMetaDataTree(property.PropertyType, property.Name);
+				var path = result.Path.Length == 0 ? Segment(property.Name) : $"{result.Path}.{Segment(property.Name)}";
+				var selectorType = _rootType.GetPropertyType((PropertySelector)path);
+				var child = new SelectorsMetaDataTree(selectorType, property.Name)
+				{
+					Path = path,
+					ElementType = ExpressionUtils.TryGetEnumerableElementType(selectorType, out var element) ? element : null,
+				};
 				result.Selectors.Add(child);
 
-				_visitedTypes.Add(property.PropertyType);
-				ExploreProperties(property.PropertyType, child, depth - 1, includeCircularReferences);
-				_visitedTypes.Remove(property.PropertyType);
+				var membersType = MembersType(property.PropertyType);
+				if (_visitedTypes.Contains(membersType))
+					continue;
+
+				_visitedTypes.Add(membersType);
+				ExploreProperties(membersType, child, depth - 1);
+				_visitedTypes.Remove(membersType);
 			}
 		}
+
+		private static Type MembersType(Type type)
+		{
+			if (ExpressionUtils.TryGetEnumerableElementType(type, out var element) && element is not null)
+				type = element;
+
+			return Nullable.GetUnderlyingType(type) ?? type;
+		}
+
+		private static bool IsSimpleType(Type t) =>
+			t.IsPrimitive || t.IsEnum || t == typeof(string) || t == typeof(decimal) || t == typeof(Guid);
+
+		private static string Segment(string name) =>
+			bool.TryParse(name, out _) ? $"{SelectorDefaults.PropertyNameEscape}{name}" : name;
 	}
 }

@@ -30,7 +30,7 @@ public class FirstElementSelectorTests
         Assert.NotNull(selector);
         Assert.NotNull(selector.PropertyAccess);
         Assert.Empty(selector.Parameters);
-        Assert.Single(selector.Overloads);
+        Assert.NotNull(selector.Signature);
     }
 
     [Fact]
@@ -57,7 +57,7 @@ public class FirstElementSelectorTests
         Assert.NotNull(selector);
         Assert.NotNull(selector.PropertyAccess);
         Assert.Empty(selector.Parameters);
-        Assert.Single(selector.Overloads);
+        Assert.NotNull(selector.Signature);
     }
 
     [Fact]
@@ -86,14 +86,14 @@ public class FirstElementSelectorTests
     }
 
     [Fact]
-    public void NonGeneric_InitializeOverloads_RegistersSingleOverload()
+    public void NonGeneric_Constructor_ResolvesTheNoArgumentSignature()
     {
         // Act
         var selector = new FirstElementSelector();
 
         // Assert
-        Assert.Single(selector.Overloads);
-        Assert.Empty(selector.Overloads[0].Parameters);
+        Assert.NotNull(selector.Signature);
+        Assert.Empty(selector.Signature!.Parameters);
     }
 
     // ── Generic FirstElementSelector<T> ──────────────────────────────────────
@@ -108,7 +108,7 @@ public class FirstElementSelectorTests
         Assert.NotNull(selector);
         Assert.NotNull(selector.PropertyAccess);
         Assert.Empty(selector.Parameters);
-        Assert.Single(selector.Overloads);
+        Assert.NotNull(selector.Signature);
     }
 
     [Fact]
@@ -150,14 +150,14 @@ public class FirstElementSelectorTests
     }
 
     [Fact]
-    public void Generic_InitializeOverloads_RegistersSingleOverload()
+    public void Generic_Constructor_ResolvesTheNoArgumentSignature()
     {
         // Act
         var selector = new FirstElementSelector<IEnumerable<int>>();
 
         // Assert
-        Assert.Single(selector.Overloads);
-        Assert.Empty(selector.Overloads[0].Parameters);
+        Assert.NotNull(selector.Signature);
+        Assert.Empty(selector.Signature!.Parameters);
     }
 
     // ── Evaluation ──────────────────────────────────────────────────────────

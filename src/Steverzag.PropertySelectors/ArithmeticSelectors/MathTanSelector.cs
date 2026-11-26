@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathTan, Piped = PipedForm.FirstArgument)]
-internal record MathTanSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathTan, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathTanSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathTanSelector() : base(SelectorDefaults.MathTan) { }
 	public MathTanSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTan, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathTanSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathTanSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathTan, Piped = PipedForm.FirstArgument)]
-internal record MathTanSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathTan, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathTanSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record MathTanSelector : FunctionPropertySelector
 
 	public MathTanSelector() : base(SelectorDefaults.MathTan) { }
 	public MathTanSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathTan, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

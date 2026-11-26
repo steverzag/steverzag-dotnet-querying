@@ -2,16 +2,16 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.DateSelectors;
 
-[SelectorToken(SelectorDefaults.DateUtcNow, Piped = PipedForm.Rejected)]
-internal record DateUtcNowSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.DateUtcNow, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record DateUtcNowSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public DateUtcNowSelector() : base(SelectorDefaults.DateUtcNow) { }
 	public DateUtcNowSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateUtcNow, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => DateUtcNowSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => DateUtcNowSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.DateUtcNow, Piped = PipedForm.Rejected)]
-internal record DateUtcNowSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.DateUtcNow, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record DateUtcNowSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ internal record DateUtcNowSelector : FunctionPropertySelector
 
 	public DateUtcNowSelector() : base(SelectorDefaults.DateUtcNow) { }
 	public DateUtcNowSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateUtcNow, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

@@ -2,16 +2,16 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.ElementSelectors;
 
-[SelectorToken(SelectorDefaults.ElementAtIndex)]
-public record ElementAtSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.ElementAtIndex, Category = FunctionCategory.Element)]
+public record ElementAtSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public ElementAtSelector() : base(SelectorDefaults.ElementAtIndex) { }
 	public ElementAtSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementAtIndex, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => ElementAtSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => ElementAtSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.ElementAtIndex)]
-public record ElementAtSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.ElementAtIndex, Category = FunctionCategory.Element)]
+public record ElementAtSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -21,5 +21,5 @@ public record ElementAtSelector : FunctionPropertySelector
 
 	public ElementAtSelector() : base(SelectorDefaults.ElementAtIndex) { }
 	public ElementAtSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementAtIndex, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

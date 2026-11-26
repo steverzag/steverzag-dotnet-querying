@@ -2,15 +2,15 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
-[SelectorToken(SelectorDefaults.MaxAggregateFunction)]
-internal record MaxAggregationSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MaxAggregateFunction, Category = FunctionCategory.Aggregation)]
+internal record MaxAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MaxAggregationSelector() : base(SelectorDefaults.MaxAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MaxAggregationSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MaxAggregationSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MaxAggregateFunction)]
-public record MaxAggregationSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MaxAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record MaxAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ public record MaxAggregationSelector : FunctionPropertySelector
 	];
 
 	public MaxAggregationSelector() : base(SelectorDefaults.MaxAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

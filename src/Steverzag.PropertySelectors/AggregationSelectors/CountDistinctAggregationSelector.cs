@@ -2,15 +2,15 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
-[SelectorToken(SelectorDefaults.CountDistinctAggregateFunction)]
-public record CountDistinctAggregationSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.CountDistinctAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record CountDistinctAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public CountDistinctAggregationSelector() : base(SelectorDefaults.CountDistinctAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => CountDistinctAggregationSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => CountDistinctAggregationSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.CountDistinctAggregateFunction)]
-public record CountDistinctAggregationSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.CountDistinctAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record CountDistinctAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ public record CountDistinctAggregationSelector : FunctionPropertySelector
 	];
 
 	public CountDistinctAggregationSelector() : base(SelectorDefaults.CountDistinctAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringCompare, Piped = PipedForm.FirstArgument)]
-internal record StringCompareSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringCompare, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringCompareSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringCompareSelector() : base(SelectorDefaults.StringCompare) { }
 	public StringCompareSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringCompare, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringCompareSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringCompareSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringCompare, Piped = PipedForm.FirstArgument)]
-internal record StringCompareSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringCompare, Piped = PipedForm.FirstArgument, Category = FunctionCategory.String)]
+internal record StringCompareSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record StringCompareSelector : FunctionPropertySelector
 
 	public StringCompareSelector() : base(SelectorDefaults.StringCompare) { }
 	public StringCompareSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringCompare, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

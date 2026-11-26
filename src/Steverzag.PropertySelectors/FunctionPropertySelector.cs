@@ -27,36 +27,20 @@ namespace Steverzag.PropertySelectors
 
 		public bool IsPiped { get; internal set; }
 		bool IPipeableFunctionSelector.IsPiped { get => IsPiped; set => IsPiped = value; }
-		public List<FunctionPropertySelectorOverload> Overloads { get; set; } = [];
 		public IReadOnlyList<PropertySelector> Parameters { get; init; } = [];
 		public FunctionSignature? Signature { get; }
-		protected virtual IReadOnlyList<FunctionSignature>? Signatures => null;
-		public virtual void InitializeOverloads() { }
 
-		public override Type? SelectorType => Signatures is null ? base.SelectorType : _declaredType;
+		public override Type? SelectorType => _declaredType;
 
 		protected FunctionPropertySelector(string PlainValue, List<PropertySelector>? parameters = null) : base()
 		{
 			Parameters = parameters ?? [];
 			this.PlainValue = $"{PlainValue}({string.Join(",", Parameters.Select(p => p.PlainValue))})";
 
-			if (Signatures is { } signatures)
-			{
-				var call = FunctionCall.Resolve(PlainValue, signatures, Parameters, typeof(T), GetType());
-				Signature = call.Signature;
-				_declaredType = call.DeclaredType;
-				PropertyAccess = call.PropertyAccess;
-				if (Signature is not null)
-					Overloads.Add(FunctionSelectorFormatter.ResolvedOverload(Parameters.Count, call.PropertyAccess));
-				return;
-			}
-
-			InitializeOverloads();
-
-			var matchingOverload = Overloads.FirstOrDefault(ov => ov.Parameters.Count == Parameters.Count)
-				?? throw new ArgumentException(FunctionSelectorFormatter.ArgumentCountMessage(PlainValue, Parameters));
-
-			PropertyAccess = matchingOverload.Behavior!; // subject-less overloads receive a null target and ignore it
+			var call = FunctionCall.Resolve(PlainValue, FunctionSignatures.Of(GetType()), Parameters, typeof(T), GetType());
+			Signature = call.Signature;
+			_declaredType = call.DeclaredType;
+			PropertyAccess = call.PropertyAccess;
 		}
 
 		protected override string SegmentToString() => FunctionSelectorFormatter.Format(PlainValue, Parameters);
@@ -68,36 +52,20 @@ namespace Steverzag.PropertySelectors
 
 		public bool IsPiped { get; internal set; }
 		bool IPipeableFunctionSelector.IsPiped { get => IsPiped; set => IsPiped = value; }
-		public List<FunctionPropertySelectorOverload> Overloads { get; set; } = [];
 		public IReadOnlyList<PropertySelector> Parameters { get; init; } = [];
 		public FunctionSignature? Signature { get; }
-		protected virtual IReadOnlyList<FunctionSignature>? Signatures => null;
-		public virtual void InitializeOverloads() { }
 
-		public override Type? SelectorType => Signatures is null ? base.SelectorType : _declaredType;
+		public override Type? SelectorType => _declaredType;
 
 		protected FunctionPropertySelector(string PlainValue, List<PropertySelector>? parameters = null) : base()
 		{
 			Parameters = parameters ?? [];
 			this.PlainValue = $"{PlainValue}({string.Join(",", Parameters.Select(p => p.PlainValue))})";
 
-			if (Signatures is { } signatures)
-			{
-				var call = FunctionCall.Resolve(PlainValue, signatures, Parameters, null, GetType());
-				Signature = call.Signature;
-				_declaredType = call.DeclaredType;
-				PropertyAccess = call.PropertyAccess;
-				if (Signature is not null)
-					Overloads.Add(FunctionSelectorFormatter.ResolvedOverload(Parameters.Count, call.PropertyAccess));
-				return;
-			}
-
-			InitializeOverloads();
-
-			var matchingOverload = Overloads.FirstOrDefault(ov => ov.Parameters.Count == Parameters.Count)
-				?? throw new ArgumentException(FunctionSelectorFormatter.ArgumentCountMessage(PlainValue, Parameters));
-
-			PropertyAccess = matchingOverload.Behavior!; // subject-less overloads receive a null target and ignore it
+			var call = FunctionCall.Resolve(PlainValue, FunctionSignatures.Of(GetType()), Parameters, null, GetType());
+			Signature = call.Signature;
+			_declaredType = call.DeclaredType;
+			PropertyAccess = call.PropertyAccess;
 		}
 
 		protected override string SegmentToString() => FunctionSelectorFormatter.Format(PlainValue, Parameters);
@@ -116,14 +84,6 @@ namespace Steverzag.PropertySelectors
 			return parameters.Count == 0
 				? name
 				: $"{name}({string.Join(", ", parameters.Select(p => p.ToString()))})";
-		}
-
-		internal static FunctionPropertySelectorOverload ResolvedOverload(int parameterCount, Func<System.Linq.Expressions.Expression?, System.Linq.Expressions.Expression> behavior)
-		{
-			var parameters = new SortedList<int, Type>(parameterCount);
-			for (var i = 0; i < parameterCount; i++)
-				parameters.Add(i, typeof(PropertySelector));
-			return new FunctionPropertySelectorOverload(parameters, behavior);
 		}
 
 		internal static string ArgumentCountMessage(string token, IReadOnlyList<PropertySelector> parameters, IReadOnlyList<FunctionSignature>? signatures = null)

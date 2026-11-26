@@ -5,58 +5,58 @@ using System.Linq.Expressions;
 
 namespace Steverzag.PropertySelectors.DateSelectors;
 
-[SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected)]
-internal record DateTimeLiteralSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record DateTimeLiteralSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public DateTimeLiteralSelector() : base(SelectorDefaults.DateTimeLiteral) { }
 	public DateTimeLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateTimeLiteral, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => DateTimeLiteralSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => DateTimeLiteralSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected)]
-internal record DateTimeLiteralSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.DateTimeLiteral, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record DateTimeLiteralSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table = [DateLiterals.Signature(SelectorDefaults.DateTimeLiteral, DateLiterals.ParseDateTime)];
 
 	public DateTimeLiteralSelector() : base(SelectorDefaults.DateTimeLiteral) { }
 	public DateTimeLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateTimeLiteral, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
-[SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected)]
-internal record DateOnlyLiteralSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record DateOnlyLiteralSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public DateOnlyLiteralSelector() : base(SelectorDefaults.DateOnlyLiteral) { }
 	public DateOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateOnlyLiteral, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => DateOnlyLiteralSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => DateOnlyLiteralSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected)]
-internal record DateOnlyLiteralSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.DateOnlyLiteral, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record DateOnlyLiteralSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table = [DateLiterals.Signature(SelectorDefaults.DateOnlyLiteral, DateLiterals.ParseDateOnly)];
 
 	public DateOnlyLiteralSelector() : base(SelectorDefaults.DateOnlyLiteral) { }
 	public DateOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.DateOnlyLiteral, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
-[SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected)]
-internal record TimeOnlyLiteralSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record TimeOnlyLiteralSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public TimeOnlyLiteralSelector() : base(SelectorDefaults.TimeOnlyLiteral) { }
 	public TimeOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.TimeOnlyLiteral, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => TimeOnlyLiteralSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => TimeOnlyLiteralSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected)]
-internal record TimeOnlyLiteralSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.TimeOnlyLiteral, Piped = PipedForm.Rejected, Category = FunctionCategory.Date)]
+internal record TimeOnlyLiteralSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table = [DateLiterals.Signature(SelectorDefaults.TimeOnlyLiteral, DateLiterals.ParseTimeOnly)];
 
 	public TimeOnlyLiteralSelector() : base(SelectorDefaults.TimeOnlyLiteral) { }
 	public TimeOnlyLiteralSelector(List<PropertySelector> parameters) : base(SelectorDefaults.TimeOnlyLiteral, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
 internal static class DateLiterals

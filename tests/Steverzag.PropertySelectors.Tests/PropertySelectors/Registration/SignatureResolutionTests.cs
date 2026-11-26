@@ -5,16 +5,16 @@ namespace Steverzag.PropertySelectors.Tests.Registration;
 
 // Test-only functions with same-count overloads: no built-in function has any yet.
 [SelectorToken(Token)]
-public record TestPickSelector<T> : FunctionPropertySelector<T>
+public record TestPickSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
     public const string Token = "$FN_TESTSIG_PICK";
     public TestPickSelector() : base(Token) { }
     public TestPickSelector(List<PropertySelector> parameters) : base(Token, parameters) { }
-    protected override IReadOnlyList<FunctionSignature> Signatures => TestPickSelector.Table;
+    public static IReadOnlyList<FunctionSignature> Signatures => TestPickSelector.Table;
 }
 
 [SelectorToken(TestPickSelector<object>.Token)]
-public record TestPickSelector : FunctionPropertySelector
+public record TestPickSelector : FunctionPropertySelector, IFunctionSignatures
 {
     internal static readonly IReadOnlyList<FunctionSignature> Table =
     [
@@ -26,20 +26,20 @@ public record TestPickSelector : FunctionPropertySelector
 
     public TestPickSelector() : base(TestPickSelector<object>.Token) { }
     public TestPickSelector(List<PropertySelector> parameters) : base(TestPickSelector<object>.Token, parameters) { }
-    protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+    public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
 [SelectorToken(Token)]
-public record TestAmbiguousSelector<T> : FunctionPropertySelector<T>
+public record TestAmbiguousSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
     public const string Token = "$FN_TESTSIG_AMBIG";
     public TestAmbiguousSelector() : base(Token) { }
     public TestAmbiguousSelector(List<PropertySelector> parameters) : base(Token, parameters) { }
-    protected override IReadOnlyList<FunctionSignature> Signatures => TestAmbiguousSelector.Table;
+    public static IReadOnlyList<FunctionSignature> Signatures => TestAmbiguousSelector.Table;
 }
 
 [SelectorToken(TestAmbiguousSelector<object>.Token)]
-public record TestAmbiguousSelector : FunctionPropertySelector
+public record TestAmbiguousSelector : FunctionPropertySelector, IFunctionSignatures
 {
     internal static readonly IReadOnlyList<FunctionSignature> Table =
     [
@@ -49,7 +49,7 @@ public record TestAmbiguousSelector : FunctionPropertySelector
 
     public TestAmbiguousSelector() : base(TestAmbiguousSelector<object>.Token) { }
     public TestAmbiguousSelector(List<PropertySelector> parameters) : base(TestAmbiguousSelector<object>.Token, parameters) { }
-    protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+    public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }
 
 internal static class TestSignatures
@@ -140,7 +140,6 @@ public class SignatureResolutionTests
 
         Assert.Null(selector.Signature);
         Assert.Null(selector.Type);
-        Assert.Empty(selector.Overloads);
         Assert.Equal("number", Evaluate(selector));
     }
 
@@ -158,7 +157,6 @@ public class SignatureResolutionTests
         var selector = (FunctionPropertySelector)(PropertySelector)"$FN_MATH_ROUND(Price, 2)";
 
         Assert.NotNull(selector.Signature);
-        Assert.Single(selector.Overloads);
     }
 
     // ── Ambiguity and mismatches ────────────────────────────────────────────

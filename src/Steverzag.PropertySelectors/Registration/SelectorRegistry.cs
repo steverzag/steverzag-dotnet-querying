@@ -14,7 +14,8 @@ namespace Steverzag.PropertySelectors.Registration
 	/// Selectors in this assembly are discovered automatically through <see cref="SelectorTokenAttribute"/>.
 	/// External assemblies defining their own selectors call <see cref="RegisterAssembly"/> once at startup
 	/// (or <see cref="Register"/> per token). External selectors must inherit
-	/// <see cref="FunctionPropertySelector{T}"/> / <see cref="FunctionPropertySelector"/>, expose public
+	/// <see cref="FunctionPropertySelector{T}"/> / <see cref="FunctionPropertySelector"/>, implement
+	/// <see cref="IFunctionSignatures"/> (types without it are rejected), expose public
 	/// parameterless and <c>List&lt;PropertySelector&gt;</c> constructors, and use a token starting with
 	/// <see cref="SelectorDefaults.FunctionStart"/> — prefer a vendor-scoped name (e.g. <c>$FN_ACME_DISTANCE</c>)
 	/// to avoid collisions; duplicate tokens are rejected with an exception.
@@ -72,6 +73,12 @@ namespace Steverzag.PropertySelectors.Registration
 
 			if (nonGenericSelectorType is not null && !nonGenericSelectorType.IsAssignableTo(typeof(PropertySelector)))
 				throw new ArgumentException($"The provided type {nonGenericSelectorType.FullName} is not a PropertySelector.", nameof(nonGenericSelectorType));
+
+			foreach (var (type, name) in new[] { (openGenericSelectorType, nameof(openGenericSelectorType)), (nonGenericSelectorType, nameof(nonGenericSelectorType)) })
+			{
+				if (type is not null && !FunctionSignatures.IsDeclaredBy(type))
+					throw new ArgumentException($"The provided type {type.FullName} declares no signatures. A function selector must implement {nameof(IFunctionSignatures)}.", name);
+			}
 
 			Entries.AddOrUpdate(token,
 				_ => new SelectorRegistration(openGenericSelectorType, nonGenericSelectorType),
@@ -228,6 +235,20 @@ namespace Steverzag.PropertySelectors.Registration
 		}
 
 		internal static bool IsRegistered(string token) => TryGetEntry(token, out _);
+
+		internal static IReadOnlyList<KeyValuePair<string, SelectorRegistration>> Snapshot()
+		{
+			Initialize();
+
+			return [.. Entries.OrderBy(entry => entry.Key, StringComparer.Ordinal)];
+		}
+
+		internal static bool TryGetRegistration(string token, [NotNullWhen(true)] out SelectorRegistration? registration)
+		{
+			Initialize();
+
+			return Entries.TryGetValue(token, out registration);
+		}
 
 		internal static string? FindTokenIgnoringCase(string token)
 		{

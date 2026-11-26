@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathSqrt, Piped = PipedForm.FirstArgument)]
-internal record MathSqrtSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathSqrt, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathSqrtSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathSqrtSelector() : base(SelectorDefaults.MathSqrt) { }
 	public MathSqrtSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathSqrt, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathSqrtSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathSqrtSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathSqrt, Piped = PipedForm.FirstArgument)]
-internal record MathSqrtSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathSqrt, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathSqrtSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record MathSqrtSelector : FunctionPropertySelector
 
 	public MathSqrtSelector() : base(SelectorDefaults.MathSqrt) { }
 	public MathSqrtSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathSqrt, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

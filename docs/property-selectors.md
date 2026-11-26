@@ -212,6 +212,11 @@ All tokens are constants on `SelectorDefaults`. Prefer those constants to string
 | Date | `DT_DATETIME`, `DATEONLY`, `TIMEONLY` (literals), `DT_ADDYEARS`, `ADDMONTHS`, `ADDDAYS`, `ADDHOURS`, `ADDMINUTES`, `ADDSECONDS`, `ADDMILLISECONDS`, `NOW`, `UTCNOW`, `TODAY`. The family is meant to grow (decision 017.9; roadmap). |
 | Null handling | `COALESCE` |
 
+Each `DT_ADD*` accepts only the date types that have that method: `ADDYEARS`, `ADDMONTHS` and `ADDDAYS` take `DateTime`,
+`DateTimeOffset` and `DateOnly`; `ADDHOURS` and `ADDMINUTES` take `DateTime`, `DateTimeOffset` and `TimeOnly`;
+`ADDSECONDS` and `ADDMILLISECONDS` take `DateTime` and `DateTimeOffset`. `THEN_ORDER_*` needs an ordered collection, so
+it follows `ORDER_ASC` or `ORDER_DESC`. Both are checked when the selector is parsed (decision 035).
+
 **Aggregate result types** follow `Enumerable`'s overload for the element type, and the selector's `Type` matches
 the expression it builds. `AGGR_MIN`, `AGGR_MAX` and `AGGR_AVG` first lift a non-nullable value element to its
 nullable form (`Numbers.Select(x => (int?)x).Max()`), so **an empty collection gives `null`**, both in memory and
@@ -445,8 +450,9 @@ normalized, not echoed:
 
 1. Inherit `FunctionPropertySelector<T>` (and the non-generic `FunctionPropertySelector`).
 2. Expose public constructors `()` and `(List<PropertySelector>)`.
-3. Decorate both with `[SelectorToken("$FN_ACME_MYFUNC")]`, using a vendor-scoped name.
-4. Declare the overloads in one static table and override `Signatures` in both records to return it (decision 019).
+3. Decorate both with `[SelectorToken("$FN_ACME_MYFUNC")]`, using a vendor-scoped name. Set `Category` so UIs can group it.
+4. Declare the overloads in one static table, and implement `IFunctionSignatures` in both records with a static
+   `Signatures` property that returns it (decisions 019 and 034). The registry rejects a function without it.
 5. At startup, call `SelectorRegistry.RegisterAssembly(typeof(MyFunc<>).Assembly)`.
 
 ```csharp
@@ -465,6 +471,8 @@ internal static readonly IReadOnlyList<FunctionSignature> Table =
 A signature has:
 - **Parameter constraints:** `Any`, `Numeric`, `Integer`, `String`, `Bool`, `DateLike`, `Collection`, `Of(type)`, and
   the literal-only `StringLiteral` and `IntegerLiteral`. A nullable type matches like its underlying type.
+  `constraint.Accepts(type)` tells whether a value of that type fits (a literal-only constraint accepts none; check
+  `IsLiteral`).
 - **`Target`** (default `Any`): what the piped value must be, for functions that work on it (`Collection` for the
   aggregates, `String` for `TRIM`).
 - **`Rest`** (optional): the constraint for any number of extra arguments, as in `COALESCE` and `STR_JOIN`.
@@ -487,8 +495,9 @@ numbers, not a String"). Both are `SelectorParseException`s when the selector is
 non-generic form, where a type is unknown until the expression is built, the signature is resolved again then with
 the built types, so a type error found only then is a `SelectorParseException` with the same detail.
 
-A function that doesn't override `Signatures` keeps the older model: it overrides `InitializeOverloads` and adds the
-overload for the count it was given. Its declared type is whatever it sets itself.
+Every function has a table. Because `Signatures` is static, the table can be read without creating the selector,
+which is what the function metadata for UIs is built on. A selector resolved from text exposes the overload it
+picked as `Signature`.
 
 The attribute's `Piped` property says what a piped value means for the function:
 
@@ -512,8 +521,45 @@ land on the first request. Duplicate tokens throw.
 ## Metadata for UIs
 
 `new PropertiesExplorer<T>().ExplorePropertiesTree(maxDepth)` returns a `SelectorsMetaDataTree`,
-which a front end can use to offer column/field pickers. It lists properties only, not functions; function metadata is
-a roadmap item (Phase 4).
+which a front end can use to offer column/field pickers. It lists what a selector path can reach, by the parser's
+rules:
+
+- Each node has its `Path` (the selector text, `""` for the root, with `@` added to a name that reads as a literal,
+  such as `Phones.@True`) and its `SelectorType`, which is the type that path declares: `Deleted.Year` is `int?` and
+  `Phones.Number` is `IEnumerable<string>`.
+- Under a collection the children are the element's properties (`Phones.Number`), never the collection's own
+  (`Count`, `Capacity`). Under a nullable value they are the underlying type's (`Deleted.Year`, not `HasValue`).
+  Indexers and fields aren't listed.
+- A node whose type is a collection has `IsCollection` and its `ElementType`, which is where aggregates apply.
+- A type already on the way down from the root ends as a leaf, so `Friends` on a `Person` is listed without children.
+- `TypeName` and `ElementTypeName` give C#-style names (`int?`, `List<Phone>`) for a UI or a DTO;
+  `TypeDisplay.Name(type)` formats any other type the same way.
+
+Functions come from `FunctionCatalog` (namespace `Steverzag.PropertySelectors.MetaData`), which reads the registry, so
+it includes functions registered from other assemblies:
+
+- `FunctionCatalog.All` lists every registered function, ordered by token. `Find(token)` returns one, or `null`.
+  Each `FunctionDescriptor` has the `Token`, the `Category`, the piped form (`Piped`, `PipedHint`), the argument scope
+  (`Arguments`), which forms are registered (`HasGenericForm`, `HasNonGenericForm`) and the `Signatures`.
+- `FunctionCatalog.After(type)` answers "what can follow a value of this type with `|`?". It returns one
+  `FunctionMatch` per overload that accepts the type. A match carries the arguments still to write (`Parameters` and
+  `Rest`, without the piped one) and the `ResultType` (with `ResultTypeName`). The result type is `null` when it depends on an argument,
+  as for `MATH_MAX`. Functions that reject the pipe (`DT_NOW`, `STR_JOIN`) are never listed.
+
+A UI combines the two: pick a node from the tree, ask `After(node.SelectorType)`, and repeat with the result type.
+To offer values for an argument, filter the properties with `match.Parameters[i].Accepts(property type)`. A literal-only
+argument (`IsLiteral`, as the index of `ELM_ATINDEX`) accepts no type: the UI asks for a literal instead.
+
+```csharp
+FunctionCatalog.After(typeof(decimal));            // MATH_ROUND() → decimal, MATH_ROUND(an integer) → decimal, MATH_MAX(a number) → ?, …
+FunctionCatalog.After(typeof(List<int>));          // AGGR_SUM() → int, AGGR_AVG() → double?, ELM_FIRST() → int, ORDER_ASC() → IOrderedEnumerable<int>, …
+FunctionCatalog.After(typeof(IOrderedEnumerable<int>)); // … and THEN_ORDER_ASC, THEN_ORDER_DESC
+```
+
+`After` follows the same rules as the parser: with valid arguments, a match parses and declares the result type it
+reports. The
+categories are `Aggregation`, `Element`, `Ordering`, `Math`, `String`, `Date` and `Null`, set with
+`[SelectorToken(…, Category = FunctionCategory.Math)]`. A custom function that doesn't set one is `Other`.
 
 ## Internals map
 
@@ -522,6 +568,7 @@ a roadmap item (Phase 4).
 | Core records, implicit `string` conversion | `PropertySelector.cs`, `FunctionPropertySelector*.cs` |
 | String pre-scan, arithmetic entry | `PropertySelectorUtils.cs`, `ArithmeticSelectors/` (tokenizer → parser) |
 | Function dispatch | `Registration/SelectorRegistry.cs`, `SelectorTokenAttribute.cs` |
+| Function metadata | `MetaData/FunctionCatalog.cs`, `Signatures/IFunctionSignatures.cs` |
 | Literals | `ValueSelectors/ValueSelectorFactory.cs` |
 | Coalesce | `NullSelectors/` |
 | Member access building | `ExpressionUtils.cs`, `SelectorImplementations/MethodInfos.cs` |

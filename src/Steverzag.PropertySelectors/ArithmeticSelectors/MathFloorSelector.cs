@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors;
 
-[SelectorToken(SelectorDefaults.MathFloor, Piped = PipedForm.FirstArgument)]
-internal record MathFloorSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.MathFloor, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathFloorSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MathFloorSelector() : base(SelectorDefaults.MathFloor) { }
 	public MathFloorSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathFloor, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => MathFloorSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => MathFloorSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.MathFloor, Piped = PipedForm.FirstArgument)]
-internal record MathFloorSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.MathFloor, Piped = PipedForm.FirstArgument, Category = FunctionCategory.Math)]
+internal record MathFloorSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -22,5 +22,5 @@ internal record MathFloorSelector : FunctionPropertySelector
 
 	public MathFloorSelector() : base(SelectorDefaults.MathFloor) { }
 	public MathFloorSelector(List<PropertySelector> parameters) : base(SelectorDefaults.MathFloor, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

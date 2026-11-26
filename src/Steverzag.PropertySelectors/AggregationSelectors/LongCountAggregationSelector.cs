@@ -2,15 +2,15 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
-[SelectorToken(SelectorDefaults.LongCountAggregateFunction)]
-public record LongCountAggregationSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.LongCountAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record LongCountAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public LongCountAggregationSelector() : base(SelectorDefaults.LongCountAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => LongCountAggregationSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => LongCountAggregationSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.LongCountAggregateFunction)]
-public record LongCountAggregationSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.LongCountAggregateFunction, Category = FunctionCategory.Aggregation)]
+public record LongCountAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ public record LongCountAggregationSelector : FunctionPropertySelector
 	];
 
 	public LongCountAggregationSelector() : base(SelectorDefaults.LongCountAggregateFunction) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

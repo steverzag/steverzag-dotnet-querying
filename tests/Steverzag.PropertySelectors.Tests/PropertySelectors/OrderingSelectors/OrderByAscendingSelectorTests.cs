@@ -60,7 +60,7 @@ public class OrderByAscendingSelectorTests
         Assert.NotNull(selector);
         Assert.NotNull(selector.PropertyAccess);
         Assert.Empty(selector.Parameters);
-        Assert.Single(selector.Overloads);
+        Assert.NotNull(selector.Signature);
     }
 
     [Fact]
@@ -88,7 +88,7 @@ public class OrderByAscendingSelectorTests
         Assert.NotNull(selector);
         Assert.NotNull(selector.PropertyAccess);
         Assert.Single(selector.Parameters);
-        Assert.Single(selector.Overloads);
+        Assert.NotNull(selector.Signature);
     }
 
     [Fact]
@@ -107,18 +107,18 @@ public class OrderByAscendingSelectorTests
     }
 
     [Fact]
-    public void InitializeOverloads_WithNoParameters_CreatesEmptyParameterOverload()
+    public void Constructor_WithNoParameters_ResolvesTheNoArgumentSignature()
     {
         // Act
         var selector = new OrderByAscendingSelector();
 
         // Assert
-        Assert.Single(selector.Overloads);
-        Assert.Empty(selector.Overloads[0].Parameters);
+        Assert.NotNull(selector.Signature);
+        Assert.Empty(selector.Signature!.Parameters);
     }
 
     [Fact]
-    public void InitializeOverloads_WithOneParameter_CreatesSingleParameterOverload()
+    public void Constructor_WithOneParameter_ResolvesTheOneArgumentSignature()
     {
         // Arrange
         PropertySelector innerSelector = "Id";
@@ -128,9 +128,8 @@ public class OrderByAscendingSelectorTests
         var selector = new OrderByAscendingSelector(parameters);
 
         // Assert
-        Assert.Single(selector.Overloads);
-        Assert.Single(selector.Overloads[0].Parameters);
-        Assert.Equal(typeof(PropertySelector), selector.Overloads[0].Parameters[0]);
+        Assert.NotNull(selector.Signature);
+        Assert.Single(selector.Signature!.Parameters);
     }
 
     [Fact]

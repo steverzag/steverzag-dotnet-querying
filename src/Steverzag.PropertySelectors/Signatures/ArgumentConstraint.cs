@@ -29,6 +29,12 @@ namespace Steverzag.PropertySelectors
 
 		public ConstraintMatch Match(PropertySelector? argument, Type? type) => _match(argument, type);
 
+		public bool Accepts(Type type)
+		{
+			ArgumentNullException.ThrowIfNull(type);
+			return _match(null, type) != ConstraintMatch.None;
+		}
+
 		public override string ToString() => Description;
 
 		public static ArgumentConstraint Any { get; } = new("any value", (_, type) => type is null ? ConstraintMatch.Unknown : ConstraintMatch.Any);

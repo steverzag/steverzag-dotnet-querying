@@ -2,15 +2,15 @@ using Steverzag.PropertySelectors.Registration;
 
 namespace Steverzag.PropertySelectors.ElementSelectors;
 
-[SelectorToken(SelectorDefaults.ElementFirst)]
-public record FirstElementSelector<T> : ElementFunctionSelector<T>
+[SelectorToken(SelectorDefaults.ElementFirst, Category = FunctionCategory.Element)]
+public record FirstElementSelector<T> : ElementFunctionSelector<T>, IFunctionSignatures
 {
 	public FirstElementSelector() : base(SelectorDefaults.ElementFirst) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => FirstElementSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => FirstElementSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.ElementFirst)]
-public record FirstElementSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.ElementFirst, Category = FunctionCategory.Element)]
+public record FirstElementSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -20,5 +20,5 @@ public record FirstElementSelector : FunctionPropertySelector
 
 	public FirstElementSelector() : base(SelectorDefaults.ElementFirst) { }
 	public FirstElementSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementFirst, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }

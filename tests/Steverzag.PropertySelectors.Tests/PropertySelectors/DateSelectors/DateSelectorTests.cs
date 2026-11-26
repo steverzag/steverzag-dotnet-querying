@@ -134,12 +134,15 @@ public class DateSelectorTests
     }
 
     [Fact]
-    public void DateAddSeconds_OnTimeOnlyProperty_ThrowsInvalidOperationExceptionOnBuild()
+    public void DateAddSeconds_OnTimeOnlyProperty_IsRejectedWhenParsed()
     {
-        PropertySelector<TestItem> selector = $"{SelectorDefaults.DateAddSeconds}(StartTime, 30)";
+        var text = $"{SelectorDefaults.DateAddSeconds}(StartTime, 30)";
 
-        // TimeOnly has no AddSeconds; the check happens lazily when the expression is built.
-        Assert.Throws<InvalidOperationException>(() => Evaluate<TimeOnly>(selector, new TestItem()));
+        var generic = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)text);
+        var nonGeneric = Assert.Throws<SelectorParseException>(() => Evaluate<TimeOnly>((PropertySelector)text, new TestItem()));
+
+        Assert.Equal("$FN_DT_ADDSECONDS: argument 1 ('StartTime') must be a DateTime or DateTimeOffset, not a TimeOnly: '$FN_DT_ADDSECONDS(StartTime, 30)'.", generic.Detail);
+        Assert.Equal(generic.Detail, nonGeneric.Detail);
     }
 
     // ── Static values ───────────────────────────────────────────────────────

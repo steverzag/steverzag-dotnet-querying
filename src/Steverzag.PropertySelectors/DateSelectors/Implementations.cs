@@ -21,12 +21,7 @@ namespace Steverzag.PropertySelectors.DateSelectors
 		{
 			var instanceExpr = target.CreateDateInstanceExpression(instanceParameter, methodName);
 
-			// Resolved by name against the actual source type: DateTime.AddDays takes a double
-			// while DateOnly.AddDays takes an int, and e.g. TimeOnly has no AddSeconds at all.
-			var method = instanceExpr.Type.GetMethods()
-				.FirstOrDefault(m => m.Name == methodName
-					&& m.GetParameters().Length == 1
-					&& ArithmeticUtils.IsNumericType(m.GetParameters()[0].ParameterType))
+			var method = FindAddMethod(instanceExpr.Type, methodName)
 				?? throw new InvalidOperationException($"{instanceExpr.Type.Name} does not support the {methodName} function.");
 
 			var amountExpr = ExpressionUtils.ResolveArgument(target, amountParameter);
@@ -44,6 +39,19 @@ namespace Steverzag.PropertySelectors.DateSelectors
 
 			return Expression.Call(instanceExpr, method, amountExpr);
 		}
+
+		internal static ArgumentConstraint DateWith(string methodName)
+		{
+			var types = SupportedDateTypes.Where(type => FindAddMethod(type, methodName) is not null).ToArray();
+			var names = types.Select(type => type.Name).ToArray();
+			var description = names.Length == 1 ? $"a {names[0]}" : $"a {string.Join(", ", names[..^1])} or {names[^1]}";
+			return ArgumentConstraint.Family(description, types.Contains);
+		}
+
+		private static System.Reflection.MethodInfo? FindAddMethod(Type type, string methodName) =>
+			type.GetMethods().FirstOrDefault(m => m.Name == methodName
+				&& m.GetParameters().Length == 1
+				&& ArithmeticUtils.IsNumericType(m.GetParameters()[0].ParameterType));
 
 		public static Type? DateAddResultType(Type? target, IReadOnlyList<Type?> arguments) =>
 			arguments[0] is { } subject ? Nullable.GetUnderlyingType(subject) ?? subject : null;

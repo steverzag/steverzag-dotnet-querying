@@ -3,16 +3,16 @@ using Steverzag.PropertySelectors.SelectorImplementations;
 
 namespace Steverzag.PropertySelectors.StringSelectors;
 
-[SelectorToken(SelectorDefaults.StringToUpper)]
-internal record StringToUpperSelector<T> : FunctionPropertySelector<T>
+[SelectorToken(SelectorDefaults.StringToUpper, Category = FunctionCategory.String)]
+internal record StringToUpperSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public StringToUpperSelector() : base(SelectorDefaults.StringToUpper) { }
 	public StringToUpperSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringToUpper, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => StringToUpperSelector.Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => StringToUpperSelector.Table;
 }
 
-[SelectorToken(SelectorDefaults.StringToUpper)]
-internal record StringToUpperSelector : FunctionPropertySelector
+[SelectorToken(SelectorDefaults.StringToUpper, Category = FunctionCategory.String)]
+internal record StringToUpperSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[
@@ -23,5 +23,5 @@ internal record StringToUpperSelector : FunctionPropertySelector
 
 	public StringToUpperSelector() : base(SelectorDefaults.StringToUpper) { }
 	public StringToUpperSelector(List<PropertySelector> parameters) : base(SelectorDefaults.StringToUpper, parameters) { }
-	protected override IReadOnlyList<FunctionSignature> Signatures => Table;
+	public static IReadOnlyList<FunctionSignature> Signatures => Table;
 }
