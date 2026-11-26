@@ -220,6 +220,15 @@ The reverse (`int` → `int?`) is fine. `MIN`, `MAX` and `AVG` are declared null
 `int?`, decision 014), because over an empty collection they are `NULL` in SQL. So the same check rejects mapping
 them into a non-nullable destination; a nullable destination receives `null` for a row with an empty collection.
 
+### Possible settings (not implemented)
+
+Ideas for settings, recorded so they're considered when the configuration approach is settled (D4). None of them
+exist yet.
+
+| Setting | Default | What it would do |
+|---|---|---|
+| Allow field access in selectors | off | Today selectors read only public properties, in both forms: a public field, a `ValueTuple`'s `Item1`/`Item2` or a struct's public field is "not found" (decided 2026-11-25). Turning it on would let both forms read public fields too, with the declared type taken from the field, the same way in both forms so they can't disagree again. It belongs to PropertySelectors (a global setting like `SelectorLimits`), with QueryShaper exposing it in its configuration. Keep it off by default: EF Core translates mapped properties, so a field would mostly be useful for in-memory queries, and it widens what a client can reach. |
+
 ## Decimal math on SQLite
 
 `ROUND`, `CEILING`, `FLOOR` and `TRUNCATE` over a `decimal` build .NET's exact `decimal` overloads (decision 024).

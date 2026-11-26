@@ -122,7 +122,7 @@ namespace Steverzag.PropertySelectors
 
 				try
 				{
-					property = Expression.PropertyOrField(current, part);
+					property = Expression.Property(current, part);
 				}
 				catch (ArgumentException e)
 				{
