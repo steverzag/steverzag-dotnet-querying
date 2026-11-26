@@ -33,10 +33,13 @@ namespace Steverzag.PropertySelectors
 				return (PropertySelector<T>)PropertySelectorUtils.ParseArithmetic(selector, () => PropertySelectorUtils.CreateArithmeticOperationSelector<T>(selector));
 			}
 
-			var selectorParts = analysis.Parts;
-			PropertySelector<T> result = null!;
-			Type currentIterationType = typeof(T);
-			string? pipedText = null;
+			return Chain(selector, analysis.Parts, null, null);
+		}
+
+		internal static PropertySelector<T> Chain(string selector, IEnumerable<SelectorPartText> selectorParts, PropertySelector<T>? head, string? pipedText)
+		{
+			PropertySelector<T> result = head!;
+			Type currentIterationType = head is null ? typeof(T) : head.Type!;
 
 			foreach (var (selectorPart, offset) in selectorParts)
 			{
@@ -151,9 +154,12 @@ namespace Steverzag.PropertySelectors
 			{
 				return PropertySelectorUtils.ParseArithmetic(selector, () => PropertySelectorUtils.CreateArithmeticOperationSelector(selector));
 			}
-			var selectorParts = analysis.Parts;
-			PropertySelector result = null!;
-			string? pipedText = null;
+			return Chain(selector, analysis.Parts, null, null);
+		}
+
+		internal static PropertySelector Chain(string selector, IEnumerable<SelectorPartText> selectorParts, PropertySelector? head, string? pipedText)
+		{
+			PropertySelector result = head!;
 
 			foreach (var (selectorPart, offset) in selectorParts)
 			{

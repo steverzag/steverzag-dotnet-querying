@@ -37,7 +37,7 @@ Expression body = avgId.PropertyAccess(parameter);
 | Boolean literal | `true` / `false`, in any case. | `true` |
 | String literal | `"quoted string"`. Everything between the quotes is text, including `\| + - * / ( ) ,`. Write a `"` inside as `""`. | `"Hi"`, `"n/a"`, `"say ""hi"""` |
 | Date/time literal | A constructor function taking one quoted string, read with the invariant culture and checked when the selector is parsed. A date-time keeps its kind (a trailing `Z` stays UTC). | `$FN_DT_DATETIME("2025-01-31T08:30:00")`, `$FN_DT_DATEONLY("2025-01-31")`, `$FN_DT_TIMEONLY("08:30")` |
-| Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths, literals or chains. Both operands are widened to their common type, which is the result type (`Quantity + 1` → `int`, `Price * 3` → `decimal`, nullable if either operand is). | `Amount - 3 - 2` |
+| Arithmetic | `+ - * /`, unary `-`, parentheses. Operands are paths, literals or chains, and `\|` binds tighter than every operator (`A + B\|$FN_X` is `A + (B\|$FN_X)`). A parenthesized group can start a chain (decision 026), and a selector wrapped entirely in parentheses is arithmetic too. Operands must be numeric; dates and durations go through the date functions (decision 027). Both operands are widened to their common type, which is the result type (`Quantity + 1` → `int`, `Price * 3` → `decimal`, nullable if either operand is). | `Amount - 3 - 2`, `(Age + 1)\|$FN_MATH_ROUND` |
 
 `SelectorLiteral.Format(value)` writes any of these literals from a .NET value (`int`, `long`, `double`, `float`,
 `decimal`, `bool`, `string`, `DateTime`, `DateOnly`, `TimeOnly`). Use it instead of building literal text by hand.

@@ -702,3 +702,43 @@ and still reachable with `COALESCE`).
 `MAX(int?, int)` is `int`, and a null operand gives the other operand instead of throwing (in memory) or depending on
 the provider. Each operand appears twice in the SQL (three times when nullable), so an expensive operand such as a
 subquery may be evaluated more than once. In memory, `NaN` isn't propagated as `Math.Max` does it.
+
+### 026: A parenthesized group can start a chain; `|` binds tighter than arithmetic (2026-11-25)
+**Status:** accepted; implemented (2026-11-25).
+**Context:** `(Age + 1)|$FN_MATH_ROUND` failed in both forms, because the `(Age + 1)` part was read as a property
+name. The informal grammar already gave `|` a tighter binding than `+ - * /` (arithmetic operands are paths,
+literals or chains, so `A + B|$FN_X` is `A + (B|$FN_X)`), but it said nothing about a group in front of a pipe. The
+static form (`$FN_MATH_ROUND(Age + 1)`) covers functions that have one, but dependent functions (`COALESCE`) and a
+property after the value (`(A + B)|…|Member`) have no other way to receive a computed value.
+**Decision:**
+1. A parenthesized group is a primary, like a path or a literal, and a primary can start a chain:
+   `(Age + 1)|$FN_MATH_ROUND` ≡ `$FN_MATH_ROUND(Age + 1)`, `(Price * 3)|$FN_MATH_ROUND(2)` ≡ `$FN_MATH_ROUND(Price * 3, 2)`.
+2. Precedence is unchanged: `|` binds tighter than every arithmetic operator, so `A + B|$FN_X` stays `A + (B|$FN_X)`.
+   Groups nest: `((A + B)|$FN_MATH_ROUND) * 2`.
+3. The parts after the group follow decision 022: each one resolves against the type of the value piped into it.
+4. Both forms (generic and non-generic) accept it, with the same declared and built type.
+Rejected: static form only (dependent functions and members after the value would have no way to receive a
+computed value, and the error would only point to a workaround).
+**Consequence:** additive; nothing that parsed before changes meaning. A selector that starts with `(` is now always
+arithmetic, so one wrapped entirely in parentheses (`((Amount + 2) * 2)`), which used to fail as a property name, now
+works. An arithmetic segment followed by a pipe prints in parentheses, so `ToString()` round-trips. To freeze in the
+Phase 4 grammar spec.
+
+### 027: Arithmetic stays numeric-only; date and duration math goes through functions (2026-11-25)
+**Status:** accepted.
+**Context:** arithmetic accepts only numeric operands (`GetWiderNumericType` throws "Type DateTime is not numeric").
+The open question was whether to follow .NET's operator rules for dates and durations (`End - Start` → `TimeSpan`,
+`Start + Duration`, `Duration * 2`) before the Phase 4 grammar freeze. `TimeSpan` has no support yet (no literal, no
+parts), and translation varies by provider: without `EF.Functions` (006), plain date subtraction doesn't translate
+everywhere, and the grammar has no way to say so.
+**Decision:**
+1. For `0.1.0-preview`, `+ - * /` and unary `-` accept numeric operands only. A date or duration operand is
+   rejected, as today.
+2. Date math goes through functions in the date catalog: differences (`DT_DIFF*`), and an add that takes a
+   `TimeSpan` once that sub-family exists. Each function documents how providers translate it.
+3. Allowing date and duration operands later only relaxes a rule that throws today, so it can be revisited after the
+   preview as an additive change, once `TimeSpan` support and provider checks are in place.
+Rejected for now: operators with .NET's rules (depends on `TimeSpan` support that doesn't exist, and would freeze
+translation behaviour we haven't checked; taking operators back after release would be breaking).
+**Consequence:** no code change. The grammar spec states that arithmetic is numeric-only. The error for a date
+operand could point to the date functions once `DT_DIFF*` exists.

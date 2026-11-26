@@ -14,6 +14,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		Multiply,
 		Divide,
 		LParen,
-		RParen
+		RParen,
+		Pipe
 	}
 }

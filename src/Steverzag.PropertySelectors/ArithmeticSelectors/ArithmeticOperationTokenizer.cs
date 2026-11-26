@@ -45,6 +45,13 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 					continue;
 				}
 
+				if (c == SelectorDefaults.PropertyDelimiter[0] && tokens.Count > 0 && tokens[^1].Type == ArithmeticOperationTokenType.RParen)
+				{
+					tokens.Add(new ArithmeticOperationToken(ArithmeticOperationTokenType.Pipe, SelectorDefaults.PropertyDelimiter, _pos));
+					_pos++;
+					continue;
+				}
+
 				tokens.Add(c switch
 				{
 					'+' => new ArithmeticOperationToken(ArithmeticOperationTokenType.Plus, "+", _pos),
@@ -158,6 +165,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 					}
 					else if (c == ')')
 					{
+						if (parenDepth == 0)
+							break;
 						parenDepth--;
 					}
 					else if (parenDepth == 0 &&

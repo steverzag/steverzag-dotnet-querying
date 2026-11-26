@@ -69,6 +69,15 @@ namespace Steverzag.PropertySelectors.Extensions
 
 			parts.Add(Part(expression, partStartIndex, expression.Length));
 
+			if (parts[0].Text.StartsWith('('))
+				return new SelectorExpressionAnalysis(true, []);
+
+			foreach (var part in parts.Skip(1))
+			{
+				if (part.Text.StartsWith('('))
+					throw new SelectorParseException($"A group can only start a selector, not follow '{SelectorDefaults.PropertyDelimiter}'.", expression, part.Offset, part.Text);
+			}
+
 			return new SelectorExpressionAnalysis(false, parts);
 		}
 

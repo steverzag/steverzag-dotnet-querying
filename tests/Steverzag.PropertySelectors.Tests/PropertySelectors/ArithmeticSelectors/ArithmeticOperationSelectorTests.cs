@@ -426,20 +426,15 @@ public class ArithmeticOperationSelectorTests
     }
 
     [Fact]
-    public void FullyParenthesizedExpression_IsNotDetectedAsArithmetic()
+    public void FullyParenthesizedExpression_IsArithmetic()
     {
-        // Separate, still-open gap: the analyzer only looks for operators at depth zero, so
-        // wrapping the WHOLE expression hides every operator and the string falls through to
-        // the property path branch. The parentheses balance, so the syntax check cannot catch
-        // it; telling a grouping '(' from a function-call '(' is what would be needed, and that
-        // is a parser concern rather than a scanning one.
-        var exception = Assert.Throws<SelectorParseException>(() => (PropertySelector<TestItem>)"((Amount + 2) * 2)");
+        // Decision 026: a selector that starts with a group goes to the arithmetic parser, even
+        // when the parentheses hide every operator.
+        PropertySelector<TestItem> generic = "((Amount + 2) * 2)";
+        PropertySelector nonGeneric = "((Amount + 2) * 2)";
 
-        Assert.Contains("was not found", exception.Message);
-
-        // A single operator left outside the group is enough to make it work again.
-        PropertySelector<TestItem> selector = "((Amount + 2) * 2) - 0";
-        Assert.Equal(24, Evaluate<int>(selector, new TestItem { Amount = 10 }));
+        Assert.Equal(24, Evaluate<int>(generic, new TestItem { Amount = 10 }));
+        Assert.Equal(24, Evaluate<int>(nonGeneric, new TestItem { Amount = 10 }));
     }
 
     [Fact]

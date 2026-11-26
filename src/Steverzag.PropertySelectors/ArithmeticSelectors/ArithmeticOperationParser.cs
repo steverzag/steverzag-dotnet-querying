@@ -1,4 +1,6 @@
-﻿namespace Steverzag.PropertySelectors.ArithmeticSelectors
+﻿using Steverzag.PropertySelectors.Extensions;
+
+namespace Steverzag.PropertySelectors.ArithmeticSelectors
 {
 	internal class ArithmeticOperationParser
 	{
@@ -7,6 +9,7 @@
 		private int _pos;
 		private Func<string, PropertySelector> _createOperand = null!;
 		private Func<PropertySelector, PropertySelector?, ArithmeticOperator, PropertySelector> _createOperation = null!;
+		private Func<PropertySelector, string, ArithmeticOperationToken, PropertySelector> _createChain = null!;
 
 		public ArithmeticOperationParser(string text, List<ArithmeticOperationToken> tokens)
 		{
@@ -18,23 +21,27 @@
 		{
 			return (PropertySelector<T>)Parse(
 				text => (PropertySelector<T>)text,
-				(left, right, op) => new ArithmeticOperationSelector<T> { LeftExpression = left, RightExpression = right, Operator = op });
+				(left, right, op) => new ArithmeticOperationSelector<T> { LeftExpression = left, RightExpression = right, Operator = op },
+				(head, groupText, tail) => PropertySelector<T>.Chain(_text, TailParts(tail), (PropertySelector<T>)head, groupText));
 		}
 
 		public PropertySelector Parse()
 		{
 			return Parse(
 				text => (PropertySelector)text,
-				(left, right, op) => new ArithmeticOperationSelector { LeftExpression = left, RightExpression = right, Operator = op });
+				(left, right, op) => new ArithmeticOperationSelector { LeftExpression = left, RightExpression = right, Operator = op },
+				(head, groupText, tail) => PropertySelector.Chain(_text, TailParts(tail), head, groupText));
 		}
 
 		private PropertySelector Parse(
 			Func<string, PropertySelector> createOperand,
-			Func<PropertySelector, PropertySelector?, ArithmeticOperator, PropertySelector> createOperation)
+			Func<PropertySelector, PropertySelector?, ArithmeticOperator, PropertySelector> createOperation,
+			Func<PropertySelector, string, ArithmeticOperationToken, PropertySelector> createChain)
 		{
 			_pos = 0;
 			_createOperand = createOperand;
 			_createOperation = createOperation;
+			_createChain = createChain;
 
 			var expression = ParseExpression();
 			if (_pos < _tokens.Count)
@@ -108,6 +115,17 @@
 				var expr = ParseExpression();
 				if (!Match(ArithmeticOperationTokenType.RParen))
 					throw new SelectorParseException("Unbalanced parentheses: 1 unclosed '('.", _text, open.Position, "(");
+
+				var close = Previous();
+				if (Match(ArithmeticOperationTokenType.Pipe))
+				{
+					var pipe = Previous();
+					if (!Match(ArithmeticOperationTokenType.Selector))
+						throw new SelectorParseException($"Empty part: '{SelectorDefaults.PropertyDelimiter}' must sit between two parts.", _text, pipe.Position, pipe.Value);
+
+					expr = _createChain(expr, _text[open.Position..(close.Position + 1)], Previous());
+				}
+
 				return expr;
 			}
 
@@ -131,6 +149,9 @@
 				throw SelectorParseException.From(e, _text, op.Position, op.Value);
 			}
 		}
+
+		private static IEnumerable<SelectorPartText> TailParts(ArithmeticOperationToken tail)
+			=> tail.Value.AnalyzePropertySelector().Parts.Select(part => part with { Offset = part.Offset + tail.Position });
 
 		private bool Match(ArithmeticOperationTokenType type)
 		{
