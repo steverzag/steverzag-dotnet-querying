@@ -14,9 +14,7 @@ namespace Steverzag.QueryShaper.Configuration
 		/// </summary>
 		/// <remarks>
 		/// Safe to call multiple times: every configuration merges into the same registry instances rather
-		/// than registering duplicate singletons. The built artifacts are also exposed ambiently through
-		/// <see cref="QueryShaperServices"/> so the query extensions can resolve them without any extra
-		/// initialization call.
+		/// than registering duplicate singletons.
 		/// </remarks>
 		public static IServiceCollection AddQueryShaper<TConfiguration>(this IServiceCollection services)
 			where TConfiguration : QueryShaperConfiguration, new()
@@ -26,9 +24,6 @@ namespace Steverzag.QueryShaper.Configuration
 
 			var builder = new QueryShaperConfigurationBuilder(mapper, search);
 			new TConfiguration().Apply(builder);
-
-			QueryShaperServices.Register<IMapper>(mapper);
-			QueryShaperServices.Register<IBaseSearchConfiguration>(search);
 
 			return services;
 		}

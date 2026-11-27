@@ -30,14 +30,12 @@ namespace Steverzag.QueryShaper.Tests.Configuration
 	}
 
 	/// <summary>
-	/// <c>AddQueryShaper</c> and the static <c>QueryShaperServices</c> fallback. These tests mutate
-	/// process-wide state; they share the database collection, so xUnit runs them one at a time, and each
-	/// test registers what it needs first. A "nothing registered" test can't be written reliably for the
-	/// same reason (decision D4 in the roadmap).
+	/// <c>AddQueryShaper</c>, and the rule that the query extensions use only the configuration they are given
+	/// (decision 038: no ambient registry).
 	/// </summary>
 	public class ConfigurationTests(SqliteDatabaseFixture database) : DatabaseTestBase(database)
 	{
-		private int[] SearchIds(string value, IBaseSearchConfiguration? configuration = null)
+		private int[] SearchIds(string value, IBaseSearchConfiguration configuration)
 		{
 			using var context = Database.CreateContext();
 			return context.Products.ApplyBaseFilter(value, configuration).OrderBy(p => p.Id).Select(p => p.Id).ToArray();
@@ -93,39 +91,46 @@ namespace Steverzag.QueryShaper.Tests.Configuration
 			Assert.Equal([1, 3], SearchIds("Tools", provider.GetRequiredService<IBaseSearchConfiguration>()));
 		}
 
-		// ---- static fallback (QueryShaperServices)
+		// ---- no ambient configuration (decision 038)
 
 		[Fact]
-		public void WithoutAnExplicitConfiguration_TheRegisteredOneIsUsed()
+		public void TwoContainers_EachKeepTheirOwnConfiguration()
 		{
-			new ServiceCollection().AddQueryShaper<ProductSearchAndMapConfiguration>();
-
-			Assert.Equal([2], SearchIds("Sh"));
-
-			using var context = Database.CreateContext();
-			Assert.Equal(["Tools", "Garden", "Tools", "Garden"],
-				context.Products.OrderBy(p => p.Id).ApplySelect<Product, ProductLabel>().Select(l => l.Name).ToArray());
-		}
-
-		[Fact]
-		public void TheStaticFallback_FollowsTheLastServiceCollection()
-		{
-			// Two independent containers (two hosts, two tenants, two tests): the static fallback points at
-			// whichever called AddQueryShaper last. This is the hazard behind decision D4.
+			// Two hosts, two tenants or two parallel tests: registering the second doesn't affect the first.
 			using var first = new ServiceCollection().AddQueryShaper<ProductSearchAndMapConfiguration>().BuildServiceProvider();
 			using var second = new ServiceCollection().AddQueryShaper<ProductCategorySearchConfiguration>().BuildServiceProvider();
 
-			Assert.Equal([1, 3], SearchIds("Tools"));                                                   // the second one's search
-			Assert.Empty(SearchIds("Tools", first.GetRequiredService<IBaseSearchConfiguration>()));    // the first is unaffected when passed explicitly
+			Assert.Empty(SearchIds("Tools", first.GetRequiredService<IBaseSearchConfiguration>()));
+			Assert.Equal([1, 3], SearchIds("Tools", second.GetRequiredService<IBaseSearchConfiguration>()));
 		}
 
 		[Fact]
-		public void AnExplicitConfiguration_WinsOverTheStaticFallback()
+		public void TheConfigurationPassed_IsTheOneUsed_EvenAfterAddQueryShaper()
 		{
 			new ServiceCollection().AddQueryShaper<ProductCategorySearchConfiguration>();
-			var explicitConfiguration = new BaseSearchConfiguration().Configure<Product>([nameof(Product.Name)]);
+			var passed = new BaseSearchConfiguration().Configure<Product>([nameof(Product.Name)]);
 
-			Assert.Equal([2], SearchIds("Sh", explicitConfiguration));
+			Assert.Equal([2], SearchIds("Sh", passed));
+		}
+
+		[Fact]
+		public void ApplyBaseFilter_WithoutAConfiguration_Throws()
+		{
+			new ServiceCollection().AddQueryShaper<ProductSearchAndMapConfiguration>();
+			using var context = Database.CreateContext();
+
+			var exception = Assert.Throws<ArgumentNullException>(() => context.Products.ApplyBaseFilter("Sh", (IBaseSearchConfiguration)null!));
+			Assert.Equal("configuration", exception.ParamName);
+		}
+
+		[Fact]
+		public void ApplySelect_WithoutAMapper_Throws()
+		{
+			new ServiceCollection().AddQueryShaper<ProductSearchAndMapConfiguration>();
+			using var context = Database.CreateContext();
+
+			var exception = Assert.Throws<ArgumentNullException>(() => context.Products.ApplySelect<Product, ProductLabel>(null!));
+			Assert.Equal("mapper", exception.ParamName);
 		}
 	}
 }

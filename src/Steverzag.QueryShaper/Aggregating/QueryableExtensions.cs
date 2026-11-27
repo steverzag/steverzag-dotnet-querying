@@ -162,16 +162,9 @@ namespace Steverzag.QueryShaper.Aggregating
 			return query.Select(selectLambda);
 		}
 
-		public static IQueryable<TOut> ApplySelect<TIn, TOut>(this IQueryable<TIn> query, IMapper? mapper = null)
+		public static IQueryable<TOut> ApplySelect<TIn, TOut>(this IQueryable<TIn> query, IMapper mapper)
 		{
-			mapper ??= QueryShaperServices.GetServiceOrNull<IMapper>();
-
-			if (mapper is null)
-			{
-				throw new InvalidOperationException(
-					$"No {nameof(IMapper)} was provided and none has been configured for types {typeof(TIn).Name} and {typeof(TOut).Name}" +
-					$"Pass one explicitly or register it via AddQueryShaper.");
-			}
+			ArgumentNullException.ThrowIfNull(mapper);
 
 			return mapper.Map<TIn, TOut>(query);
 		}

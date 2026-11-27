@@ -543,16 +543,9 @@ namespace Steverzag.QueryShaper.Filtering
 			|| type == typeof(TimeSpan)
 			|| type == typeof(DateTimeOffset);
 
-		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, string? searchValue, IBaseSearchConfiguration? configuration = default)
+		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, string? searchValue, IBaseSearchConfiguration configuration)
 		{
-			configuration ??= QueryShaperServices.GetServiceOrNull<IBaseSearchConfiguration>();
-
-			if (configuration is null)
-			{
-				throw new InvalidOperationException(
-					$"No {nameof(IBaseSearchConfiguration)} was provided and none has been configured for type {typeof(T).Name}. " +
-					$"Pass one explicitly or register it via AddQueryShaper.");
-			}
+			ArgumentNullException.ThrowIfNull(configuration);
 
 			if (string.IsNullOrWhiteSpace(searchValue))
 			{

@@ -16,12 +16,12 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 | Feature | Entry point | Input model |
 |---|---|---|
 | Logic filters | `query.ApplyLogicsFilter(nodes)` | `FilterNode` = `ConditionNode { FieldSelector, FilterCondition, Value }` or `GroupNode { Filters[] }`, both with `FilterLogicOption` |
-| Base (global) search | `query.ApplyBaseFilter(searchValue[, config])` or `ApplyBaseFilter(lookups, value)` | configured with `ConfigureSearch<T>(…)` |
+| Base (global) search | `query.ApplyBaseFilter(searchValue, config)` or `ApplyBaseFilter(lookups, value)` | configured with `ConfigureSearch<T>(…)` |
 | Combined | `query.ApplyFilters(lookups, searchValue, nodes)` | |
 | Ordering | `query.ApplyOrder(orderParameters)` | `OrderParameters(string OrderBy, OrderDirection)` |
 | Pagination | `query.Paginate(page, size)` (sync, core) / `query.PaginateAsync(page, size, ct)` (from `Steverzag.QueryShaper.EntityFrameworkCore`) | returns `PaginatedList<T>` (see [Pagination](#pagination)) |
 | Grouping / aggregation | `query.ApplyGrouping(keys).ApplySelect(aggregates)` | `GroupByKeys`, `SelectResult` |
-| Mapping | `query.ApplySelect<TIn, TOut>(mapper?)` | `AddMap<TIn,TOut>(m => m.ForMember(d => d.X, "Selector"))` |
+| Mapping | `query.ApplySelect<TIn, TOut>(mapper)` | `AddMap<TIn,TOut>(m => m.ForMember(d => d.X, "Selector"))` |
 
 `FilterCondition` values: `Equals`, `NotEquals`, `GreaterThan(OrEqual)`, `LessThan(OrEqual)`,
 `StartsWith`, `DoesNotStartWith`, `EndsWith`, `DoesNotEndWith`, `IsEmpty`, `IsNotEmpty`, `In`, `NotIn`,
@@ -104,9 +104,9 @@ For non-nullable `Guid`, `bool`, date and enum properties, `IsEmpty` is not supp
 
 ## Base search
 
-`ApplyBaseFilter(value[, configuration])` applies the search configured for `T` (`ConfigureSearch<T>(…)` or
-`BaseSearchConfiguration.Configure<T>(…)`). Without an explicit configuration it uses the one registered by
-`AddQueryShaper` (decision D4).
+`ApplyBaseFilter(value, configuration)` applies the search configured for `T` (`ConfigureSearch<T>(…)` or
+`BaseSearchConfiguration.Configure<T>(…)`). The configuration is required: inject the `IBaseSearchConfiguration`
+that `AddQueryShaper` registers. There is no ambient fallback (decision 038).
 
 - A blank value (`null`, `""`, whitespace) leaves the query unchanged, even for a type with no search configured.
 - A non-blank value on a type with no search configured throws `InvalidOperationException` (decision 010), before
@@ -206,6 +206,9 @@ public class AppQueryShaperConfig : QueryShaperConfiguration
 }
 
 services.AddQueryShaper<AppQueryShaperConfig>();   // multiple configurations merge into one registry
+
+// In an endpoint: inject what AddQueryShaper registered and pass it (decision 038)
+app.MapGet("/people", (AppDb db, IMapper mapper) => db.People.ApplySelect<AppPerson, PersonDto>(mapper));
 ```
 
 **How a map fills the destination.** Each public property of the destination is filled from its `ForMember`
@@ -222,7 +225,7 @@ them into a non-nullable destination; a nullable destination receives `null` for
 
 ### Possible settings (not implemented)
 
-Ideas for settings, recorded so they're considered when the configuration approach is settled (D4). None of them
+Ideas for settings, recorded so they're considered when the configuration is redesigned (decision 038: they go on the future `IQueryShaper`). None of them
 exist yet.
 
 | Setting | Default | What it would do |
