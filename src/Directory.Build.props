@@ -17,6 +17,7 @@
     <RepositoryUrl>https://github.com/steverzag/steverzag-dotnet-querying</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>https://github.com/steverzag/steverzag-dotnet-querying/blob/main/src/$(MSBuildProjectName)/CHANGELOG.md</PackageReleaseNotes>
 
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
