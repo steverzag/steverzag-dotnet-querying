@@ -24,8 +24,8 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 
 		protected static ConditionNode Node(string field, FilterCondition condition, FilterValue? value = null) => new()
 		{
-			FieldSelector = field,
-			FilterCondition = condition,
+			Field = field,
+			Condition = condition,
 			Value = value,
 		};
 

@@ -134,7 +134,7 @@ namespace Steverzag.QueryShaper.Tests.Ordering
 
 			OrderParameters asBase = new OrderParameters<Product>(selector, Asc);
 
-			Assert.Equal(text, asBase.OrderBy);
+			Assert.Equal(text, asBase.Field);
 		}
 
 		// ---- provider behaviour (SQLite), recorded so a provider change is noticed

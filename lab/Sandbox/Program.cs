@@ -40,14 +40,14 @@ var logicFilters = new List<FilterNode>
 	//		{
 	//			FilterField = nameof(AppPerson.Email),
 	//			Value = null,
-	//			FilterCondition = FilterCondition.IsEmpty,
+	//			Condition = FilterCondition.IsEmpty,
 	//		},
 	//		new()
 	//		{
 	//			FilterField = nameof(AppPerson.MaritalStatus),
 	//			Value = (int)MaritalStatus.Married,
-	//			FilterCondition = FilterCondition.Equals,
-	//			FilterLogicOption = LogicalConnector.And,
+	//			Condition = FilterCondition.Equals,
+	//			Connector = LogicalConnector.And,
 	//		},
 	//	],
 	//},
@@ -58,45 +58,45 @@ var logicFilters = new List<FilterNode>
 	//		{
 	//			FilterField = string.Join(".", [nameof(AppPerson.Affiliations), nameof(AffiliationPersonMap.Affiliation), nameof(Affiliation.WorkingHours)]),
 	//			Value = null,
-	//			FilterCondition = FilterCondition.IsNotEmpty,
+	//			Condition = FilterCondition.IsNotEmpty,
 	//		},
 	//		new()
 	//		{
 	//			FilterField = string.Join(".", [nameof(AppPerson.Phones), nameof(Phone.Number)]),
 	//			Value = null,
-	//			FilterCondition = FilterCondition.IsEmpty,
-	//			FilterLogicOption = LogicalConnector.Or,
+	//			Condition = FilterCondition.IsEmpty,
+	//			Connector = LogicalConnector.Or,
 	//		}
 	//	],
 
-	//	FilterLogicOption = LogicalConnector.Or,
+	//	Connector = LogicalConnector.Or,
 	//},
 	//new()
 	//{ 
 	//	FilterField = string.Join(".", [nameof(AppPerson.TaxInfo), nameof(AppPerson.TaxInfo.EstimatedNextDeclarationAmmount)]),
-	//	FilterCondition = FilterCondition.IsNotEmpty,
-	//	FilterLogicOption = LogicalConnector.And,
+	//	Condition = FilterCondition.IsNotEmpty,
+	//	Connector = LogicalConnector.And,
 	//},
 	new ConditionNode()
 	{
-		FieldSelector = string.Join(".", [nameof(AppPerson.Phones), nameof(Phone.PhoneType)]),
+		Field = string.Join(".", [nameof(AppPerson.Phones), nameof(Phone.PhoneType)]),
 		Value = new List<object>() { PhoneType.Home, PhoneType.Work },
-		FilterCondition = FilterCondition.ContainsAll,
-		FilterLogicOption = LogicalConnector.And,
+		Condition = FilterCondition.ContainsAll,
+		Connector = LogicalConnector.And,
 	},
 	new ConditionNode()
 	{
-		FieldSelector = string.Join(".", [nameof(AppPerson.Id)]),
-		FilterCondition = FilterCondition.NotIn,
+		Field = string.Join(".", [nameof(AppPerson.Id)]),
+		Condition = FilterCondition.NotIn,
 		Value = new List<object>() { 1, 2, 3, 4, 5 },
-		FilterLogicOption = LogicalConnector.And,
+		Connector = LogicalConnector.And,
 	},
 	new ConditionNode()
 	{
-		FieldSelector = nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.AvgAggregateFunction,
-		FilterCondition = FilterCondition.Equals,
+		Field = nameof(AppPerson.Phones) + "." + nameof(Phone.Id) + "|" + SelectorDefaults.AvgAggregateFunction,
+		Condition = FilterCondition.Equals,
 		Value = 12044.5,
-		FilterLogicOption = LogicalConnector.And,
+		Connector = LogicalConnector.And,
 	}
 };
 

@@ -1147,3 +1147,212 @@ and reject `Contains` on dates.)
   format and culture rules; kept as a Phase 6 enhancement.
 **Consequence:** `NonStringLookup_IsSearchedAsText` becomes a rejection test. Anyone who wants a non-string
 property in the search writes a lookup that produces a string.
+
+### 041: The `QueryRequest` contract and the `IQueryShaper` entry point (2026-11-27)
+**Status:** accepted (2026-11-27). Builds on 038.2; settles the JSON conversion that 008.3 deferred.
+**Context:** a client can't send a query today. Nothing binds from JSON: `PropertySelector` only has implicit
+operators, `FilterValue` has private fields and constructors, `FilterNode` is abstract, and the enums bind as numbers.
+Calling code chains `ApplyBaseFilter`, `ApplyLogicsFilter`, `ApplyOrder`, `ApplySelect` and `Paginate` itself and
+passes the mapper and the search configuration by hand (038.1). `PaginationParameters` (default 10, max 50, clamping)
+is internal and unused. A JSON value carries no .NET type: `"2026-11-01"` is a string, but `FilterValue`'s `DateTime`
+cast only accepts the `DateTime` kind, so today a date can't be filtered from JSON at all.
+**Proposal:**
+1. **One non-generic request type**, the same for every entity, bindable with `[FromBody]`:
+   ```csharp
+   public sealed record QueryRequest
+   {
+       public string? Search { get; init; }
+       public IReadOnlyList<FilterNode> Filters { get; init; } = [];
+       public IReadOnlyList<OrderParameters> Order { get; init; } = [];
+       public PageRequest? Page { get; init; }
+   }
+   public sealed record PageRequest(int Index, int Size);
+   ```
+   ```json
+   {
+     "search": "phone",
+     "filters": [
+       { "field": "Price", "condition": "GreaterThan", "value": 10 },
+       { "connector": "Or", "filters": [
+           { "field": "Created", "condition": "GreaterThanOrEqual", "value": "2026-11-01" },
+           { "field": "Tags", "condition": "ContainsAny", "value": ["new", "sale"] } ] }
+     ],
+     "order": [ { "field": "Created", "direction": "Descending" } ],
+     "page": { "index": 2, "size": 20 }
+   }
+   ```
+   - `search` uses only the **configured** base search for the type (`IBaseSearchConfiguration`). The client can't
+     send lookups, because choosing which columns are searched is the server's job (see the Phase 6 note on
+     searching every string property). `FilterParameters.SearchLookups` stays for use from code.
+   - Grouping and aggregation (`ApplyGrouping`/`ApplySelect` → `SelectResult`) are **out**. They change the result
+     type, and their request shape is a separate design. They can be added later as `QueryRequest.Aggregate`
+     without breaking anything.
+2. **The JSON names are the C# names, and the C# names get shorter.** This is pre-release, and Phase 4 is where
+   the surface is shaped. `ConditionNode.FieldSelector` → `Field`, `ConditionNode.FilterCondition` → `Condition`,
+   `FilterNode.FilterLogicOption` → `Connector`, and `OrderParameters(OrderBy, OrderDirection)` →
+   `(Field, Direction)`. They're serialized in camelCase under ASP.NET's web defaults. `connector` defaults to `And`
+   and is ignored on the first node (as in `CombineNodes`). `direction` defaults to `Ascending`.
+3. **The converters live in QueryShaper and are attached with `[JsonConverter]`**, so ASP.NET binds the request
+   with no setup:
+   - `PropertySelector`, on `Field` (a property-level attribute): read from a JSON string through the non-generic
+     implicit operator. A `SelectorParseException` is rethrown as `JsonException` with the selector's message, so
+     the client gets a 400 with a JSON path rather than a 500. PropertySelectors itself stays untouched (001). A
+     converter there can be added later.
+   - `FilterNode`: the two kinds are told apart by shape, as planned. If `filters` is present it's a `GroupNode`,
+     otherwise a `ConditionNode`. A node with both `filters` and `field` is rejected. No `"type"` discriminator is
+     needed. `GroupNode`'s existing guards (an empty group, null nodes) surface as `JsonException`.
+   - `FilterValue`: read from the JSON token alone.
+     - A string becomes `String`.
+     - A number that fits `long` and has no fraction becomes `Integer`. Any other number becomes `Decimal`, or
+       `Double` if it's outside `decimal`'s range.
+     - `true`/`false` becomes `Bool`.
+     - An array of those becomes `Enumerable`.
+     - `null` becomes a null `Value`.
+     - An object or a nested array is rejected.
+   - The request's own enums (`FilterCondition`, `LogicalConnector`, `OrderDirection`) are read by name, through
+     `JsonStringEnumConverter<T>` on the enum. Numbers are rejected (`allowIntegerValues: false`). This doesn't
+     touch filter **values**: an enum property still accepts its underlying number (008.4). Why names only:
+     - The members have implicit values, so a number follows their order. Inserting a member (say `Between` after
+       `LessThanOrEqual`) would shift every later one, and `"condition": 6` would silently change meaning. With
+       names, a new member is additive, as 032 requires.
+     - System.Text.Json binds an undefined number (`"condition": 99`) without complaint, and it would fail later,
+       deep in the builder. That's the silent reinterpretation 009 removed.
+     - Names are readable in logs and bug reports.
+     - Accepting numbers later (explicit, frozen member values, with undefined numbers rejected) is additive;
+       removing them after release would be breaking.
+4. **A string is converted to the property's type when the filter is built** (target typing, 008.3). The converter
+   can't see the property, so the filter builder converts a `String` value when the property is `DateTime`,
+   `DateOnly`, `TimeOnly`, `TimeSpan`, `DateTimeOffset` or `char`. That's how `Guid` (029) and enum names (008.4)
+   already work, and it applies to single values and list elements alike.
+   - Parsing is strict and culture-invariant, ISO 8601 only: `yyyy-MM-dd`,
+     `yyyy-MM-ddTHH:mm:ss[.fffffff][Z|±hh:mm]`, `HH:mm[:ss[.fffffff]]`, and the constant `c` format for `TimeSpan`.
+     A `char` comes from a one-character string.
+   - A string that doesn't parse throws `FilterConditionAndValueNotSupportedException` naming the field.
+   - This is additive: values that are already typed in code behave as before. What a `Z` or an offset means for a
+     `DateTime` property is settled, with tests, when this is built.
+5. **`IQueryShaper`, registered by `AddQueryShaper`**, carries the mapper, the search configuration and the options.
+   It's granular: each part of a request can be applied on its own, and `Apply` is just those parts in order.
+   ```csharp
+   public interface IQueryShaper
+   {
+       IQueryable<T> ApplySearch<T>(IQueryable<T> source, string? search);
+       IQueryable<T> ApplyFilters<T>(IQueryable<T> source, IReadOnlyList<FilterNode> filters);
+       IQueryable<T> ApplyOrder<T>(IQueryable<T> source, IReadOnlyList<OrderParameters> order);
+       IQueryable<TOut> Map<TIn, TOut>(IQueryable<TIn> source);
+       PageRequest ResolvePage(PageRequest? page);                                       // defaults and limits
+
+       IQueryable<T> Apply<T>(IQueryable<T> source, QueryRequest request);               // search → filters → order
+       IQueryable<TOut> Apply<TIn, TOut>(IQueryable<TIn> source, QueryRequest request);  // … then map
+   }
+   // core: Paginate(this IQueryable<T>, PageRequest), plus ApplyPaged<T> / <TIn, TOut> as extensions on IQueryShaper
+   // EF:   PaginateAsync(this IQueryable<T>, PageRequest, ct), plus ApplyPagedAsync<T> / <TIn, TOut>
+   ```
+   - The order of operations is base search → filters → order (all on `TIn`) → map → page. Selectors name the
+     **source** type's properties, as they do today, and that's what EF translates. Letting clients use the DTO's
+     names is a later feature: an allow-list with aliases belongs with the guard rails.
+   - An empty request is valid: no search, no filters, no order, and the default page. An empty part is a no-op,
+     so a request with only filters only filters.
+   - Each granular method validates its input and applies the options exactly as `Apply` does for that part, so
+     every route through `IQueryShaper` gets the same checks and, later, the same guard rails.
+   - The interface's methods share names with the extensions (`ApplyFilters`, `ApplyOrder`). That's acceptable:
+     one is an instance method, the other an extension in another namespace (`Configuration` vs. `Filtering`).
+6. **Two public layers: the extensions are the trusted layer, `IQueryShaper` the guarded one.**
+   - The extension methods (`ApplyBaseFilter`, `ApplyLogicsFilter`, `ApplyOrder`, `ApplySelect`, `Paginate`)
+     stay public. They turn values built in code into expressions, with no dependency injection, no options and
+     no guard rails. That keeps today's lightweight use, and the lab and the tests keep using them directly.
+   - `IQueryShaper` is a thin layer over them: it validates, reports paths, applies the options and the guard
+     rails, then calls the extensions. No filtering, ordering or paging logic lives in it, so a change lands in one
+     place. Both layers fall under 032's contract.
+   - The README and the extensions' XML docs say it plainly: the extensions are for trusted input built in code;
+     client requests go through `IQueryShaper`. Passing client input straight to an extension bypasses the
+     guard rails.
+   - Later, additive: extension overloads that take the guard-rail options explicitly
+     (`query.ApplyFilters(filters, options)`), for callers who want the protection without dependency injection.
+7. **`IQueryShaper` validates its whole input before building anything, and reports where each problem is.**
+   - Each selector is first parsed again against the source type (`PropertySelector<TIn>`), so the generic form's
+     parse-time typing (018) catches unknown properties and type mismatches, with their positions.
+   - Every failure, in a selector or a filter value, is thrown as a new `QueryRequestException`. It carries a `Path`
+     in the request (`filters[1].filters[0].field`, `order[0].field`, `page.size`) and the original exception as its
+     `InnerException`. A server maps that one type to a 400.
+   - The path is relative to what the method received: `filters[1].field` from `Apply`, `[1].field` from
+     `ApplyFilters`.
+   - A non-blank `search` on a type with no search configured stays `InvalidOperationException` (010.8). That's a
+     server bug, not a bad request.
+8. **Options go through `Microsoft.Extensions.Options`.** `AddQueryShaper<TConfiguration>(Action<QueryShaperOptions>?
+   configure = null)` calls `services.Configure`, so several calls compose in the standard way.
+   - For this decision the options hold only the paging settings: `DefaultPageSize` (10) and `MaxPageSize` (100).
+   - A requested size above the maximum is **rejected** (`QueryRequestException` at `page.size`), not clamped, in
+     line with 009.
+   - A request with no `page` gets index 1 and the default size, so a request can never return every row.
+   - The guard rails (the allow-list, depth, the filter count) and the evaluation order (the 007 follow-up) become
+     properties on the same options class later.
+9. **`PaginationParameters` is deleted.** `PageRequest` and the options replace it.
+**Considered:**
+- **A generic `QueryRequest<T>`** whose converters parse typed selectors at bind time. Errors would come with a
+  JSON path for free, but `FilterNode` would need a generic twin and every endpoint a type argument. Point 7 gets
+  the same typing at `Apply` time.
+- **Only a global `Apply` on `IQueryShaper`.** A caller who wants only the filters would have to use the raw
+  extensions and lose the validation and, later, the guard rails, which would be a security gap.
+- **Making the extensions internal**, so `IQueryShaper` is the only way in. Every user would need dependency
+  injection just to filter a query, and the lab and the tests would have to go through the container.
+- **Verb-only names on the interface** (`Filter`, `Order`, `Search`) to tell it apart from the extensions. Possible,
+  but different names for the same operation are harder to learn than the same name on two layers.
+- **Enum numbers on the wire.** See point 3: they follow member order and let undefined values through.
+- **A `"type"` discriminator with `[JsonPolymorphic]`.** It's built in, but clients have to write
+  `"type": "condition"` on every node, and it has to come first in the object.
+- **`FilterValue` holding a `JsonElement`**, converted when the filter is built. It keeps the JSON exactly, but it
+  ties the filter builder to System.Text.Json, and values built in code and from JSON would follow two paths.
+- **Clamping an oversized page** (GitHub's model). Friendlier, but a client that asks for 500 and silently gets 100
+  can't tell it has missed rows.
+- **GET, with the request in the query string.** Not for the preview: the filter tree doesn't fit query-string
+  binding. A single `?q=` JSON parameter can be added later on top of the same converters.
+**Consequence:**
+- Point 2 is a breaking rename. It touches every test and lab call site that builds a `ConditionNode` or
+  `OrderParameters`.
+- New dependency: `Microsoft.Extensions.Options`, a framework package like the DI abstractions already referenced.
+- The EF add-on gains `PaginateAsync(PageRequest)` and `ApplyPagedAsync`.
+- Tests:
+  - converter round-trips and rejections for each shape and each value kind;
+  - string-to-type conversion for each date/time type, with valid and invalid input;
+  - `Apply` on SQLite producing the same SQL as the hand-chained extensions;
+  - `Path` for each place a failure can happen, from `Apply` and from each granular method;
+  - each granular method producing the same SQL as its part of `Apply`;
+  - paging defaults, the cap and the empty request.
+- Docs: the README and the extensions' XML docs state the two-layer rule (point 6). This is the one exception to
+  holding XML docs back until the Phase 4 pass, since it's a security note.
+
+**Implemented (2026-11-27).** As written, with these details settled while building it:
+- **Where things live.** `IQueryShaper`, `QueryRequest`, `PageRequest` and `QueryShaperOptions` are in the root
+  namespace `Steverzag.QueryShaper`, not `Configuration` (point 5's note on names still holds: the extensions are in
+  `Filtering`, `Ordering`, …). `QueryRequestException` is in `Exceptions`. The implementation, `DefaultQueryShaper`,
+  is internal; the converters are internal in `Serialization`.
+- **`PageRequest(int Index = 1, int? Size = null)`**, not `(int Index, int Size)`. A client can send
+  `{ "page": { "index": 3 } }` and get the default size, instead of a 0 that would have to mean "default".
+  `Paginate(PageRequest)` and `PaginateAsync(PageRequest)` need a size, and say to use `ResolvePage` if it's missing.
+- **The JSON path of a binding error.** A custom converter can't see the path above it, and a nested `Deserialize`
+  restarts at `$`. So `JsonException.Path` points at the **top-level** filter (`$.filters[1]`), and the message
+  names the place inside it (`… (at 'filters[0].condition' in this filter)`). The converter reads the whole node into
+  a plain recursive shape in one call, so the inside paths are System.Text.Json's own. Errors in `order` and `page`
+  have their exact path.
+- **`condition` is required in JSON.** Leaving it out would otherwise default to `Equals` (the enum's 0), the kind
+  of silent reinterpretation 009 removed. A null node in a group is "A filter can't be null." with its place.
+- **`OrderParameters` has a converter too**, so a missing `field` is a `JsonException`, not an
+  `ArgumentNullException` from the constructor (a 500). Its `Field` stays a string; it's parsed when ordered.
+- **Text conversion.** A `DateTime` with `Z` or an offset becomes UTC; one without is taken as written (Kind
+  `Unspecified`). `DateTimeOffset` requires `Z` or an offset. `Guid` text is now accepted in lists too (it already was
+  for single values), since JSON can only send a Guid as a string. `TimeSpan`, `DateTimeOffset` and `char` have no
+  single-value filter branch, so their text conversion applies in lists only.
+- **Error mapping in `IQueryShaper`.** `SelectorParseException` → `.field`; `FilterNotSupportedException` →
+  `.condition`; `FilterConditionAndValueNotSupportedException`, `InvalidCastException`, `FormatException` and
+  `ArgumentException` (an empty list) → `.value`. Anything else passes through unwrapped: it's a bug, not a bad
+  request. The extensions still throw their own exceptions.
+- **Options are validated when `IQueryShaper` is first resolved** (`InvalidOperationException`: a size below 1, or a
+  default above the maximum), not at `AddQueryShaper`, because the standard options pattern lets later calls change
+  them.
+- **Enums.** A small name-only converter instead of `JsonStringEnumConverter`, which can't be told through an
+  attribute to reject numbers, and which would also accept comma lists (`"Equals, NotEquals"`).
+- Tests: 152 in `tests/Steverzag.QueryShaper.Tests/Requests/`. 58 in `JsonBindingTests`: shapes, rejections, value
+  kinds, enums, paths, round trip. 46 in `TextValueConversionTests`, on SQLite plus `DateTimeOffset` in memory.
+  48 in `QueryShaperTests`: registration and options, the same SQL as the hand-chained extensions for `Apply` and
+  each granular method, every error path, paging, and EF `ApplyPagedAsync`. All 701 existing QueryShaper tests pass
+  after the rename.

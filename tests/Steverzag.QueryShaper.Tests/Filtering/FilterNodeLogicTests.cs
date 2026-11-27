@@ -26,8 +26,8 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		private static FilterNode CategoryIs(string name) => Node("Category.Name", FilterCondition.Equals, name);
 		private static FilterNode StatusIs(ProductStatus status) => Node(nameof(Product.Status), FilterCondition.Equals, (int)status);
 
-		private static FilterNode Or(FilterNode node) => node with { FilterLogicOption = LogicalConnector.Or };
-		private static FilterNode And(FilterNode node) => node with { FilterLogicOption = LogicalConnector.And };
+		private static FilterNode Or(FilterNode node) => node with { Connector = LogicalConnector.Or };
+		private static FilterNode And(FilterNode node) => node with { Connector = LogicalConnector.And };
 		private static GroupNode Group(params FilterNode[] children) => new() { Filters = children };
 
 		// ---- basics
@@ -238,7 +238,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		[Fact]
 		public void ConditionWithNullField_Throws()
 		{
-			Assert.Throws<ArgumentNullException>(() => new ConditionNode { FieldSelector = null!, FilterCondition = FilterCondition.IsEmpty });
+			Assert.Throws<ArgumentNullException>(() => new ConditionNode { Field = null!, Condition = FilterCondition.IsEmpty });
 		}
 
 		[Fact]

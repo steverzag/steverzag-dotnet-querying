@@ -6,6 +6,10 @@ using System.Linq.Expressions;
 
 namespace Steverzag.QueryShaper.Ordering
 {
+	/// <remarks>
+	/// For trusted input built in code: these methods have no options and no guard rails. Pass client requests
+	/// through <see cref="IQueryShaper"/>, which validates them first.
+	/// </remarks>
 	public static class OrderingExtensions
 	{
 
@@ -38,8 +42,8 @@ namespace Steverzag.QueryShaper.Ordering
 			foreach (var orderParam in orderParameters)
 			{
 				PropertySelector<T> selector = orderParam is OrderParameters<T> typed
-					? typed.OrderBy
-					: orderParam.OrderBy;
+					? typed.Field
+					: orderParam.Field;
 
 				var paramExp = Expression.Parameter(typeof(T), name: "p");
 				var propertyToOrderByExp = Expression.Convert(
@@ -50,7 +54,7 @@ namespace Steverzag.QueryShaper.Ordering
 
 				if (isFirstIteration)
 				{
-					query = orderParam.OrderDirection == OrderDirection.Ascending
+					query = orderParam.Direction == OrderDirection.Ascending
 						? query.OrderBy(orderByLambdaExp)
 						: query.OrderByDescending(orderByLambdaExp);
 					isFirstIteration = false;
@@ -58,7 +62,7 @@ namespace Steverzag.QueryShaper.Ordering
 				else
 				{
 					var orderedQuery = query as IOrderedQueryable<T>;
-					query = orderParam.OrderDirection == OrderDirection.Ascending
+					query = orderParam.Direction == OrderDirection.Ascending
 						? orderedQuery!.ThenBy(orderByLambdaExp)
 						: orderedQuery!.ThenByDescending(orderByLambdaExp);
 				}

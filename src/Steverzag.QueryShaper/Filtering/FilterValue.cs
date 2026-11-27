@@ -1,7 +1,10 @@
-﻿using System.Runtime.CompilerServices;
+using System.Text.Json.Serialization;
+using Steverzag.QueryShaper.Serialization;
+using System.Runtime.CompilerServices;
 
 namespace Steverzag.QueryShaper.Filtering
 {
+	[JsonConverter(typeof(FilterValueJsonConverter))]
 	public readonly struct FilterValue
 	{
 		private readonly bool? _boolValue;

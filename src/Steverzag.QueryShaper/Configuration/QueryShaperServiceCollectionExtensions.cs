@@ -1,6 +1,7 @@
 using Steverzag.QueryShaper.Configuration.Filtering;
 using Steverzag.QueryShaper.Configuration.Mapping;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Steverzag.QueryShaper.Configuration
 {
@@ -16,7 +17,7 @@ namespace Steverzag.QueryShaper.Configuration
 		/// Safe to call multiple times: every configuration merges into the same registry instances rather
 		/// than registering duplicate singletons.
 		/// </remarks>
-		public static IServiceCollection AddQueryShaper<TConfiguration>(this IServiceCollection services)
+		public static IServiceCollection AddQueryShaper<TConfiguration>(this IServiceCollection services, Action<QueryShaperOptions>? configure = null)
 			where TConfiguration : QueryShaperConfiguration, new()
 		{
 			var mapper = GetOrCreateSingleton(services, () => new Mapper(), m => services.AddSingleton<IMapper>(m));
@@ -24,6 +25,13 @@ namespace Steverzag.QueryShaper.Configuration
 
 			var builder = new QueryShaperConfigurationBuilder(mapper, search);
 			new TConfiguration().Apply(builder);
+
+			services.AddOptions<QueryShaperOptions>();
+			if (configure is not null)
+			{
+				services.Configure(configure);
+			}
+			services.TryAddSingleton<IQueryShaper, DefaultQueryShaper>();
 
 			return services;
 		}

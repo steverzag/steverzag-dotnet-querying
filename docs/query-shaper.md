@@ -11,15 +11,101 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 - Writes or commands. QueryShaper only reads.
 - Defining the selector language. That belongs to [PropertySelectors](property-selectors.md).
 
+## Two layers: client requests and trusted code
+
+QueryShaper has two public layers (decision 041.6):
+
+- **`IQueryShaper`** is for **client requests**. It validates its input, reports where a request is wrong, and
+  applies the options (paging limits now; the guard rails later). Register it with `AddQueryShaper` and inject it.
+- **The extension methods** (`ApplyLogicsFilter`, `ApplyBaseFilter`, `ApplyOrder`, `ApplySelect`, `Paginate`) are
+  for **trusted input built in code**. They need no dependency injection, and they have no options and no guard
+  rails. **Don't pass client input to them directly**: that bypasses what `IQueryShaper` checks.
+
+`IQueryShaper` is a thin layer over the extensions, so both build the same queries.
+
+## Client requests
+
+A `QueryRequest` binds from JSON with `[FromBody]`, with no setup: the converters are attached to the types.
+
+```json
+{
+  "search": "phone",
+  "filters": [
+    { "field": "Price", "condition": "GreaterThan", "value": 10 },
+    { "connector": "Or", "filters": [
+        { "field": "CreatedAt", "condition": "GreaterThanOrEqual", "value": "2026-11-01" },
+        { "field": "Tags", "condition": "ContainsAny", "value": ["new", "sale"] } ] }
+  ],
+  "order": [ { "field": "CreatedAt", "direction": "Descending" } ],
+  "page": { "index": 2, "size": 20 }
+}
+```
+
+```csharp
+services.AddQueryShaper<AppQueryShaperConfig>(o => o.MaxPageSize = 50);
+
+app.MapPost("/products/query", async (QueryRequest request, AppDb db, IQueryShaper shaper, CancellationToken ct)
+    => await shaper.ApplyPagedAsync<Product, ProductDto>(db.Products, request, ct));
+```
+
+**The JSON.**
+- A node with `filters` is a group; otherwise it's a condition, which needs `field` and `condition`. A node with
+  both, or neither, is rejected. No `"type"` field is needed.
+- `connector` defaults to `And`, and `direction` to `Ascending`. Every part of the request is optional; `{}` is a
+  valid request.
+- `condition`, `connector` and `direction` are names (case-insensitive). Numbers are rejected, so the wire format
+  never depends on the order of the enum members. (A filter **value** on an enum property still accepts its
+  number.)
+- `value` is a string, a number, a boolean, `null`, or a list of those. A string is converted to the property's
+  type when the filter is built (see [Filter values](#filter-values)).
+- `search` uses the search configured for the type (`ConfigureSearch<T>`). A client can't choose which columns
+  are searched.
+- `page.size` can be left out (the default is used); `page.index` defaults to 1.
+- A binding error is a `JsonException`, which ASP.NET turns into a 400. Inside a filter, `Path` points at the
+  top-level filter (`$.filters[1]`) and the message names the place inside it
+  (`… (at 'filters[0].condition' in this filter)`). A custom converter can't see the path above it, so this is as
+  precise as System.Text.Json allows.
+
+**`IQueryShaper`.**
+
+| Method | Does |
+|---|---|
+| `Apply<T>(source, request)` | search → filters → order |
+| `Apply<TIn, TOut>(source, request)` | the same, then the map |
+| `ApplySearch`, `ApplyFilters`, `ApplyOrder`, `Map` | one part on its own, with the same checks |
+| `ResolvePage(page)` | fills the default size; rejects an index below 1 and a size below 1 or above `MaxPageSize` |
+| `ApplyPaged` / `ApplyPagedAsync` (EF add-on) | `Apply`, then the resolved page. A request with no page gets page 1 at the default size, so it never returns every row. |
+
+Selectors name the **source** type's properties, and the map runs last.
+
+**Errors.** Every error in a request, whether in a selector, a value, a condition or the page, is a
+`QueryRequestException`, so a server maps one type to a 400. It has:
+- `Path`: where the error is, relative to what the method received. `filters[1].filters[0].field` from `Apply`,
+  `[1].filters[0].field` from `ApplyFilters`, `page.size` from `ApplyPaged`, `size` from `ResolvePage`.
+- `Detail`: the message without the path. `InnerException` is the original error.
+
+Each selector is first parsed against the source type, so a type mismatch is caught before anything is built, and
+its position is in the whole selector. A non-blank `search` on a type with no search configured stays an
+`InvalidOperationException`: that's a server bug, not a bad request.
+
+**Options** (`QueryShaperOptions`, set through `AddQueryShaper(o => …)` or the standard options pattern):
+
+| Option | Default |
+|---|---|
+| `DefaultPageSize` | 10 |
+| `MaxPageSize` | 100. A larger size is rejected, not clamped. |
+
+Invalid options (below 1, or a default above the maximum) fail when `IQueryShaper` is first resolved.
+
 ## Building blocks
 
 | Feature | Entry point | Input model |
 |---|---|---|
-| Logic filters | `query.ApplyLogicsFilter(nodes)` | `FilterNode` = `ConditionNode { FieldSelector, FilterCondition, Value }` or `GroupNode { Filters[] }`, both with `FilterLogicOption` |
+| Logic filters | `query.ApplyLogicsFilter(nodes)` | `FilterNode` = `ConditionNode { Field, Condition, Value }` or `GroupNode { Filters[] }`, both with `Connector` |
 | Base (global) search | `query.ApplyBaseFilter(searchValue, config)` or `ApplyBaseFilter(lookups, value)` | configured with `ConfigureSearch<T>(…)` |
 | Combined | `query.ApplyFilters(lookups, searchValue, nodes)` | |
-| Ordering | `query.ApplyOrder(orderParameters)` | `OrderParameters(string OrderBy, OrderDirection)` |
-| Pagination | `query.Paginate(page, size)` (sync, core) / `query.PaginateAsync(page, size, ct)` (from `Steverzag.QueryShaper.EntityFrameworkCore`) | returns `PaginatedList<T>` (see [Pagination](#pagination)) |
+| Ordering | `query.ApplyOrder(orderParameters)` | `OrderParameters(string Field, OrderDirection Direction = Ascending)` |
+| Pagination | `query.Paginate(page, size)` or `Paginate(PageRequest)` (sync, core) / `query.PaginateAsync(…, ct)` (from `Steverzag.QueryShaper.EntityFrameworkCore`) | returns `PaginatedList<T>` (see [Pagination](#pagination)) |
 | Grouping / aggregation | `query.ApplyGrouping(keys).ApplySelect(aggregates)` | `GroupByKeys`, `SelectResult` |
 | Mapping | `query.ApplySelect<TIn, TOut>(mapper)` | `AddMap<TIn,TOut>(m => m.ForMember(d => d.X, "Selector"))` |
 
@@ -29,7 +115,7 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 
 ## Combining filters
 
-Each `FilterNode` carries a `FilterLogicOption` (`And` / `Or`) that says how it joins **everything
+Each `FilterNode` carries a `Connector` (`And` / `Or`) that says how it joins **everything
 before it**:
 
 - **Strictly left to right, with no precedence.** `A`, `Or B`, `And C` means `(A or B) and C`, not
@@ -42,7 +128,7 @@ before it**:
   `A`, `Or GroupNode [B, And C]`.
 - **Invariants are checked when a node is built**, also through `with`. A group needs at least one child and no
   `null` children (`ArgumentException`), and it copies the list it is given. A condition needs a
-  `FieldSelector` (`ArgumentNullException`).
+  `Field` (`ArgumentNullException`).
 - An empty list leaves the query unchanged; a `null` list throws `ArgumentNullException`, and a `null` node in
   the list throws `ArgumentException`.
 
@@ -67,6 +153,25 @@ rejection below happens before the query runs.
 - An undefined value or an unknown name throws `FilterConditionAndValueNotSupportedException`. A `[Flags]` enum accepts
   any combination of declared bits, including 0.
 - Other kinds of values (`bool`, `double`, `Guid`, …) throw `FilterConditionAndValueNotSupportedException`.
+
+**Text for dates, times, `Guid` and `char`** (decision 041.4). JSON has no date type, so a string value is converted
+to the property's type when the filter is built, for single values and list elements alike. Parsing is strict and
+culture-invariant:
+
+| Property | Accepted text |
+|---|---|
+| `DateTime` | `2026-11-27`, `2026-11-27T14:30`, `…T14:30:00`, `…T14:30:00.1234567`. With `Z` or an offset (`+02:00`), the value is converted to UTC. Without one, it's taken as written. |
+| `DateTimeOffset` | the same, and `Z` or an offset is required |
+| `DateOnly` | `2026-11-27` |
+| `TimeOnly` | `14:30`, `14:30:00`, `14:30:00.1234567` (24-hour) |
+| `TimeSpan` | `[-][d.]hh:mm:ss[.fffffff]`: `01:30:00`, `2.01:30:00` |
+| `Guid` | any format `Guid.TryParse` accepts |
+| `char` | exactly one character |
+
+Anything else (`15/03/2024`, a space instead of `T`, `9:30`, `24:00`) throws
+`FilterConditionAndValueNotSupportedException` naming the field and the expected format. A value typed in code
+(`DateTime`, …) is used as before. `TimeSpan`, `DateTimeOffset` and `char` have no single-value filter branch yet,
+so for them this only applies inside lists (`In`, `NotIn`, the collection conditions).
 
 **A missing value** (`Value = null`, or a `FilterValue` that holds null) works only with `IsEmpty` and
 `IsNotEmpty`. With `Equals`, `NotEquals` or a comparison it throws `FilterConditionAndValueNotSupportedException`,
@@ -189,17 +294,17 @@ var totals = db.Products
 ```csharp
 var page = await db.Persons
     .ApplyLogicsFilter([
-        new ConditionNode { FieldSelector = "Phones.PhoneType", FilterCondition = FilterCondition.ContainsAll,
+        new ConditionNode { Field = "Phones.PhoneType", Condition = FilterCondition.ContainsAll,
                 Value = new List<object> { PhoneType.Home, PhoneType.Work } },
         new GroupNode
         {
-            FilterLogicOption = LogicalConnector.And,
+            Connector = LogicalConnector.And,
             Filters =
             [
-                new ConditionNode { FieldSelector = "Phones.Id|" + SelectorDefaults.AvgAggregateFunction,
-                        FilterCondition = FilterCondition.GreaterThan, Value = 100 },
-                new ConditionNode { FieldSelector = "Email", FilterCondition = FilterCondition.IsEmpty,
-                        FilterLogicOption = LogicalConnector.Or },
+                new ConditionNode { Field = "Phones.Id|" + SelectorDefaults.AvgAggregateFunction,
+                        Condition = FilterCondition.GreaterThan, Value = 100 },
+                new ConditionNode { Field = "Email", Condition = FilterCondition.IsEmpty,
+                        Connector = LogicalConnector.Or },
             ],
         },
     ])
@@ -219,7 +324,11 @@ public class AppQueryShaperConfig : QueryShaperConfiguration
 
 services.AddQueryShaper<AppQueryShaperConfig>();   // multiple configurations merge into one registry
 
-// In an endpoint: inject what AddQueryShaper registered and pass it (decision 038)
+// For a client request: inject IQueryShaper (see Client requests)
+app.MapPost("/people/query", (QueryRequest request, AppDb db, IQueryShaper shaper)
+    => shaper.ApplyPaged<AppPerson, PersonDto>(db.People, request));
+
+// For code-built queries: inject what AddQueryShaper registered and pass it (decision 038)
 app.MapGet("/people", (AppDb db, IMapper mapper) => db.People.ApplySelect<AppPerson, PersonDto>(mapper));
 ```
 
@@ -237,7 +346,7 @@ them into a non-nullable destination; a nullable destination receives `null` for
 
 ### Possible settings (not implemented)
 
-Ideas for settings, recorded so they're considered when the configuration is redesigned (decision 038: they go on the future `IQueryShaper`). None of them
+Ideas for settings, recorded so they're considered as `QueryShaperOptions` grows (decision 041.8). None of them
 exist yet.
 
 | Setting | Default | What it would do |

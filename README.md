@@ -7,7 +7,9 @@ This repository is the **experimentation lab** for two separate .NET libraries:
   → [docs/property-selectors.md](docs/property-selectors.md)
 - **Steverzag.QueryShaper** (`src/Steverzag.QueryShaper/`) is a set of `IQueryable` extensions for filtering,
   ordering, pagination, aggregation and mapping, all driven by PropertySelectors. EF Core-specific parts live in
-  `Steverzag.QueryShaper.EntityFrameworkCore`.
+  `Steverzag.QueryShaper.EntityFrameworkCore`. Client requests (`QueryRequest`, bound from JSON) go through the
+  injected `IQueryShaper`, which validates them and applies the limits. The extension methods are for trusted
+  input built in code: don't pass client input to them directly.
   → [docs/query-shaper.md](docs/query-shaper.md)
 
 Where things stand and what comes next: **[docs/ROADMAP.md](docs/ROADMAP.md)**.

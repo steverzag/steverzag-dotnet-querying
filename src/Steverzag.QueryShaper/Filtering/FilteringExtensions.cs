@@ -9,6 +9,10 @@ using System.Reflection;
 
 namespace Steverzag.QueryShaper.Filtering
 {
+	/// <remarks>
+	/// For trusted input built in code: these methods have no options and no guard rails. Pass client requests
+	/// through <see cref="IQueryShaper"/>, which validates them first.
+	/// </remarks>
 	public static class FilteringExtensions
 	{
 
@@ -60,42 +64,67 @@ namespace Steverzag.QueryShaper.Filtering
 				return query;
 			}
 
-			var parameterExpressions = Expression.Parameter(typeof(T), name: "x");
-			var lambda = Expression.Lambda<Func<T, bool>>(CombineNodes(parameterExpressions, logicFilters), parameterExpressions);
-
-			return query.Where(lambda);
+			return query.Where(CreateFilterLambda<T>(logicFilters, path: null));
 		}
 
-		private static Expression CombineNodes(ParameterExpression parameterExpressions, IEnumerable<FilterNode> nodes)
+		// With a path, a failing condition is reported as a QueryRequestException at its place in the list.
+		internal static Expression<Func<T, bool>> CreateFilterLambda<T>(IEnumerable<FilterNode> nodes, string? path)
+		{
+			var parameterExpressions = Expression.Parameter(typeof(T), name: "x");
+			return Expression.Lambda<Func<T, bool>>(CombineNodes(parameterExpressions, nodes, path), parameterExpressions);
+		}
+
+		private static Expression CombineNodes(ParameterExpression parameterExpressions, IEnumerable<FilterNode> nodes, string? path)
 		{
 			Expression? combinedExpression = null;
+			var index = 0;
 			foreach (var node in nodes)
 			{
-				var nodeExpression = BuildFilterExpression(parameterExpressions, node);
+				var nodePath = path is null ? null : $"{path}[{index}]";
+				var nodeExpression = BuildFilterExpression(parameterExpressions, node, nodePath);
 
 				combinedExpression = combinedExpression is null ? nodeExpression
-					: node.FilterLogicOption == LogicalConnector.And ? Expression.AndAlso(combinedExpression, nodeExpression)
+					: node.Connector == LogicalConnector.And ? Expression.AndAlso(combinedExpression, nodeExpression)
 					: Expression.OrElse(combinedExpression, nodeExpression);
+				index++;
 			}
 
 			// Callers pass a non-empty list: ApplyLogicsFilter returns early on an empty one, and GroupNode rejects one.
 			return combinedExpression!;
 		}
 
-		private static Expression BuildFilterExpression(ParameterExpression parameterExpressions, FilterNode node) => node switch
+		private static Expression BuildFilterExpression(ParameterExpression parameterExpressions, FilterNode node, string? path) => node switch
 		{
-			ConditionNode condition => BuildConditionExpression(parameterExpressions, condition),
-			GroupNode group => CombineNodes(parameterExpressions, group.Filters),
+			ConditionNode condition when path is null => CreateFilterConditionExpression(parameterExpressions, condition),
+			ConditionNode condition => BuildConditionExpression(parameterExpressions, condition, path),
+			GroupNode group => CombineNodes(parameterExpressions, group.Filters, path is null ? null : path + ".filters"),
 			null => throw new ArgumentException("A filter list cannot contain null nodes."),
 			_ => throw new NotSupportedException($"Unknown filter node type {node.GetType().Name}."),
 		};
 
-		private static Expression BuildConditionExpression(ParameterExpression parameterExpressions, ConditionNode filter)
-			=> CreateFilterConditionExpression(parameterExpressions, filter);
+		private static Expression BuildConditionExpression(ParameterExpression parameterExpressions, ConditionNode filter, string path)
+		{
+			try
+			{
+				return CreateFilterConditionExpression(parameterExpressions, filter);
+			}
+			catch (SelectorParseException ex)
+			{
+				throw new QueryRequestException(path + ".field", ex.Message, ex);
+			}
+			catch (FilterNotSupportedException ex)
+			{
+				throw new QueryRequestException(path + ".condition", ex.Message, ex);
+			}
+			catch (Exception ex) when (ex is FilterConditionAndValueNotSupportedException or InvalidCastException or FormatException or ArgumentException)
+			{
+				throw new QueryRequestException(path + ".value", ex.Message, ex);
+			}
+		}
 
 		private static Expression CreateFilterConditionExpression(ParameterExpression parameterExpressions, ConditionNode filter)
 		{
-			var propertyExpression = ExpressionUtils.CreateMemberAccess(parameterExpressions, filter.FieldSelector);
+			var propertyExpression = ExpressionUtils.CreateMemberAccess(parameterExpressions, filter.Field);
 
 			var propertyType = Nullable.GetUnderlyingType(propertyExpression.Type);
 			var isNullableType = propertyType != null;
@@ -104,7 +133,7 @@ namespace Steverzag.QueryShaper.Filtering
 				propertyType = propertyExpression.Type;
 			}
 
-			var isInOrNotInCondition = filter.FilterCondition is FilterCondition.In or FilterCondition.NotIn;
+			var isInOrNotInCondition = filter.Condition is FilterCondition.In or FilterCondition.NotIn;
 
 			if (propertyType == typeof(string) && !isInOrNotInCondition)
 			{
@@ -120,7 +149,7 @@ namespace Steverzag.QueryShaper.Filtering
 					stringValue = filter.Value is null ? null : (string)filter.Value;
 				}
 
-				return filter.FilterCondition switch
+				return filter.Condition switch
 				{
 					FilterCondition.Contains when stringValue is not null => CreateContainsExpression(propertyExpression, stringValue),
 					FilterCondition.DoesNotContain when stringValue is not null => Expression.Not(CreateContainsExpression(propertyExpression, stringValue)),
@@ -133,14 +162,14 @@ namespace Steverzag.QueryShaper.Filtering
 					FilterCondition.IsEmpty => Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(string.Empty)), Expression.Constant(string.Empty)),
 					FilterCondition.IsNotEmpty => Expression.Not(Expression.Equal(Expression.Coalesce(propertyExpression, Expression.Constant(string.Empty)), Expression.Constant(string.Empty))),
 					_ when stringValue is null => throw new FilterConditionAndValueNotSupportedException($"Null value filtering is only supported for {nameof(FilterCondition.IsEmpty)} and {nameof(FilterCondition.IsNotEmpty)} conditions."),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType == typeof(Guid) && !isInOrNotInCondition)
 			{
 				var constantType = isNullableType ? typeof(Guid?) : typeof(Guid);
 				Expression Value() => ParameterHolder.Parameter(ReadGuid(filter, propertyType), constantType);
-				return filter.FilterCondition switch
+				return filter.Condition switch
 				{
 					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
 					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
@@ -148,14 +177,14 @@ namespace Steverzag.QueryShaper.Filtering
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(Guid?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable Guid filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
 					FilterCondition.IsNotEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable Guid filtering is not supported for {nameof(FilterCondition.IsNotEmpty)} condition."),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType == typeof(bool) && !isInOrNotInCondition)
 			{
 				var constantType = isNullableType ? typeof(bool?) : typeof(bool);
 				Expression Value() => ParameterHolder.Parameter((bool)RequireValue(filter, propertyType), constantType);
-				return filter.FilterCondition switch
+				return filter.Condition switch
 				{
 					FilterCondition.Equals => Expression.Equal(propertyExpression, Value()),
 					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
@@ -163,7 +192,7 @@ namespace Steverzag.QueryShaper.Filtering
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(bool?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable bool filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
 					FilterCondition.IsNotEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable bool filtering is not supported for {nameof(FilterCondition.IsNotEmpty)} condition."),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType is { } numberType && IsComparableNumberType(numberType) && !isInOrNotInCondition)
@@ -174,7 +203,7 @@ namespace Steverzag.QueryShaper.Filtering
 					: Expression.Equal(propertyExpression, zero);
 				Expression Value() => ParameterHolder.Parameter(ReadNumber(filter, numberType), propertyExpression.Type);
 
-				return filter.FilterCondition switch
+				return filter.Condition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
 					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
@@ -184,13 +213,13 @@ namespace Steverzag.QueryShaper.Filtering
 					FilterCondition.NotEquals => Expression.Not(Expression.Equal(propertyExpression, Value())),
 					FilterCondition.IsEmpty => Empty(),
 					FilterCondition.IsNotEmpty => Expression.Not(Empty()),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType == typeof(DateTime) && !isInOrNotInCondition)
 			{
-				Expression Value() => ParameterHolder.Parameter((DateTime)RequireValue(filter, propertyType), propertyExpression.Type);
-				return filter.FilterCondition switch
+				Expression Value() => ParameterHolder.Parameter(ReadTemporal(filter, propertyType, v => (DateTime)v), propertyExpression.Type);
+				return filter.Condition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
 					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
@@ -202,13 +231,13 @@ namespace Steverzag.QueryShaper.Filtering
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(DateTime?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable DateTime filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
 					FilterCondition.IsNotEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable DateTime filtering is not supported for {nameof(FilterCondition.IsNotEmpty)} condition."),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType == typeof(DateOnly) && !isInOrNotInCondition)
 			{
-				Expression Value() => ParameterHolder.Parameter((DateOnly)RequireValue(filter, propertyType), propertyExpression.Type);
-				return filter.FilterCondition switch
+				Expression Value() => ParameterHolder.Parameter(ReadTemporal(filter, propertyType, v => (DateOnly)v), propertyExpression.Type);
+				return filter.Condition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
 					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
@@ -220,13 +249,13 @@ namespace Steverzag.QueryShaper.Filtering
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(DateOnly?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable DateOnly filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
 					FilterCondition.IsNotEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable DateOnly filtering is not supported for {nameof(FilterCondition.IsNotEmpty)} condition."),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType == typeof(TimeOnly) && !isInOrNotInCondition)
 			{
-				Expression Value() => ParameterHolder.Parameter((TimeOnly)RequireValue(filter, propertyType), propertyExpression.Type);
-				return filter.FilterCondition switch
+				Expression Value() => ParameterHolder.Parameter(ReadTemporal(filter, propertyType, v => (TimeOnly)v), propertyExpression.Type);
+				return filter.Condition switch
 				{
 					FilterCondition.GreaterThan => Expression.GreaterThan(propertyExpression, Value()),
 					FilterCondition.GreaterThanOrEqual => Expression.GreaterThanOrEqual(propertyExpression, Value()),
@@ -238,7 +267,7 @@ namespace Steverzag.QueryShaper.Filtering
 					FilterCondition.IsNotEmpty when isNullableType => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(null, typeof(TimeOnly?)))),
 					FilterCondition.IsEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable TimeOnly filtering is not supported for {nameof(FilterCondition.IsEmpty)} condition."),
 					FilterCondition.IsNotEmpty => throw new FilterConditionAndValueNotSupportedException($"Non-nullable TimeOnly filtering is not supported for {nameof(FilterCondition.IsNotEmpty)} condition."),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (propertyType!.IsEnum && !isInOrNotInCondition)
@@ -266,40 +295,40 @@ namespace Steverzag.QueryShaper.Filtering
 				object? enumValue = rawEnumValue is null ? null : ParseEnumValue(propertyType, rawEnumValue);
 				var enumConstant = ParameterHolder.Parameter(enumValue, propertyExpression.Type);
 
-				return filter.FilterCondition switch
+				return filter.Condition switch
 				{
 					FilterCondition.Equals when enumValue is not null => Expression.Equal(propertyExpression, enumConstant),
 					FilterCondition.NotEquals when enumValue is not null => Expression.Not(Expression.Equal(propertyExpression, enumConstant)),
 					FilterCondition.IsEmpty when enumValue is null => Expression.Equal(propertyExpression, Expression.Constant(Activator.CreateInstance(propertyExpression.Type))),
 					FilterCondition.IsNotEmpty when enumValue is null => Expression.Not(Expression.Equal(propertyExpression, Expression.Constant(Activator.CreateInstance(propertyExpression.Type)))),
 					_ when enumValue is null => throw new FilterConditionAndValueNotSupportedException($"Null enum filtering is only supported for {nameof(FilterCondition.IsEmpty)} and {nameof(FilterCondition.IsNotEmpty)} conditions."),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (isInOrNotInCondition)
 			{
 				List<object> valuesList = (List<object>)filter.Value!;
 
-				return filter.FilterCondition switch
+				return filter.Condition switch
 				{
-					FilterCondition.In => CreateInExpression(propertyExpression, valuesList, filter.FilterCondition),
-					FilterCondition.NotIn => Expression.Not(CreateInExpression(propertyExpression, valuesList, filter.FilterCondition)),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyExpression.Type)
+					FilterCondition.In => CreateInExpression(propertyExpression, valuesList, filter),
+					FilterCondition.NotIn => Expression.Not(CreateInExpression(propertyExpression, valuesList, filter)),
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
 			else if (ExpressionUtils.TryGetEnumerableElementType(propertyType, out var elementType))
 			{
-				return filter.FilterCondition switch
+				return filter.Condition switch
 				{
 					FilterCondition.Contains when elementType == typeof(string) => CreateEnumerableContainsExpression(propertyExpression, (string)filter.Value!),
 					FilterCondition.DoesNotContain when elementType == typeof(string) => Expression.Not(CreateEnumerableContainsExpression(propertyExpression, (string)filter.Value!)),
-					FilterCondition.ContainsAny => CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter.FilterCondition),
-					FilterCondition.DoesNotContainAny => Expression.Not(CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter.FilterCondition)),
-					FilterCondition.ContainsAll => CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter.FilterCondition),
-					FilterCondition.DoesNotContainAll => Expression.Not(CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter.FilterCondition)),
+					FilterCondition.ContainsAny => CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter),
+					FilterCondition.DoesNotContainAny => Expression.Not(CreateContainsAnyExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter)),
+					FilterCondition.ContainsAll => CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter),
+					FilterCondition.DoesNotContainAll => Expression.Not(CreateContainsAllExpression(propertyExpression, elementType, (List<object>)filter.Value!, filter)),
 					FilterCondition.IsEmpty => Expression.Equal(Expression.Call(typeof(Enumerable), METHOD_NAME_ANY, [elementType!], propertyExpression), Expression.Constant(false)),
 					FilterCondition.IsNotEmpty => Expression.Equal(Expression.Call(typeof(Enumerable), METHOD_NAME_ANY, [elementType!], propertyExpression), Expression.Constant(true)),
-					_ => throw new FilterNotSupportedException(filter.FilterCondition, propertyType)
+					_ => throw new FilterNotSupportedException(filter.Condition, propertyType)
 				};
 			}
 			else
@@ -308,7 +337,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 		}
 
-		private static MethodCallExpression CreateContainsAnyExpression(Expression propertyExpression, Type? elementType, List<object> valuesList, FilterCondition condition)
+		private static MethodCallExpression CreateContainsAnyExpression(Expression propertyExpression, Type? elementType, List<object> valuesList, ConditionNode filter)
 		{
 			ArgumentNullException.ThrowIfNull(elementType, nameof(elementType));
 			ArgumentNullException.ThrowIfNull(valuesList, nameof(valuesList));
@@ -318,7 +347,7 @@ namespace Steverzag.QueryShaper.Filtering
 			}
 
 			// x.Collection.Any(y => values.Contains(y))
-			var list = CreateTypedValueList(elementType, valuesList, condition);
+			var list = CreateTypedValueList(elementType, valuesList, filter);
 			ParameterExpression parameter = Expression.Parameter(elementType, "y");
 
 			var containsMethod = ContainsMethodInfo.MakeGenericMethod(elementType);
@@ -329,7 +358,7 @@ namespace Steverzag.QueryShaper.Filtering
 			return Expression.Call(anyMethod, propertyExpression, lambda);
 		}
 
-		private static MethodCallExpression CreateContainsAllExpression(Expression propertyExpression, Type? elementType, List<object> valuesList, FilterCondition condition)
+		private static MethodCallExpression CreateContainsAllExpression(Expression propertyExpression, Type? elementType, List<object> valuesList, ConditionNode filter)
 		{
 			ArgumentNullException.ThrowIfNull(elementType, nameof(elementType));
 			ArgumentNullException.ThrowIfNull(valuesList, nameof(valuesList));
@@ -341,7 +370,7 @@ namespace Steverzag.QueryShaper.Filtering
 			ParameterExpression parameter = Expression.Parameter(elementType, "y");
 			ParameterExpression parameter2 = Expression.Parameter(elementType, "z");
 
-			var list = CreateTypedValueList(elementType, valuesList, condition);
+			var list = CreateTypedValueList(elementType, valuesList, filter);
 
 			var allMethod = AllMethodInfo.MakeGenericMethod(elementType);
 			var anyMethod = AnyMethodInfo.MakeGenericMethod(elementType);
@@ -355,7 +384,7 @@ namespace Steverzag.QueryShaper.Filtering
 			return allMethodCall;
 		}
 
-		private static MethodCallExpression CreateInExpression(Expression propertyExpression, List<object> valuesList, FilterCondition condition)
+		private static MethodCallExpression CreateInExpression(Expression propertyExpression, List<object> valuesList, ConditionNode filter)
 		{
 			ArgumentNullException.ThrowIfNull(valuesList, nameof(valuesList));
 			if (valuesList.Count == 0)
@@ -366,7 +395,7 @@ namespace Steverzag.QueryShaper.Filtering
 			// The list's item type must match the property exactly (int? for an int? property),
 			// or Enumerable.Contains can't be called with it.
 			var itemType = propertyExpression.Type;
-			var list = CreateTypedValueList(itemType, valuesList, condition);
+			var list = CreateTypedValueList(itemType, valuesList, filter);
 
 			var containsMethod = ContainsMethodInfo.MakeGenericMethod(itemType);
 			var containsMethodCall = Expression.Call(containsMethod, ParameterHolder.List(list), propertyExpression);
@@ -374,12 +403,12 @@ namespace Steverzag.QueryShaper.Filtering
 			return containsMethodCall;
 		}
 
-		private static IList CreateTypedValueList(Type itemType, List<object> values, FilterCondition condition)
+		private static IList CreateTypedValueList(Type itemType, List<object> values, ConditionNode filter)
 		{
 			var underlyingType = Nullable.GetUnderlyingType(itemType) ?? itemType;
 			if (!IsScalarType(underlyingType))
 			{
-				throw new FilterNotSupportedException(condition, itemType);
+				throw new FilterNotSupportedException(filter.Condition, itemType);
 			}
 
 			var acceptsNull = !itemType.IsValueType || underlyingType != itemType;
@@ -401,6 +430,10 @@ namespace Steverzag.QueryShaper.Filtering
 				else if (underlyingType.IsInstanceOfType(value))
 				{
 					list.Add(value);
+				}
+				else if (value is string text && FilterText.IsConvertible(underlyingType))
+				{
+					list.Add(FilterText.Parse(text, underlyingType, filter.Field.ToString()));
 				}
 				else if (IsNumericType(underlyingType) && IsNumericType(value.GetType()))
 				{
@@ -488,11 +521,19 @@ namespace Steverzag.QueryShaper.Filtering
 			static bool IsInfinity(object number) => number is double d && double.IsInfinity(d);
 		}
 
+		private static T ReadTemporal<T>(ConditionNode filter, Type propertyType, Func<FilterValue, T> cast)
+		{
+			var value = RequireValue(filter, propertyType);
+			return value.GetKind() is FilterValueKind.String
+				? (T)FilterText.Parse((string)value, typeof(T), filter.Field.ToString())
+				: cast(value);
+		}
+
 		private static FilterValue RequireValue(ConditionNode filter, Type propertyType)
 			=> filter.Value is { } value && value.ToObject() is not null
 				? value
 				: throw new FilterConditionAndValueNotSupportedException(
-					$"{filter.FilterCondition} on type {propertyType.Name} needs a value; only {nameof(FilterCondition.IsEmpty)} and {nameof(FilterCondition.IsNotEmpty)} work without one.");
+					$"{filter.Condition} on type {propertyType.Name} needs a value; only {nameof(FilterCondition.IsEmpty)} and {nameof(FilterCondition.IsNotEmpty)} work without one.");
 
 		private static Guid ReadGuid(ConditionNode filter, Type propertyType)
 		{
@@ -504,7 +545,7 @@ namespace Steverzag.QueryShaper.Filtering
 			catch (FormatException)
 			{
 				throw new FilterConditionAndValueNotSupportedException(
-					$"The filter value for '{filter.FieldSelector}' is not a valid Guid: '{value.ToObject()}'.");
+					$"The filter value for '{filter.Field}' is not a valid Guid: '{value.ToObject()}'.");
 			}
 		}
 

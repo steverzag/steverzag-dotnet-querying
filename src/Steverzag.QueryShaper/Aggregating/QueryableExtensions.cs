@@ -5,6 +5,10 @@ using System.Reflection;
 
 namespace Steverzag.QueryShaper.Aggregating
 {
+	/// <remarks>
+	/// For trusted input built in code: these methods have no options and no guard rails. Pass client requests
+	/// through <see cref="IQueryShaper"/>, which validates them first.
+	/// </remarks>
 	public static class QueryableExtensions
 	{
 

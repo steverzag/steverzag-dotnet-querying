@@ -1,25 +1,29 @@
-﻿using Steverzag.PropertySelectors;
+using System.Text.Json.Serialization;
+using Steverzag.QueryShaper.Serialization;
+using Steverzag.PropertySelectors;
 
 namespace Steverzag.QueryShaper.Filtering
 {
+	[JsonConverter(typeof(FilterNodeJsonConverter))]
 	public abstract record FilterNode
 	{
 		private protected FilterNode() { }
 
-		public LogicalConnector FilterLogicOption { get; init; }
+		public LogicalConnector Connector { get; init; }
 	}
 
 	public sealed record ConditionNode : FilterNode
 	{
 		private readonly PropertySelector _fieldSelector = null!;
 
-		public required PropertySelector FieldSelector
+		[JsonConverter(typeof(PropertySelectorJsonConverter))]
+		public required PropertySelector Field
 		{
 			get => _fieldSelector;
-			init => _fieldSelector = value ?? throw new ArgumentNullException(nameof(FieldSelector));
+			init => _fieldSelector = value ?? throw new ArgumentNullException(nameof(Field));
 		}
 
-		public FilterCondition FilterCondition { get; init; }
+		public FilterCondition Condition { get; init; }
 
 		public FilterValue? Value { get; init; }
 	}
