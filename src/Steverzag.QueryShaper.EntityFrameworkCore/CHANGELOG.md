@@ -9,7 +9,7 @@ Every break is listed under **Breaking**, whatever the version. Each release nam
 against and the Steverzag.QueryShaper range it depends on. Releases are tagged
 `queryshaper-entityframeworkcore-v<version>`.
 
-## [0.1.0-preview] - Unreleased
+## [0.1.0-preview] - 2026-11-27
 
 First preview. Built against EF Core 9 (`Microsoft.EntityFrameworkCore` 9.0.10) on `net9.0`.
 Depends on Steverzag.QueryShaper `[0.1.0-preview, 0.2.0-0)`.

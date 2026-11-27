@@ -8,7 +8,7 @@ Each release lists **Grammar** changes (what selector text means, the contract i
 changes (C# types and members). Every break is listed under **Breaking**, whatever the version. Releases are tagged
 `propertyselectors-v<version>`.
 
-## [0.1.0-preview] - Unreleased
+## [0.1.0-preview] - 2026-11-27
 
 First preview. Targets `net9.0`, which is out of support; the targets move to every supported .NET at 1.0
 (decision 037).

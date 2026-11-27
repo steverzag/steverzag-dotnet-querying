@@ -7,7 +7,7 @@ minor and an additive or fix-only release bumps the patch. Pre-releases (`0.1.0-
 Every break is listed under **Breaking**, whatever the version. Each release names the Steverzag.PropertySelectors
 range it depends on. Releases are tagged `queryshaper-v<version>`.
 
-## [0.1.0-preview] - Unreleased
+## [0.1.0-preview] - 2026-11-27
 
 First preview. Targets `net9.0`, which is out of support; the targets move at 1.0 (decision 037).
 Depends on Steverzag.PropertySelectors `[0.1.0-preview, 0.2.0-0)`.
