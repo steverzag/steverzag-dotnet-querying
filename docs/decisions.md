@@ -1599,3 +1599,27 @@ case-sensitivity hint was built before the filter ran, so `passwordHash` got "Pr
 **Consequence:** breaking for callers that matched on "is not allowed" in `Detail`/`Message`: read the
 `InnerException` instead. A hidden date member such as `Created.Ticks` now reads "was not found", although the
 property exists on `DateTime`; the inner reason says why.
+
+### 048: Caps on orders, search length and list values (2026-11-27)
+**Status:** accepted; implemented (2026-11-27). Closes the open question left by 046.
+**Context:** after `MaxFilters`, three parts of a request were still bounded only by the request body: the number
+of `order` entries (each one is parsed, type-checked and becomes an `ORDER BY` term), the length of `search` (one
+`LIKE` per configured lookup), and the values in a list condition (sent as one JSON parameter, but each one is
+converted and the database expands them).
+**Decision:**
+1. **`MaxOrders`** (default 10). `ApplyOrder` rejects more with a `QueryRequestException` at `order` (`""` through
+   `ApplyOrder`): "A request can have at most 10 orders, not 11." Checked before any field is parsed.
+2. **`MaxSearchLength`** (default 200 characters). `ApplySearch` rejects a longer `search` at `search` (`""` through
+   `ApplySearch`): "The search can be at most 200 characters long, not 201." The raw length counts, so a blank
+   search that would be ignored is still rejected when it's too long.
+3. **`MaxListValues`** (default 100). Each `In`, `NotIn`, `ContainsAny` or `ContainsAll` list is counted on its own,
+   after its field is checked, and a longer one is rejected at that condition's `value`: "A list can have at most
+   100 values, not 101." Lists built in code and passed to `IQueryShaper` are checked too.
+4. Each cap must be at least 1, checked when the shaper is resolved. The trusted extensions don't check (041.6).
+**Considered:**
+- **A total across all lists.** Closer to the real cost, but a per-list cap is easier to explain in an error and to
+  set for one field.
+- **A cap on the length of every string value.** Left out for now: it overlaps the request size limit and would
+  need a sensible default per condition. The security note says so.
+**Consequence:** additive, but requests over the new defaults that used to run are now a 400. Tests: 26 in
+`RequestCapsTests` (QueryShaper, SQLite).

@@ -37,10 +37,10 @@ namespace Steverzag.QueryShaper
 				throw new InvalidOperationException(
 					$"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.DefaultPageSize)} ({_options.DefaultPageSize}) can't be more than {nameof(QueryShaperOptions.MaxPageSize)} ({_options.MaxPageSize}).");
 			}
-			if (_options.MaxFilters < 1)
-			{
-				throw new InvalidOperationException($"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.MaxFilters)} must be at least 1.");
-			}
+			RequireAtLeastOne(_options.MaxFilters, nameof(QueryShaperOptions.MaxFilters));
+			RequireAtLeastOne(_options.MaxListValues, nameof(QueryShaperOptions.MaxListValues));
+			RequireAtLeastOne(_options.MaxOrders, nameof(QueryShaperOptions.MaxOrders));
+			RequireAtLeastOne(_options.MaxSearchLength, nameof(QueryShaperOptions.MaxSearchLength));
 			if (_options.MemberFilter is null)
 			{
 				throw new InvalidOperationException($"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.MemberFilter)} can't be null.");
@@ -54,6 +54,10 @@ namespace Steverzag.QueryShaper
 		public IQueryable<T> ApplySearch<T>(IQueryable<T> source, string? search)
 		{
 			ArgumentNullException.ThrowIfNull(source);
+			if (search is not null && search.Length > _options.MaxSearchLength)
+			{
+				throw new QueryRequestException("", $"The search can be at most {_options.MaxSearchLength} characters long, not {search.Length}.");
+			}
 			return string.IsNullOrWhiteSpace(search) ? source : source.ApplyBaseFilter(search, _search);
 		}
 
@@ -67,7 +71,7 @@ namespace Steverzag.QueryShaper
 			}
 
 			EnsureWithinFilterLimit(filters, _options.MaxFilters);
-			ValidateSelectors<T>(filters, "", _options.MemberFilter);
+			ValidateNodes<T>(filters, "", _options.MemberFilter, _options.MaxListValues);
 			return source.Where(FilteringExtensions.CreateFilterLambda<T>(filters, path: ""));
 		}
 
@@ -78,6 +82,10 @@ namespace Steverzag.QueryShaper
 			if (order.Count == 0)
 			{
 				return source;
+			}
+			if (order.Count > _options.MaxOrders)
+			{
+				throw new QueryRequestException("", $"A request can have at most {_options.MaxOrders} orders, not {order.Count}.");
 			}
 
 			var parameter = Expression.Parameter(typeof(T), "p");
@@ -141,7 +149,7 @@ namespace Steverzag.QueryShaper
 			ArgumentNullException.ThrowIfNull(source);
 			ArgumentNullException.ThrowIfNull(request);
 
-			var query = ApplySearch(source, request.Search);
+			var query = Within("search", () => ApplySearch(source, request.Search));
 			query = Within("filters", () => ApplyFilters(query, request.Filters));
 			return Within("order", () => ApplyOrder(query, request.Order));
 		}
@@ -182,7 +190,15 @@ namespace Steverzag.QueryShaper
 			}
 		}
 
-		private static void ValidateSelectors<T>(IReadOnlyList<FilterNode> nodes, string path, MemberFilter filter)
+		private static void RequireAtLeastOne(int value, string name)
+		{
+			if (value < 1)
+			{
+				throw new InvalidOperationException($"{nameof(QueryShaperOptions)}: {name} must be at least 1.");
+			}
+		}
+
+		private static void ValidateNodes<T>(IReadOnlyList<FilterNode> nodes, string path, MemberFilter filter, int maxListValues)
 		{
 			for (var i = 0; i < nodes.Count; i++)
 			{
@@ -192,7 +208,7 @@ namespace Steverzag.QueryShaper
 					case null:
 						throw new QueryRequestException(nodePath, "A filter can't be null.");
 					case GroupNode group:
-						ValidateSelectors<T>(group.Filters, nodePath + ".filters", filter);
+						ValidateNodes<T>(group.Filters, nodePath + ".filters", filter, maxListValues);
 						break;
 					case ConditionNode condition:
 						try
@@ -202,6 +218,10 @@ namespace Steverzag.QueryShaper
 						catch (SelectorParseException ex)
 						{
 							throw new QueryRequestException(nodePath + ".field", ex.Message, ex);
+						}
+						if (condition.Value is { } value && value.GetKind() is FilterValueKind.Enumerable && ((List<object>)value).Count is var count && count > maxListValues)
+						{
+							throw new QueryRequestException(nodePath + ".value", $"A list can have at most {maxListValues} values, not {count}.");
 						}
 						break;
 				}

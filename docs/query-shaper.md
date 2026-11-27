@@ -95,10 +95,13 @@ its position is in the whole selector. A non-blank `search` on a type with no se
 | `DefaultPageSize` | 10 |
 | `MaxPageSize` | 100. A larger size is rejected, not clamped. |
 | `MaxFilters` | 50. Every node of `filters` counts, groups included, so the cap also bounds how deep groups nest. One more is a `QueryRequestException` at `filters`: "A request can have at most 50 filters, groups included." The count is checked before any selector is parsed, and stops at the first node over the cap. |
+| `MaxListValues` | 100. The most values in one `In`, `NotIn`, `ContainsAny` or `ContainsAll` list; each list is counted on its own. One more is a `QueryRequestException` at that condition's value (`filters[1].filters[0].value`): "A list can have at most 100 values, not 101." |
+| `MaxOrders` | 10. One more is a `QueryRequestException` at `order`: "A request can have at most 10 orders, not 11." Checked before any field is parsed. |
+| `MaxSearchLength` | 200 characters. A longer `search`, whitespace included, is a `QueryRequestException` at `search`: "The search can be at most 200 characters long, not 201." |
 | `MemberFilter` | `MemberFilter.All`. Every `field` in `filters` and `order` is parsed through it, so a selector that reaches a hidden member is a `QueryRequestException` at that field's path. Use `MemberFilter.Portable` to accept only date and time members that translate on SQLite, SQL Server and PostgreSQL, or the EF add-on's preset for your provider (below), and `Hide<T>`, `For<T>` or per-entity `MemberRules<T>` classes to hide your own members (see PropertySelectors → "Member filters"). The configured search and the mapper are server configuration and aren't filtered. |
 | `UnsortableTypes` | Empty. An `order` field whose built type (nullable unwrapped) is in the set is a `QueryRequestException` at `order[i].field`: "'Price' can't be ordered: the database can't sort decimal values." Without it, the database throws when the query runs, which a server reports as a 500. Fill it from the EF add-on: `o.UnsortableTypes.UnionWith(ProviderUnsortableTypes.Sqlite)`. Filters on those types aren't affected. |
 
-Invalid options (a page size or `MaxFilters` below 1, a default above the maximum, or a null `MemberFilter` or `UnsortableTypes`) fail when `IQueryShaper` is first resolved.
+Invalid options (a page size or any `Max…` cap below 1, a default above the maximum, or a null `MemberFilter` or `UnsortableTypes`) fail when `IQueryShaper` is first resolved.
 
 **Provider presets** (`ProviderMemberFilters` in `Steverzag.QueryShaper.EntityFrameworkCore`, decision 044) allow the
 date and time members that filter correctly on one provider. Each preset is one date/time member deep, like `Portable`,
@@ -159,6 +162,7 @@ still yours to do.
 | Breaking out of your own filters | `ApplyFilters` adds its own `Where`, which the database ANDs with any `Where` already on the source. An `Or` in the request can't widen a scope you applied first. |
 | A selector that crashes the process | `SelectorLimits.MaxLength` (2,000 characters) and `MaxDepth` (32) are checked on every parse (PropertySelectors → "Limits"). |
 | Huge or deeply nested filter trees | `MaxFilters` (50 nodes, groups included). Checked before any selector is parsed. |
+| Long lists, searches and orders | `MaxListValues` (100 per list condition), `MaxSearchLength` (200 characters), `MaxOrders` (10). |
 | Returning every row | `MaxPageSize` (100). `ApplyPaged` always pages, at `DefaultPageSize` when the request has no page. |
 | Reading members a client shouldn't see | `MemberFilter`. Off by default: see below. |
 | A 500 from an order the database can't run | `UnsortableTypes`. Empty by default: fill it from `ProviderUnsortableTypes`. |
@@ -185,9 +189,9 @@ These guards apply only through `IQueryShaper`. The extension methods have none 
 - **Error messages name your model.** `QueryRequestException` messages are written to be sent to the client, and
   they name types, properties and functions (`Property 'Missing' was not found on type 'Product'.`). If your
   entity names are sensitive, return `Path` and a generic message instead of `Detail`.
-- **Bound what isn't capped.** No option limits the number of `order` entries, the length of `search`, or the
-  number of values in an `In`, `NotIn`, `ContainsAny` or `ContainsAll` list. Each one is bounded only by the size of
-  the request body, so set the server's request size limit (Kestrel's `MaxRequestBodySize`, 30 MB by default).
+- **Bound what isn't capped.** No option limits the length of a single filter value (a `Contains` string, for
+  example). It is bounded only by the size of the request body, so set the server's request size limit (Kestrel's
+  `MaxRequestBodySize`, 30 MB by default) to what your endpoints need.
 - **Limit query cost.** A valid request can still be expensive. Examples are a string condition on an unindexed
   column, an aggregate over a collection navigation (`Orders.Total|$FN_AGGR_SUM`, a correlated subquery) or a
   function that stops the database from using an index. The member filter doesn't cover functions. Set a command

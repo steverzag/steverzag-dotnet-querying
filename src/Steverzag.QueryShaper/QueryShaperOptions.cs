@@ -10,6 +10,12 @@ namespace Steverzag.QueryShaper
 
 		public int MaxFilters { get; set; } = 50;
 
+		public int MaxListValues { get; set; } = 100;
+
+		public int MaxOrders { get; set; } = 10;
+
+		public int MaxSearchLength { get; set; } = 200;
+
 		public MemberFilter MemberFilter { get; set; } = MemberFilter.All;
 
 		public ISet<Type> UnsortableTypes { get; set; } = new HashSet<Type>();
