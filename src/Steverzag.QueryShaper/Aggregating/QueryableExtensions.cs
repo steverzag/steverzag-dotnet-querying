@@ -1,5 +1,4 @@
 ﻿using Steverzag.PropertySelectors;
-using Steverzag.QueryShaper.Configuration;
 using Steverzag.QueryShaper.Configuration.Mapping;
 using System.Linq.Expressions;
 using System.Reflection;

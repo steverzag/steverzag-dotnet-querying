@@ -1,5 +1,5 @@
 ﻿using Steverzag.PropertySelectors;
-using Steverzag.QueryShaper.Configuration;
+using Steverzag.PropertySelectors.MetaData;
 using Steverzag.QueryShaper.Configuration.Filtering;
 using Steverzag.QueryShaper.Exceptions;
 using System.Collections;
@@ -18,7 +18,6 @@ namespace Steverzag.QueryShaper.Filtering
 		private const string METHOD_NAME_ANY = "Any";
 		private const string METHOD_NAME_ALL = "All";
 		private const string METHOD_NAME_EQUALS = "Equals";
-		private const string METHOD_NAME_TO_STRING = "ToString";
 
 		//TODO: Replicate for all other methods used above
 		private static MethodInfo AnyMethodInfo = typeof(Enumerable)
@@ -600,6 +599,13 @@ namespace Steverzag.QueryShaper.Filtering
 			foreach (var field in searchLookups)
 			{
 				var propertyExpression = ExpressionUtils.CreateMemberAccess(entityParameter, field);
+				if (propertyExpression.Type != typeof(string))
+				{
+					throw new ArgumentException(
+						$"Search lookups must be strings: '{field}' is {TypeDisplay.Name(propertyExpression.Type)} on {entityParameter.Type.Name}.",
+						nameof(searchLookups));
+				}
+
 				var containingExpression = CreateContainsExpression(propertyExpression, searchValue);
 				combinedExpression = combinedExpression is null
 					? containingExpression
@@ -614,18 +620,12 @@ namespace Steverzag.QueryShaper.Filtering
 		{
 			var method = typeof(string).GetMethod(METHOD_NAME_CONTAINS, [typeof(string)])!;
 
-			if (propertyExpression.Type != typeof(string))
-				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
-
 			return Expression.Call(propertyExpression, method, valueExpression);
 		}
 
 		private static MethodCallExpression CreateContainsExpression(Expression propertyExpression, string value)
 		{
 			var method = typeof(string).GetMethod(METHOD_NAME_CONTAINS, [typeof(string)])!;
-
-			if (propertyExpression.Type != typeof(string))
-				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
 
 			return Expression.Call(propertyExpression, method, ParameterHolder.Parameter(value, typeof(string)));
 		}
@@ -647,9 +647,6 @@ namespace Steverzag.QueryShaper.Filtering
 		{
 			var method = typeof(string).GetMethod(METHOD_NAME_EQUALS, [typeof(string)])!;
 
-			if (propertyExpression.Type != typeof(string))
-				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
-
 			return Expression.Call(propertyExpression, method, ParameterHolder.Parameter(value, typeof(string)));
 		}
 
@@ -657,18 +654,12 @@ namespace Steverzag.QueryShaper.Filtering
 		{
 			var method = typeof(string).GetMethod(METHOD_NAME_STARTS_WITH, [typeof(string)])!;
 
-			if (propertyExpression.Type != typeof(string))
-				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
-
 			return Expression.Call(propertyExpression, method, ParameterHolder.Parameter(value, typeof(string)));
 		}
 
 		private static MethodCallExpression CreateEndsWithExpression(Expression propertyExpression, string value)
 		{
 			var method = typeof(string).GetMethod(METHOD_NAME_ENDS_WITH, [typeof(string)])!;
-
-			if (propertyExpression.Type != typeof(string))
-				propertyExpression = Expression.Call(propertyExpression, METHOD_NAME_TO_STRING, Type.EmptyTypes);
 
 			return Expression.Call(propertyExpression, method, ParameterHolder.Parameter(value, typeof(string)));
 		}

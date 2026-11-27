@@ -111,9 +111,21 @@ that `AddQueryShaper` registers. There is no ambient fallback (decision 038).
 - A blank value (`null`, `""`, whitespace) leaves the query unchanged, even for a type with no search configured.
 - A non-blank value on a type with no search configured throws `InvalidOperationException` (decision 010), before
   the query runs. It used to return every row, which hid the missing configuration.
-- No `IBaseSearchConfiguration` at all, neither passed nor registered, throws `InvalidOperationException`.
+- A `null` configuration throws `ArgumentNullException`.
 
 `ApplyBaseFilter(lookups, value)` builds the search from the given lookups instead and needs no configuration.
+
+**Lookups must be strings** (decision 040). Each lookup is a selector whose type must be `string`; anything else
+(`int`, `DateTime`, `Guid`, an enum, a collection such as `List<string>`) throws `ArgumentException`:
+"Search lookups must be strings: 'Quantity' is int on Product." A selector that produces a string is fine
+(`Description|$FN_COALESCE("")`, `Name|$FN_STR_TOLOWER`). Non-strings used to be searched through `ToString()`,
+whose text depends on the provider (a date reads differently on SQLite, SQL Server and in memory), so a search
+could silently match nothing.
+
+- A configured search (`ConfigureSearch<T>`, `BaseSearchConfiguration.Configure<T>`) checks its lookups when it's
+  configured, so `AddQueryShaper` fails at startup.
+- Ad-hoc lookups are checked when the search is built, which is skipped for a blank value or an empty lookup list.
+- A search written as an expression (`Configure<T>((x, s) => …)`) isn't checked: what it does is up to its author.
 
 ## Pagination
 

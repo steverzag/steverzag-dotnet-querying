@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+using Steverzag.QueryShaper.Configuration;
 using Steverzag.QueryShaper.Configuration.Filtering;
 using Steverzag.QueryShaper.Filtering;
 using Steverzag.QueryShaper.Tests.Infrastructure;
@@ -41,11 +43,75 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([1, 4], Ids(q => q.ApplyBaseFilter([nameof(Product.Description)], "e")));
 		}
 
-		[Fact]
-		public void NonStringLookup_IsSearchedAsText()
+		// ---- lookups must be strings (decision 040): a non-string used to be searched through ToString(),
+		// whose text depends on the provider ("20" matched Quantity 200)
+
+		public static TheoryData<string, string> NonStringLookups => new()
 		{
-			// Quantity.ToString(): "100", "0", "50", "200"
-			Assert.Equal([4], Ids(q => q.ApplyBaseFilter([nameof(Product.Quantity)], "20")));
+			{ nameof(Product.Quantity), "int" },
+			{ nameof(Product.NullableQuantity), "int?" },
+			{ nameof(Product.Price), "decimal" },
+			{ nameof(Product.CreatedAt), "DateTime" },
+			{ nameof(Product.DeletedAt), "DateTime?" },
+			{ nameof(Product.ReleaseDate), "DateOnly" },
+			{ nameof(Product.Code), "Guid" },
+			{ nameof(Product.IsActive), "bool" },
+			{ nameof(Product.Status), "ProductStatus" },
+			{ nameof(Product.Grade), "char" },
+			{ nameof(Product.Tags), "List<string>" },
+			{ "Reviews.Stars", "IEnumerable<int>" },
+			{ "Name|$FN_STR_LENGTH", "int" },
+		};
+
+		[Theory]
+		[MemberData(nameof(NonStringLookups))]
+		public void NonStringLookup_IsRejected_AdHoc(string lookup, string typeName)
+		{
+			using var context = Database.CreateContext();
+
+			var exception = Assert.Throws<ArgumentException>(() => context.Products.ApplyBaseFilter([lookup], "20"));
+			Assert.Equal("searchLookups", exception.ParamName);
+			Assert.StartsWith($"Search lookups must be strings: '{lookup}' is {typeName} on Product.", exception.Message);
+		}
+
+		[Theory]
+		[MemberData(nameof(NonStringLookups))]
+		public void NonStringLookup_IsRejected_WhenConfigured(string lookup, string typeName)
+		{
+			var exception = Assert.Throws<ArgumentException>(() => new BaseSearchConfiguration().Configure<Product>([nameof(Product.Name), lookup]));
+			Assert.StartsWith($"Search lookups must be strings: '{lookup}' is {typeName} on Product.", exception.Message);
+		}
+
+		private class QuantitySearchConfiguration : QueryShaperConfiguration
+		{
+			protected override void OnConfiguring(QueryShaperConfigurationBuilder builder) => builder
+				.ConfigureSearch<Product>([nameof(Product.Quantity)]);
+		}
+
+		[Fact]
+		public void NonStringLookup_IsRejected_ByAddQueryShaper()
+		{
+			// ConfigureSearch runs inside AddQueryShaper, so a bad lookup fails at startup
+			var exception = Assert.Throws<ArgumentException>(() => new ServiceCollection().AddQueryShaper<QuantitySearchConfiguration>());
+			Assert.StartsWith("Search lookups must be strings: 'Quantity' is int on Product.", exception.Message);
+		}
+
+		[Fact]
+		public void SelectorProducingAString_IsAccepted()
+		{
+			// Description is null for 2: COALESCE turns it into "", which doesn't contain "e"
+			const string lookup = "Description|$FN_COALESCE(\"\")";
+			var configuration = new BaseSearchConfiguration().Configure<Product>([lookup]);
+
+			Assert.Equal([1, 4], Ids(q => q.ApplyBaseFilter([lookup], "e")));
+			Assert.Equal([1, 4], Ids(q => q.ApplyBaseFilter("e", configuration)));
+		}
+
+		[Fact]
+		public void StringFunctionLookup_IsAccepted()
+		{
+			// Name lowered: "hammer", "shovel", "wrench", "rake"
+			Assert.Equal([1], Ids(q => q.ApplyBaseFilter(["Name|$FN_STR_TOLOWER"], "ham")));
 		}
 
 		[Fact]
