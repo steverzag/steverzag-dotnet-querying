@@ -19,7 +19,7 @@
   <PropertyGroup>
     <PinnedReference>Steverzag.PropertySelectors</PinnedReference>
     <PinnedMinVersion>0.1.0-preview</PinnedMinVersion>
-    <PinnedUpperBound>0.2.0-0</PinnedUpperBound>
+    <PinnedUpperBound>0.2.0-a</PinnedUpperBound>
   </PropertyGroup>
 
 </Project>

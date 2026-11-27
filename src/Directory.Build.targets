@@ -1,7 +1,7 @@
 <Project>
   <!-- Decisions 032.7 and 039.3: a package depends on a released minor of the in-repo library it references, not on the
        in-repo version. A project sets PinnedReference (the referenced project's file name), PinnedMinVersion (the released
-       version it compiles against) and PinnedUpperBound (exclusive; X.Y.0-0 sorts below every X.Y.0 pre-release). -->
+       version it compiles against) and PinnedUpperBound (exclusive; X.Y.0-a sorts below every X.Y.0 pre-release nuget.org accepts). -->
   <PropertyGroup Condition="'$(PinnedReference)' != ''">
     <PinnedVersionRange>[$(PinnedMinVersion), $(PinnedUpperBound))</PinnedVersionRange>
   </PropertyGroup>

@@ -934,11 +934,13 @@ stored in saved reports and sent by clients that upgrade on their own schedule, 
 6. **The grammar spec is versioned with the package.** The "Grammar" section of `property-selectors.md` states the
    version it describes, and the CHANGELOG lists grammar changes separately from C# API changes.
 7. **QueryShaper pins a PropertySelectors minor.** It depends on `[0.1.0, 0.2.0)`, since a 0.x minor may break.
-   **Note (2026-11-27), as implemented:** `[0.1.0-preview, 0.2.0-0)`. A pre-release sorts below its release, so
+   **Note (2026-11-27), as implemented:** `[0.1.0-preview, 0.2.0-a)`. A pre-release sorts below its release, so
    `[0.1.0, …` would reject `0.1.0-preview`; and `0.2.0)` would still admit `0.2.0-preview.N`, which may break, while
-   `0.2.0-0` sorts below every `0.2.0` pre-release. The minimum is the released version QueryShaper is built against
+   `0.2.0-a` sorts below every `0.2.0` pre-release (`-alpha`, `-preview`, …). It was `0.2.0-0` at first, the true
+   minimum, but nuget.org rejects a release label that doesn't start with a letter, and `a` is the lowest it accepts.
+   The minimum is the released version QueryShaper is built against
    (the pack checks it), and it moves up with each PropertySelectors release. The EF add-on pins its QueryShaper
-   minor the same way, `[0.1.0-preview, 0.2.0-0)`, since rule 1 lets a QueryShaper 0.x minor break it too.
+   minor the same way, `[0.1.0-preview, 0.2.0-a)`, since rule 1 lets a QueryShaper 0.x minor break it too.
 **Consequence:** the reserved-prefix rules become load-bearing: anything that falls through to a property lookup
 today can't be given meaning later without a breaking release. The public-API audit (Phase 4) should run before
 `0.1.0-preview`, because whatever is public then is under rule 2 from 0.1 onwards.
