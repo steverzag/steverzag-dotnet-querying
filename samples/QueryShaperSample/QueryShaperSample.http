@@ -1,0 +1,66 @@
+@host = http://localhost:5237
+
+### Every product, first page at the default size (10)
+POST {{host}}/products/query
+Content-Type: application/json
+
+{}
+
+### Search, filters with a group, order and page
+# search "phone" AND Price > 100, OR (made in 2026 OR tagged "sale"): strictly left to right
+POST {{host}}/products/query
+Content-Type: application/json
+
+{
+  "search": "phone",
+  "filters": [
+    { "field": "Price", "condition": "GreaterThan", "value": 100 },
+    { "connector": "Or", "filters": [
+        { "field": "CreatedAt.Year", "condition": "Equals", "value": 2026 },
+        { "field": "Tags", "condition": "ContainsAny", "value": ["sale"], "connector": "Or" } ] }
+  ],
+  "order": [ { "field": "CreatedAt", "direction": "Descending" } ],
+  "page": { "index": 1, "size": 5 }
+}
+
+### A filter on an aggregate and an enum list
+POST {{host}}/products/query
+Content-Type: application/json
+
+{
+  "filters": [
+    { "field": "Reviews.Stars|$FN_AGGR_AVG", "condition": "GreaterThanOrEqual", "value": 4.5 },
+    { "field": "Category", "condition": "In", "value": ["Laptops", "Audio"] }
+  ],
+  "order": [ { "field": "Reviews|$FN_AGGR_COUNT", "direction": "Descending" } ]
+}
+
+### 400: a hidden member reads as one that doesn't exist (path: filters[0].field)
+POST {{host}}/products/query
+Content-Type: application/json
+
+{ "filters": [ { "field": "InternalNotes", "condition": "Contains", "value": "cost" } ] }
+
+### 400: SQLite can't sort decimals (path: order[0].field)
+POST {{host}}/products/query
+Content-Type: application/json
+
+{ "order": [ { "field": "Price" } ] }
+
+### 400: over MaxPageSize (path: page.size)
+POST {{host}}/products/query
+Content-Type: application/json
+
+{ "page": { "size": 500 } }
+
+### 400: a value that doesn't fit the property (path: filters[0].value)
+POST {{host}}/products/query
+Content-Type: application/json
+
+{ "filters": [ { "field": "Price", "condition": "GreaterThan", "value": "cheap" } ] }
+
+### 400: an unknown condition fails while binding (path: $.filters[0])
+POST {{host}}/products/query
+Content-Type: application/json
+
+{ "filters": [ { "field": "Price", "condition": "Bigger", "value": 1 } ] }
