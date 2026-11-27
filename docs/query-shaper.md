@@ -133,6 +133,8 @@ what translates, in either direction. Things to know:
   truncating it.
 - PostgreSQL's `timestamptz` stores only UTC, so `DateTimeOffset.Hour` there is the UTC hour. On SQL Server it's the
   hour at the stored offset.
+- `DateTimeOffset.LocalDateTime` is out on every provider. In memory it converts to the app machine's time zone, but
+  in SQL to the database session's (PostgreSQL), so it's right only where the two happen to match.
 - The SQL Server `TimeSpan` results only cover values under a day, since SQL Server stores a `TimeSpan` as `time`.
 - On SQLite, a whole `DateTimeOffset` or `TimeSpan` value can only be compared with `==`: no `>`, `<` or ordering.
 

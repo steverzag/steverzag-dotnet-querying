@@ -87,7 +87,8 @@ namespace Steverzag.ProviderTests
 			var preset = Preset();
 			var mismatches = MemberProbe.Selectors()
 				.GroupBy(s => (s.Type, s.Member))
-				.Select(g => (g.Key.Type, g.Key.Member, Passes: g.All(s => MemberProbe.Run(fixture, s.Selector).Outcome == ProbeOutcome.Ok)))
+				.Select(g => (g.Key.Type, g.Key.Member, Passes: !MemberProbe.ZoneDependent.Contains(g.Key.Member)
+					&& g.All(s => MemberProbe.Run(fixture, s.Selector).Outcome == ProbeOutcome.Ok)))
 				.Where(m => m.Passes != preset.Allows(m.Type, m.Member))
 				.Select(m => $"{m.Type.Name}.{m.Member.Name}: {(m.Passes ? "passes but is hidden" : "is allowed but fails")}")
 				.ToList();

@@ -23,6 +23,12 @@ namespace Steverzag.ProviderTests.Infrastructure
 	{
 		public static readonly Type[] FrameworkTypes = [typeof(DateTime), typeof(DateTimeOffset), typeof(DateOnly), typeof(TimeOnly), typeof(TimeSpan)];
 
+		/// <summary>
+		/// Members whose value depends on the time zone: in memory the app machine's, in SQL the database session's. A probe
+		/// passes only where the two happen to match (CI runs everything in UTC), so no preset may allow them.
+		/// </summary>
+		public static readonly PropertyInfo[] ZoneDependent = [typeof(DateTimeOffset).GetProperty(nameof(DateTimeOffset.LocalDateTime))!];
+
 		public static IEnumerable<PropertyInfo> Members(Type type)
 			=> type.GetProperties(BindingFlags.Public | BindingFlags.Instance).Where(p => p.GetIndexParameters().Length == 0).OrderBy(p => p.Name);
 
