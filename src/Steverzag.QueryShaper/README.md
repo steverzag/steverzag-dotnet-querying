@@ -22,13 +22,19 @@ public class AppQueryShaperConfig : QueryShaperConfiguration
 {
     protected override void OnConfiguring(QueryShaperConfigurationBuilder b) => b
         .AddMap<Product, ProductDto>(m => m.ForMember(d => d.ReviewCount, "Reviews|$FN_AGGR_COUNT"))
-        .ConfigureSearch<Product>(["Name", "Description"]);
+        .ConfigureSearch<Product>(["Name", "Description"])
+        // The order when a request has none, and the tie-breaker when it has one, so pages are stable.
+        .ConfigureDefaultOrder<Product>([new("Id")]);
 }
 
 services.AddQueryShaper<AppQueryShaperConfig>(o => o.MaxPageSize = 50);
 
-app.MapPost("/products/query", (QueryRequest request, AppDb db, IQueryShaper shaper)
-    => shaper.ApplyPaged<Product, ProductDto>(db.Products, request));
+app.MapPost("/products/query", (QueryRequest request, AppDb db, IQueryShaper shaper) =>
+{
+    var page = shaper.ApplyPaged<Product, ProductDto>(db.Products, request);
+    // A PaginatedList serializes as a plain array, so send the counts alongside it.
+    return new { items = page, page.PageIndex, page.PageSize, page.TotalCount, page.TotalPages };
+});
 ```
 
 ## Two layers

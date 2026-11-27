@@ -7,13 +7,15 @@ namespace Steverzag.QueryShaper.Serialization
 		where TEnum : struct, Enum
 	{
 		private static readonly string[] Names = Enum.GetNames<TEnum>();
+		private static readonly string TypeName = typeof(TEnum).Name;
+		private static readonly string Article = JsonText.Article(TypeName);
 
 		public override TEnum Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
 		{
 			if (reader.TokenType is not JsonTokenType.String)
 			{
 				throw new JsonException(
-					$"A {typeof(TEnum).Name} must be written by name ({string.Join(", ", Names)}), not as {JsonText.Describe(reader.TokenType)}.");
+					$"{char.ToUpperInvariant(Article[0])}{Article[1..]} {TypeName} must be written by name ({string.Join(", ", Names)}), not as {JsonText.Describe(reader.TokenType)}.");
 			}
 
 			var text = reader.GetString()!;
@@ -25,7 +27,7 @@ namespace Steverzag.QueryShaper.Serialization
 				}
 			}
 
-			throw new JsonException($"'{text}' is not a {typeof(TEnum).Name}. Use one of: {string.Join(", ", Names)}.");
+			throw new JsonException($"'{text}' is not {Article} {TypeName}. Use one of: {string.Join(", ", Names)}.");
 		}
 
 		public override void Write(Utf8JsonWriter writer, TEnum value, JsonSerializerOptions options)

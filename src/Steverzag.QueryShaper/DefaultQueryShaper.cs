@@ -5,6 +5,7 @@ using Steverzag.PropertySelectors.MetaData;
 using Steverzag.QueryShaper.Aggregating;
 using Steverzag.QueryShaper.Configuration.Filtering;
 using Steverzag.QueryShaper.Configuration.Mapping;
+using Steverzag.QueryShaper.Configuration.Ordering;
 using Steverzag.QueryShaper.Exceptions;
 using Steverzag.QueryShaper.Filtering;
 using Steverzag.QueryShaper.Ordering;
@@ -15,16 +16,19 @@ namespace Steverzag.QueryShaper
 	{
 		private readonly IMapper _mapper;
 		private readonly IBaseSearchConfiguration _search;
+		private readonly DefaultOrderConfiguration _defaultOrders;
 		private readonly QueryShaperOptions _options;
 
-		public DefaultQueryShaper(IMapper mapper, IBaseSearchConfiguration search, IOptions<QueryShaperOptions> options)
+		public DefaultQueryShaper(IMapper mapper, IBaseSearchConfiguration search, DefaultOrderConfiguration defaultOrders, IOptions<QueryShaperOptions> options)
 		{
 			ArgumentNullException.ThrowIfNull(mapper);
 			ArgumentNullException.ThrowIfNull(search);
+			ArgumentNullException.ThrowIfNull(defaultOrders);
 			ArgumentNullException.ThrowIfNull(options);
 
 			_mapper = mapper;
 			_search = search;
+			_defaultOrders = defaultOrders;
 			_options = options.Value;
 
 			if (_options.DefaultPageSize < 1 || _options.MaxPageSize < 1)
@@ -79,15 +83,22 @@ namespace Steverzag.QueryShaper
 		{
 			ArgumentNullException.ThrowIfNull(source);
 			ArgumentNullException.ThrowIfNull(order);
+			return Order(source, order, _defaultOrders.For<T>());
+		}
+
+		private IQueryable<T> Order<T>(IQueryable<T> source, IReadOnlyList<OrderParameters> order, IReadOnlyList<OrderParameters>? tieBreaker)
+		{
+			ArgumentNullException.ThrowIfNull(order);
 			if (order.Count == 0)
 			{
-				return source;
+				return tieBreaker is null || IsOrdered(source.Expression) ? source : source.ApplyOrder(tieBreaker);
 			}
 			if (order.Count > _options.MaxOrders)
 			{
 				throw new QueryRequestException("", $"A request can have at most {_options.MaxOrders} orders, not {order.Count}.");
 			}
 
+			var requested = new HashSet<string>(StringComparer.Ordinal);
 			var parameter = Expression.Parameter(typeof(T), "p");
 			for (var i = 0; i < order.Count; i++)
 			{
@@ -106,6 +117,7 @@ namespace Steverzag.QueryShaper
 					{
 						throw new QueryRequestException($"[{i}].field", $"'{item.Field}' can't be ordered: the database can't sort {TypeDisplay.Name(type)} values.");
 					}
+					requested.Add(selector.ToString());
 				}
 				catch (SelectorParseException ex)
 				{
@@ -113,7 +125,30 @@ namespace Steverzag.QueryShaper
 				}
 			}
 
-			return source.ApplyOrder(order);
+			if (tieBreaker is null)
+			{
+				return source.ApplyOrder(order);
+			}
+
+			var extra = tieBreaker.Where(t => !requested.Contains(SelectorText<T>(t)));
+			return source.ApplyOrder([.. order, .. extra]);
+		}
+
+		private static string SelectorText<T>(OrderParameters order)
+			=> order is OrderParameters<T> typed ? typed.Field.ToString() : ((PropertySelector<T>)order.Field).ToString();
+
+		private static bool IsOrdered(Expression expression)
+		{
+			while (expression is MethodCallExpression call && call.Arguments.Count > 0 && typeof(IQueryable).IsAssignableFrom(call.Arguments[0].Type))
+			{
+				if (call.Method.DeclaringType == typeof(Queryable)
+					&& call.Method.Name is nameof(Queryable.OrderBy) or nameof(Queryable.OrderByDescending) or nameof(Queryable.ThenBy) or nameof(Queryable.ThenByDescending))
+				{
+					return true;
+				}
+				expression = call.Arguments[0];
+			}
+			return false;
 		}
 
 		public IQueryable<TOut> Map<TIn, TOut>(IQueryable<TIn> source)
@@ -149,9 +184,31 @@ namespace Steverzag.QueryShaper
 			ArgumentNullException.ThrowIfNull(source);
 			ArgumentNullException.ThrowIfNull(request);
 
+			return SearchFilterAndOrder(source, request, _defaultOrders.For<T>());
+		}
+
+		public IQueryable<T> ApplyForPaging<T>(IQueryable<T> source, QueryRequest request, IReadOnlyList<OrderParameters>? fallbackOrder = null)
+		{
+			ArgumentNullException.ThrowIfNull(source);
+			ArgumentNullException.ThrowIfNull(request);
+
+			var tieBreaker = _defaultOrders.For<T>() ?? (fallbackOrder is { Count: > 0 } ? fallbackOrder : null);
+			var query = SearchFilterAndOrder(source, request, tieBreaker);
+			if (!IsOrdered(query.Expression))
+			{
+				var name = typeof(T).Name;
+				throw new InvalidOperationException(
+					$"{name} can't be paged in a stable order: the request has no 'order', the source isn't ordered, and no default "
+					+ $"order is configured. Configure one with ConfigureDefaultOrder<{name}>(…), or order the source.");
+			}
+			return query;
+		}
+
+		private IQueryable<T> SearchFilterAndOrder<T>(IQueryable<T> source, QueryRequest request, IReadOnlyList<OrderParameters>? tieBreaker)
+		{
 			var query = Within("search", () => ApplySearch(source, request.Search));
 			query = Within("filters", () => ApplyFilters(query, request.Filters));
-			return Within("order", () => ApplyOrder(query, request.Order));
+			return Within("order", () => Order(query, request.Order, tieBreaker));
 		}
 
 		public IQueryable<TOut> Apply<TIn, TOut>(IQueryable<TIn> source, QueryRequest request)

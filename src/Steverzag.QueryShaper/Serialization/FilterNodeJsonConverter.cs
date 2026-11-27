@@ -5,9 +5,8 @@ using Steverzag.QueryShaper.Filtering;
 
 namespace Steverzag.QueryShaper.Serialization
 {
-	// A custom converter can't see its own path, and a nested Deserialize restarts it at "$". So the whole node is
-	// read in one call into a plain shape (System.Text.Json tracks paths inside it), then turned into nodes here.
-	// Path names where the node starts; the message names the place inside it.
+	// The whole node is read in one call into a plain shape (System.Text.Json tracks paths inside it), then turned into
+	// nodes here. Path names where the node starts; the message names the place inside it (JsonText.Relocate).
 	internal sealed class FilterNodeJsonConverter : JsonConverter<FilterNode>
 	{
 		public override FilterNode? Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
@@ -24,7 +23,7 @@ namespace Steverzag.QueryShaper.Serialization
 			}
 			catch (JsonException ex)
 			{
-				throw At(Relative(ex.Path), WithoutLocation(ex.Message), ex.InnerException ?? ex);
+				throw JsonText.Relocate(ex, "filter");
 			}
 
 			return ToNode(shape, "", options);
@@ -97,21 +96,7 @@ namespace Steverzag.QueryShaper.Serialization
 		};
 
 		private static JsonException At(string path, string detail, Exception? inner = null)
-			=> new(path.Length == 0 ? detail : $"{detail} (at '{path}' in this filter)", inner);
-
-		private static string Relative(string? path) => path switch
-		{
-			null or "$" => "",
-			_ when path.StartsWith("$.") => path[2..],
-			_ when path.StartsWith('$') => path[1..],
-			_ => path,
-		};
-
-		private static string WithoutLocation(string message)
-		{
-			var index = message.IndexOf(" Path: ", StringComparison.Ordinal);
-			return index < 0 ? message : message[..index];
-		}
+			=> JsonText.At(path, detail, "filter", inner);
 
 		private static string Join(string path, string child) => path.Length == 0 ? child : $"{path}.{child}";
 
@@ -124,6 +109,7 @@ namespace Steverzag.QueryShaper.Serialization
 			public PropertySelector? Field { get; set; }
 
 			[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+			[JsonConverter(typeof(NameOnlyEnumConverter<FilterCondition>))]
 			public FilterCondition? Condition { get; set; }
 
 			[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -140,6 +126,7 @@ namespace Steverzag.QueryShaper.Serialization
 			[JsonIgnore]
 			public bool HasValue { get; private set; }
 
+			[JsonConverter(typeof(NameOnlyEnumConverter<LogicalConnector>))]
 			public LogicalConnector Connector { get; set; }
 
 			[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]

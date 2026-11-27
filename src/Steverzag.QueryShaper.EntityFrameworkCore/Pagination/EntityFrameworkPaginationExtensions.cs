@@ -47,9 +47,15 @@ namespace Steverzag.QueryShaper.Pagination
 		}
 
 		/// <summary>
-		/// Applies a request as <see cref="IQueryShaper.Apply{T}"/> does, then reads its page asynchronously. A request with
-		/// no page gets page 1 at the default size, so it never returns every row.
+		/// Applies a request as <see cref="IQueryShaper.ApplyForPaging{T}"/> does, with the entity's primary key as the
+		/// fallback order, then reads its page asynchronously. A request with no page gets page 1 at the default size, so it
+		/// never returns every row.
 		/// </summary>
+		/// <remarks>
+		/// The primary key breaks ties after the request's order, or orders the page alone, when no default order is
+		/// configured for <typeparamref name="T"/>. It's found only when <paramref name="source"/> starts from an entity of
+		/// type <typeparamref name="T"/> whose key properties are all CLR properties.
+		/// </remarks>
 		/// <typeparam name="T">The source type.</typeparam>
 		/// <param name="shaper">The shaper.</param>
 		/// <param name="source">The query. It must come from EF Core.</param>
@@ -57,17 +63,19 @@ namespace Steverzag.QueryShaper.Pagination
 		/// <param name="cancellationToken">Cancels the queries.</param>
 		/// <returns>The page.</returns>
 		/// <exception cref="QueryRequestException">The request is invalid. A page error's path starts with <c>page</c>, such as <c>page.size</c>.</exception>
+		/// <exception cref="InvalidOperationException">Nothing orders the rows, not even a primary key, which is a server error.</exception>
 		public static Task<PaginatedList<T>> ApplyPagedAsync<T>(this IQueryShaper shaper, IQueryable<T> source, QueryRequest request, CancellationToken cancellationToken = default)
 		{
 			ArgumentNullException.ThrowIfNull(shaper);
+			ArgumentNullException.ThrowIfNull(source);
 			ArgumentNullException.ThrowIfNull(request);
 			var page = ResolvePage(shaper, request);
-			return shaper.Apply(source, request).PaginateAsync(page, cancellationToken);
+			return shaper.ApplyForPaging(source, request, PrimaryKeyOrder.For(source)).PaginateAsync(page, cancellationToken);
 		}
 
 		/// <summary>
-		/// Applies a request as <see cref="IQueryShaper.Apply{TIn, TOut}"/> does, map included, then reads its page
-		/// asynchronously. A request with no page gets page 1 at the default size.
+		/// Applies a request as <see cref="ApplyPagedAsync{T}"/> does, primary key fallback included, then the registered
+		/// map, and reads its page asynchronously. A request with no page gets page 1 at the default size.
 		/// </summary>
 		/// <typeparam name="TIn">The source type.</typeparam>
 		/// <typeparam name="TOut">The destination type.</typeparam>
@@ -77,18 +85,23 @@ namespace Steverzag.QueryShaper.Pagination
 		/// <param name="cancellationToken">Cancels the queries.</param>
 		/// <returns>The page.</returns>
 		/// <exception cref="QueryRequestException">The request is invalid. A page error's path starts with <c>page</c>, such as <c>page.size</c>.</exception>
+		/// <exception cref="InvalidOperationException">Nothing orders the rows, not even a primary key, which is a server error.</exception>
 		/// <example>
 		/// <code>
-		/// app.MapPost("/products/query", (QueryRequest request, AppDb db, IQueryShaper shaper, CancellationToken ct)
-		///     => shaper.ApplyPagedAsync&lt;Product, ProductDto&gt;(db.Products, request, ct));
+		/// app.MapPost("/products/query", async (QueryRequest request, AppDb db, IQueryShaper shaper, CancellationToken ct) =>
+		/// {
+		///     var page = await shaper.ApplyPagedAsync&lt;Product, ProductDto&gt;(db.Products, request, ct);
+		///     return new { items = page, page.PageIndex, page.PageSize, page.TotalCount, page.TotalPages };
+		/// });
 		/// </code>
 		/// </example>
 		public static Task<PaginatedList<TOut>> ApplyPagedAsync<TIn, TOut>(this IQueryShaper shaper, IQueryable<TIn> source, QueryRequest request, CancellationToken cancellationToken = default)
 		{
 			ArgumentNullException.ThrowIfNull(shaper);
+			ArgumentNullException.ThrowIfNull(source);
 			ArgumentNullException.ThrowIfNull(request);
 			var page = ResolvePage(shaper, request);
-			return shaper.Apply<TIn, TOut>(source, request).PaginateAsync(page, cancellationToken);
+			return shaper.Map<TIn, TOut>(shaper.ApplyForPaging(source, request, PrimaryKeyOrder.For(source))).PaginateAsync(page, cancellationToken);
 		}
 
 		private static PageRequest ResolvePage(IQueryShaper shaper, QueryRequest request)

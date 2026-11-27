@@ -23,18 +23,24 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 		}
 
 		/// <summary>
-		/// Configures the search for <typeparamref name="T"/>: a row matches when any lookup contains the search text. It
-		/// replaces any search configured for <typeparamref name="T"/>.
+		/// Configures the search for <typeparamref name="T"/>: a row matches when any lookup contains the search text,
+		/// ignoring case unless <paramref name="caseSensitive"/> is set. It replaces any search configured for <typeparamref name="T"/>.
 		/// </summary>
+		/// <remarks>
+		/// Ignoring case, a lookup matches when it contains the text as written, or when its lowercase form contains the
+		/// text's. The database lowercases the column, so which letters fold is the provider's rule; SQLite's
+		/// <c>lower()</c> folds ASCII letters only.
+		/// </remarks>
 		/// <typeparam name="T">The type to search.</typeparam>
 		/// <param name="searchLookups">Selectors whose type is <see cref="string"/>, such as <c>Name</c> or <c>Description|$FN_COALESCE("")</c>.</param>
+		/// <param name="caseSensitive"><see langword="true"/> to match only the text as written.</param>
 		/// <returns>This configuration, to chain more calls.</returns>
 		/// <exception cref="ArgumentException">A lookup isn't a string, or isn't a valid selector for <typeparamref name="T"/>.</exception>
-		public BaseSearchConfiguration Configure<T>(IEnumerable<string> searchLookups)
+		public BaseSearchConfiguration Configure<T>(IEnumerable<string> searchLookups, bool caseSensitive = false)
 		{
 			var entityParameter = Expression.Parameter(typeof(T), "x");
 			var searchParameter = Expression.Parameter(typeof(string), "_search_");
-			var body = FilteringExtensions.CreateBaseSearchBody(entityParameter, searchLookups, searchParameter);
+			var body = FilteringExtensions.CreateBaseSearchBody(entityParameter, searchLookups, searchParameter, caseSensitive);
 
 			_expressions[typeof(T)] = Expression.Lambda<Func<T, string, bool>>(body, entityParameter, searchParameter);
 			return this;

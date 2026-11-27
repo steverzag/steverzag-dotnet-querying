@@ -17,7 +17,8 @@ Depends on Steverzag.QueryShaper `[0.1.0-preview, 0.2.0-0)`.
 ### Added
 
 - Async paging: `ApplyPagedAsync` on `IQueryShaper` for client requests, and `PaginateAsync` for queries built in
-  code.
+  code. When no default order is configured, `ApplyPagedAsync` orders by the entity's primary key, or breaks ties with
+  it, so pages are stable with no setup.
 - Provider presets for SQLite, SQL Server and PostgreSQL: `ProviderMemberFilters` (members that translate) and
   `ProviderUnsortableTypes`, each with `For(providerName)` and `For(dbContext)`.
 - `UseDecimalMathAsDouble()`, a query interceptor for SQLite that lets `ROUND`, `CEILING`, `FLOOR` and `TRUNCATE` over

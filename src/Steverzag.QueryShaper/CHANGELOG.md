@@ -17,13 +17,18 @@ Depends on Steverzag.PropertySelectors `[0.1.0-preview, 0.2.0-0)`.
 - **Client requests:** `QueryRequest` (search, filters, order, page), which binds from JSON with no setup, and the
   injected `IQueryShaper` (`Apply`, `ApplyPaged`, `ApplySearch`, `ApplyFilters`, `ApplyOrder`, `Map`,
   `ResolvePage`). Every error in a request is a `QueryRequestException` with the `Path` of the error.
+  `condition`, `connector` and `direction` are read by name only, also when the app adds `JsonStringEnumConverter` to
+  its JSON options.
 - **Guard rails** in `QueryShaperOptions`: `DefaultPageSize` and `MaxPageSize`, `MaxFilters`, `MaxListValues`,
   `MaxOrders`, `MaxSearchLength`, a `MemberFilter` allow-list, and `UnsortableTypes`. A hidden member is reported as
   "not found", so a client can't tell it exists.
 - **Filtering:** a `FilterNode` tree with And/Or groups and 20 conditions (comparisons, text, emptiness, `In`/`NotIn`,
   and `Contains*` over collections). Client values are sent as SQL parameters, so EF Core compiles one query per shape.
-- **Base search** over the string lookups configured per type (`ConfigureSearch<T>`).
+- **Base search** over the string lookups configured per type (`ConfigureSearch<T>`). It ignores case by default;
+  `caseSensitive: true` opts out. On SQLite only ASCII letters fold.
 - **Ordering, pagination, grouping and aggregates:** `ApplyOrder`, `Paginate`, `ApplyGrouping`, `ApplySelect`.
+- **Stable pages:** `ConfigureDefaultOrder<T>` orders a request that has no order, and breaks ties after one that does.
+  `ApplyPaged` throws `InvalidOperationException` when nothing orders the rows, instead of paging in an undefined order.
 - **Configuration:** `QueryShaperConfiguration`, `AddQueryShaper<T>()`, and selector-based maps
   (`AddMap<TIn, TOut>`, `ForMember`).
 - The extension methods (`ApplyLogicsFilter`, `ApplyBaseFilter`, `ApplyOrder`, `ApplySelect`, `Paginate`) are for

@@ -37,20 +37,23 @@ namespace Steverzag.QueryShaper.Filtering
 			.GetMethods()
 			.Where(m => m.Name == METHOD_NAME_CONTAINS && m.GetParameters().Length == 2)
 			.First();
+		private static readonly MethodInfo StringToLowerMethodInfo = typeof(string).GetMethod(nameof(string.ToLower), Type.EmptyTypes)!;
+		private static readonly MethodInfo StringToLowerInvariantMethodInfo = typeof(string).GetMethod(nameof(string.ToLowerInvariant), Type.EmptyTypes)!;
 		
 
-		/// <summary>Applies a search over the given lookups, then filters, as <see cref="ApplyBaseFilter{T}(IQueryable{T}, IEnumerable{string}, string)"/> and <see cref="ApplyLogicsFilter"/> do.</summary>
+		/// <summary>Applies a search over the given lookups, then filters, as <see cref="ApplyBaseFilter{T}(IQueryable{T}, IEnumerable{string}, string, bool)"/> and <see cref="ApplyLogicsFilter"/> do.</summary>
 		/// <typeparam name="T">The source type.</typeparam>
 		/// <param name="query">The query.</param>
 		/// <param name="searchLookups">String selectors to search, or <see langword="null"/>.</param>
 		/// <param name="searchValue">The text to search for. A blank value skips the search.</param>
 		/// <param name="logicFilters">The filters, combined left to right, or <see langword="null"/> for none.</param>
+		/// <param name="caseSensitive">Whether the search compares case; see <see cref="ApplyBaseFilter{T}(IQueryable{T}, IEnumerable{string}, string, bool)"/>.</param>
 		/// <returns>The filtered query.</returns>
-		public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue, IEnumerable<FilterNode> logicFilters)
+		public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue, IEnumerable<FilterNode> logicFilters, bool caseSensitive = false)
 		{
 			if (searchLookups is not null)
 			{
-				query = query.ApplyBaseFilter(searchLookups, searchValue);
+				query = query.ApplyBaseFilter(searchLookups, searchValue, caseSensitive);
 			}
 
 			if (logicFilters is not null)
@@ -630,13 +633,19 @@ namespace Steverzag.QueryShaper.Filtering
 		}
 
 		/// <summary>Applies a search over the given lookups: a row matches when any lookup contains the text. It needs no configuration.</summary>
+		/// <remarks>
+		/// By default case is ignored: a lookup matches when it contains the text as written, or when its lowercase form
+		/// contains the text's. The database lowercases the column, so which letters fold is the provider's rule; SQLite's
+		/// <c>lower()</c> folds ASCII letters only.
+		/// </remarks>
 		/// <typeparam name="T">The source type.</typeparam>
 		/// <param name="query">The query.</param>
 		/// <param name="searchLookups">Selectors whose type is <see cref="string"/>, or <see langword="null"/> for no search.</param>
 		/// <param name="searchValue">The text to search for. A blank value leaves the query unchanged.</param>
+		/// <param name="caseSensitive"><see langword="true"/> to match only the text as written.</param>
 		/// <returns>The searched query.</returns>
 		/// <exception cref="ArgumentException">A lookup isn't a string, or isn't a valid selector for <typeparamref name="T"/>.</exception>
-		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue)
+		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue, bool caseSensitive = false)
 		{
 			if (searchLookups is null)
 			{
@@ -647,29 +656,30 @@ namespace Steverzag.QueryShaper.Filtering
 				return query;
 			}
 
-			var lambda = CreateBaseSearchLambdaExpression<T>(searchLookups, searchValue);
+			var lambda = CreateBaseSearchLambdaExpression<T>(searchLookups, searchValue, caseSensitive);
 
 			return query.Where(lambda);
 		}
 
 		/// <summary>
-		/// Builds the predicate <see cref="ApplyBaseFilter{T}(IQueryable{T}, IEnumerable{string}, string)"/> applies, to
+		/// Builds the predicate <see cref="ApplyBaseFilter{T}(IQueryable{T}, IEnumerable{string}, string, bool)"/> applies, to
 		/// combine it with your own conditions.
 		/// </summary>
 		/// <typeparam name="T">The source type.</typeparam>
 		/// <param name="searchLookups">Selectors whose type is <see cref="string"/>.</param>
 		/// <param name="searchValue">The text to search for.</param>
+		/// <param name="caseSensitive"><see langword="true"/> to match only the text as written.</param>
 		/// <returns>The predicate.</returns>
 		/// <exception cref="ArgumentException">A lookup isn't a string, or isn't a valid selector for <typeparamref name="T"/>.</exception>
-		public static Expression<Func<T, bool>> CreateBaseSearchLambdaExpression<T>(IEnumerable<string>? searchLookups, string? searchValue)
+		public static Expression<Func<T, bool>> CreateBaseSearchLambdaExpression<T>(IEnumerable<string>? searchLookups, string? searchValue, bool caseSensitive = false)
 		{
 			var parameterExpression = Expression.Parameter(typeof(T), "x");
-			var body = CreateBaseSearchBody(parameterExpression, searchLookups, ParameterHolder.Parameter(searchValue, typeof(string)));
+			var body = CreateBaseSearchBody(parameterExpression, searchLookups, ParameterHolder.Parameter(searchValue, typeof(string)), caseSensitive);
 
 			return Expression.Lambda<Func<T, bool>>(body, parameterExpression);
 		}
 
-		internal static Expression CreateBaseSearchBody(ParameterExpression entityParameter, IEnumerable<string>? searchLookups, Expression searchValue)
+		internal static Expression CreateBaseSearchBody(ParameterExpression entityParameter, IEnumerable<string>? searchLookups, Expression searchValue, bool caseSensitive)
 		{
 			ArgumentNullException.ThrowIfNull(searchLookups);
 			if (!searchLookups.Any())
@@ -689,7 +699,14 @@ namespace Steverzag.QueryShaper.Filtering
 						nameof(searchLookups));
 				}
 
-				var containingExpression = CreateContainsExpression(propertyExpression, searchValue);
+				Expression containingExpression = CreateContainsExpression(propertyExpression, searchValue);
+				if (!caseSensitive)
+				{
+					containingExpression = Expression.OrElse(
+						containingExpression,
+						CreateContainsExpression(Expression.Call(propertyExpression, StringToLowerMethodInfo), Expression.Call(searchValue, StringToLowerInvariantMethodInfo)));
+				}
+
 				combinedExpression = combinedExpression is null
 					? containingExpression
 					: Expression.OrElse(combinedExpression, containingExpression);

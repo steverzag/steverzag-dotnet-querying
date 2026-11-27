@@ -14,8 +14,11 @@ namespace Steverzag.QueryShaper
 	/// </remarks>
 	/// <example>
 	/// <code>
-	/// app.MapPost("/products/query", (QueryRequest request, AppDb db, IQueryShaper shaper)
-	///     => shaper.ApplyPaged&lt;Product, ProductDto&gt;(db.Products, request));
+	/// app.MapPost("/products/query", (QueryRequest request, AppDb db, IQueryShaper shaper) =>
+	/// {
+	///     var page = shaper.ApplyPaged&lt;Product, ProductDto&gt;(db.Products.OrderBy(p => p.Id), request);
+	///     return new { items = page, page.PageIndex, page.PageSize, page.TotalCount, page.TotalPages };
+	/// });
 	/// </code>
 	/// </example>
 	public interface IQueryShaper
@@ -37,11 +40,14 @@ namespace Steverzag.QueryShaper
 		/// <exception cref="Exceptions.QueryRequestException">A filter is invalid or over a cap. Its path is relative to <paramref name="filters"/>, such as <c>[1].filters[0].field</c>.</exception>
 		IQueryable<T> ApplyFilters<T>(IQueryable<T> source, IReadOnlyList<FilterNode> filters);
 
-		/// <summary>Applies orders, the first as the primary sort.</summary>
+		/// <summary>
+		/// Applies orders, the first as the primary sort, then the default order configured for <typeparamref name="T"/>
+		/// as a tie-breaker. With no orders, the default alone, unless <paramref name="source"/> is already ordered.
+		/// </summary>
 		/// <typeparam name="T">The source type.</typeparam>
 		/// <param name="source">The query.</param>
 		/// <param name="order">The orders.</param>
-		/// <returns>The ordered query.</returns>
+		/// <returns>The ordered query, or <paramref name="source"/> if there's nothing to order by.</returns>
 		/// <exception cref="Exceptions.QueryRequestException">An order is invalid, on an unsortable type, or over <see cref="QueryShaperOptions.MaxOrders"/>.</exception>
 		IQueryable<T> ApplyOrder<T>(IQueryable<T> source, IReadOnlyList<OrderParameters> order);
 
@@ -65,6 +71,24 @@ namespace Steverzag.QueryShaper
 		/// <returns>The query, searched, filtered and ordered.</returns>
 		/// <exception cref="Exceptions.QueryRequestException">The request is invalid. The path points at the part, such as <c>filters[1].filters[0].field</c>.</exception>
 		IQueryable<T> Apply<T>(IQueryable<T> source, QueryRequest request);
+
+		/// <summary>
+		/// Applies a request as <see cref="Apply{T}"/> does, and makes sure the rows have an order to page by. The page
+		/// isn't applied; <c>ApplyPaged</c> and <c>ApplyPagedAsync</c> call this, then read it.
+		/// </summary>
+		/// <remarks>
+		/// The order is the request's, then a tie-breaker: the default order configured for <typeparamref name="T"/>, or
+		/// <paramref name="fallbackOrder"/> when none is. With no request order, a source that's already ordered keeps its
+		/// order; otherwise the tie-breaker alone orders it.
+		/// </remarks>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="source">The query.</param>
+		/// <param name="request">The request.</param>
+		/// <param name="fallbackOrder">An order to use when no default is configured, such as the primary key the EF add-on passes. It's trusted: it isn't validated.</param>
+		/// <returns>The query, searched, filtered and ordered.</returns>
+		/// <exception cref="Exceptions.QueryRequestException">The request is invalid.</exception>
+		/// <exception cref="InvalidOperationException">Nothing orders the rows: no request order, an unordered source, no default order and no fallback. That's a server error.</exception>
+		IQueryable<T> ApplyForPaging<T>(IQueryable<T> source, QueryRequest request, IReadOnlyList<OrderParameters>? fallbackOrder = null);
 
 		/// <summary>Applies a request as <see cref="Apply{T}"/> does, then the registered map. Selectors name the source type's properties.</summary>
 		/// <typeparam name="TIn">The source type.</typeparam>
