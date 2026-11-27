@@ -1640,7 +1640,7 @@ converted and the database expands them).
 `RequestCapsTests` (QueryShaper, SQLite).
 
 ### 049: The public API audit: what stays public, and how the surface is locked (2026-11-27)
-**Status:** accepted; not yet implemented.
+**Status:** accepted; implemented (2026-11-27). Point 6 revised the same day: SDK package validation from the first release instead of the analyzer.
 **Context:** the three library packages expose about 108 public types (PropertySelectors 66, QueryShaper 37, the
 EF add-on 5). Nothing records which ones are meant to be public, and it isn't consistent. The aggregation, element,
 ordering and arithmetic selector classes are public, while math, string and date are internal. Helpers such as
