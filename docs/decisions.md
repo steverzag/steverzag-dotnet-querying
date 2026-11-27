@@ -1041,3 +1041,109 @@ Nodes had no path, and `System.Type` doesn't serialize.
 tests used. Tests: 46 in `PropertiesExplorerTests` and `TypeDisplayTests`, including a cross-check that every
 node's path parses (generic form) and builds (both forms) to the node's type, and that every collection node is
 offered `AGGR_COUNT` by the catalog.
+
+### 037: Target frameworks and the production versioning model (2026-11-26)
+**Status:** accepted (2026-11-26). Settles D2.
+**Context:** every project targets `net9.0` (`Directory.Build.props`), with EF Core and DI abstractions 9.x. The
+roadmap recommended `net8.0` + `net9.0`. Both reached end of support on 2026-11-10; .NET 10 is the current LTS.
+EF Core releases a major per .NET release, but its target framework doesn't always match it (EF Core 9 targets
+`net8.0`), and `Microsoft.Extensions.*` keep the yearly numbering while multi-targeting.
+**Decision:**
+1. **`0.1.0-preview` ships on `net9.0`**, as the projects are today. No retargeting before the preview.
+2. **From 1.0, a hybrid model:**
+   - `Steverzag.QueryShaper.EntityFrameworkCore`: its major follows EF Core's major (EF Core 11 → 11.x), and it
+     targets what that EF Core major targets. This is where the coupling is real: what translates changes per EF
+     major.
+   - `Steverzag.PropertySelectors` and `Steverzag.QueryShaper`: independent SemVer (032), multi-targeting every
+     supported .NET version, adding and dropping targets on Microsoft's support schedule. Expression trees and
+     `IQueryable` change little between releases, so a yearly major would announce changes that didn't happen.
+   - Only the newest major of each package receives fixes.
+3. The mapping between the EF add-on's major and the QueryShaper/PropertySelectors versions it pins (032) is
+   written down per release, in the add-on's CHANGELOG.
+**Considered:**
+- **`net8.0` + `net9.0`** (the old recommendation). Both are out of support.
+- **`net10.0` only for the preview.** Clean, but a retarget (and EF Core 10 for the lab migrations) isn't needed to
+  ship a preview.
+- **Every package's major follows .NET.** Clear support story, but it forces a yearly major on PropertySelectors
+  with no breaks, makes a mid-year break wait for November or break the scheme, and conflicts with 032's
+  "a break bumps the version".
+- **Servicing several majors at once, as EF does.** Too much branch work for a solo maintainer.
+**Consequence:** the preview runs on an out-of-support runtime; the README says so and names 1.0 as the point the
+targets move. Phase 6 carries the move to the hybrid model.
+
+### 038: No ambient configuration registry; an injected entry point is the direction (2026-11-26)
+**Status:** accepted (2026-11-26). Settles D4.
+**Context:** `AddQueryShaper<T>()` registers the `Mapper` and `BaseSearchConfiguration` in the container and also
+copies them into the static `QueryShaperServices`, which `ApplySelect` and `ApplyBaseFilter` fall back to when no
+instance is passed. The aim was an AutoMapper-like call site (configure once, call without passing it). The static
+follows whichever container called `AddQueryShaper` last (`ConfigurationTests.TheStaticFallback_FollowsTheLastServiceCollection`),
+so parallel test hosts, several hosts in one process and per-tenant configuration silently share or swap it; a
+"nothing registered" test can't be written reliably; the plain `Dictionary` is written while other hosts read it.
+The configuration itself is a snapshot that will be redesigned.
+**Decision:**
+1. **For `0.1.0-preview`: remove `QueryShaperServices`.** The `IMapper` parameter of `ApplySelect` and the
+   `IBaseSearchConfiguration` parameter of `ApplyBaseFilter` become required. `AddQueryShaper` keeps registering
+   both in the container, so callers inject them.
+2. **Direction: one injected entry point, `IQueryShaper`**, carrying the mapper, the search configuration and future
+   settings (guard rails, And/Or evaluation order). It's designed with the configuration redesign and the
+   `QueryRequest` `Apply(request)` item, not before.
+3. **A static default stays possible later, as an explicit opt-in** (e.g. `UseQueryShaperDefaults()`, Mapster's
+   global-settings model), added only on demand. Adding it doesn't break anyone; removing a fallback after release
+   would.
+**Considered:**
+- **Keep the static as a fallback** (the old recommendation). Easiest call site, but none of the problems go away,
+  and removing it after release is breaking.
+- **Design `IQueryShaper` now.** The configuration it would carry isn't settled yet.
+- AutoMapper, the model the call site was based on, removed its static `Mapper` in v9 for the same reasons; its
+  `IQueryable` projection (`ProjectTo`) has always taken the configuration explicitly.
+**Consequence:** call sites that relied on the fallback pass the instance. `TheStaticFallback_FollowsTheLastServiceCollection`
+becomes a check that the configuration is taken from what's passed. Unblocks the configurable And/Or evaluation
+order, whose global setting goes on `IQueryShaper`.
+
+### 039: One repository for the preview, one repository per product for production (2026-11-26)
+**Status:** accepted (2026-11-26). Settles D6.
+**Context:** both libraries share one repository and one solution (`Steverzag.Lab.sln`) by history, not by choice:
+the work started as QueryShaper and PropertySelectors turned out to be a product of its own. `QueryShaper`
+references PropertySelectors as a project, and the EF add-on references QueryShaper the same way. Most of the
+remaining Phase 4 work touches both libraries.
+**Decision:**
+1. **`0.1.0-preview` ships from this repository.** Cross-library changes keep landing in one commit, tested together.
+2. **When going to production (1.0), split into two repositories**, one per product: PropertySelectors in one;
+   QueryShaper and its EF add-on in the other. QueryShaper then takes PropertySelectors as a package reference,
+   so a change that needs both is a PropertySelectors release followed by a QueryShaper update. Each repository
+   keeps the history of its own files, and `decisions.md` and the product docs are split along the same line
+   (cross-cutting decisions are copied into both).
+3. **For the preview, QueryShaper's package declares its PropertySelectors dependency explicitly** (a version range on
+   the released minor, per 032), so packing never produces a dependency on an unreleased in-repo version.
+**Considered:**
+- **One repository for good** (as dotnet/efcore or `Microsoft.Extensions.*` in dotnet/runtime). Fewer moving parts,
+  but the products have separate audiences (README, issues, NuGet project URL).
+- **Split before the preview.** Every remaining cross-library change would become two releases while the APIs are
+  still moving.
+**Consequence:** Phase 5 gets the explicit dependency range; Phase 6 carries the split. The lab (`lab/`) is not a
+product and goes to neither by default; where it lives after the split is decided then.
+
+### 040: Base search lookups must be strings (2026-11-26)
+**Status:** accepted (2026-11-26). Settles D8.
+**Context:** the base search runs `Contains(search)` on each lookup and calls `ToString()` first on a lookup that
+isn't a `string` (`FilteringExtensions.CreateContainsExpression`), pinned for numbers by
+`BaseSearchTests.NonStringLookup_IsSearchedAsText`. On a database column that's the provider's conversion, not the
+text a user sees: a `DateTime` reads differently on SQLite, SQL Server and in memory, a `Guid`'s case varies, and
+`bool`, `double` and enums depend on the provider too. A search can then match on one provider and silently match
+nothing on another. (The filter conditions aren't affected: they take the text path only for `string` properties,
+and reject `Contains` on dates.)
+**Decision:**
+1. **A base search lookup must declare `string` (or `string?`).** Any other type, a collection of strings included,
+   is rejected with a clear message where the lookups are given: when the search is configured
+   (`BaseSearchConfiguration.Configure<T>` / `ConfigureSearch`), and when `ApplyBaseFilter` receives lookups
+   directly. A selector that produces a string (`Description|$FN_COALESCE("")`) is a string lookup.
+2. The `ToString()` fallback is removed.
+3. Integers are rejected too, although their text is stable: matching "20" against 200 isn't what a search box
+   should do. Other types can be allowed later after a provider check; that's additive.
+**Considered:**
+- **Keep it and document the provider dependence.** The silent mismatches stay.
+- **Strings and integers.** Stable text, but substring matching on numbers surprises more than it helps.
+- **Date-aware search** (search text that reads as a date matches a range on date lookups). Useful, but needs
+  format and culture rules; kept as a Phase 6 enhancement.
+**Consequence:** `NonStringLookup_IsSearchedAsText` becomes a rejection test. Anyone who wants a non-string
+property in the search writes a lookup that produces a string.
