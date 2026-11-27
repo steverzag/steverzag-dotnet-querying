@@ -14,4 +14,11 @@
     <ProjectReference Include="..\Steverzag.QueryShaper\Steverzag.QueryShaper.csproj" />
   </ItemGroup>
 
+  <!-- See src/Directory.Build.targets. -->
+  <PropertyGroup>
+    <PinnedReference>Steverzag.QueryShaper</PinnedReference>
+    <PinnedMinVersion>0.1.0-preview</PinnedMinVersion>
+    <PinnedUpperBound>0.2.0-0</PinnedUpperBound>
+  </PropertyGroup>
+
 </Project>

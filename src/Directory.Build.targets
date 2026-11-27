@@ -1,0 +1,23 @@
+<Project>
+  <!-- Decisions 032.7 and 039.3: a package depends on a released minor of the in-repo library it references, not on the
+       in-repo version. A project sets PinnedReference (the referenced project's file name), PinnedMinVersion (the released
+       version it compiles against) and PinnedUpperBound (exclusive; X.Y.0-0 sorts below every X.Y.0 pre-release). -->
+  <PropertyGroup Condition="'$(PinnedReference)' != ''">
+    <PinnedVersionRange>[$(PinnedMinVersion), $(PinnedUpperBound))</PinnedVersionRange>
+  </PropertyGroup>
+
+  <Target Name="PinReferenceVersionRange" AfterTargets="_GetProjectReferenceVersions" Condition="'$(PinnedReference)' != ''">
+    <PropertyGroup>
+      <_PinnedInRepoVersion Condition="'%(_ProjectReferencesWithVersions.Filename)' == '$(PinnedReference)'">%(_ProjectReferencesWithVersions.ProjectVersion)</_PinnedInRepoVersion>
+    </PropertyGroup>
+    <Error Condition="'$(_PinnedInRepoVersion)' == ''"
+           Text="$(MSBuildProjectName) pins $(PinnedReference), but has no project reference to it." />
+    <Error Condition="'$(_PinnedInRepoVersion)' != '' And '$(_PinnedInRepoVersion)' != '$(PinnedMinVersion)'"
+           Text="$(MSBuildProjectName) compiles against $(PinnedReference) $(_PinnedInRepoVersion), but its package would declare $(PinnedVersionRange). Release $(PinnedReference) first, then update PinnedMinVersion (and PinnedUpperBound on a new minor)." />
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Condition="'%(Filename)' == '$(PinnedReference)'">
+        <ProjectVersion>$(PinnedVersionRange)</ProjectVersion>
+      </_ProjectReferencesWithVersions>
+    </ItemGroup>
+  </Target>
+</Project>

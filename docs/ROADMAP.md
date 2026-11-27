@@ -351,7 +351,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [ ] Add `CHANGELOG.md` per package, use SemVer, and tag the repository per package (`propertyselectors-v0.1.0`).
 - [ ] Publish PropertySelectors first, since it has no dependencies. Publish QueryShaper against the released PropertySelectors version.
 - [ ] Turn on SDK package validation for each package after its first publish (decision 049.6). Set `EnablePackageValidation` and `PackageValidationBaselineVersion` to the last published version, so a pack fails on a breaking change. Raise the baseline at each release, and suppress an intended 0.x break explicitly (032).
-- [ ] Declare QueryShaper's PropertySelectors dependency as an explicit version range on the released minor (decisions 032, 039), so packing from the shared repository never depends on an unreleased in-repo version.
+- [x] Declare QueryShaper's PropertySelectors dependency as an explicit version range on the released minor (decisions 032, 039), so packing from the shared repository never depends on an unreleased in-repo version. **Done 2026-11-27:** the package declares `[0.1.0-preview, 0.2.0-0)` (pre-release bounds, see the 032 note), and the EF add-on declares the same range on QueryShaper (032.7 note). A pack-time target in `src/Directory.Build.targets` writes the range over the `>= version` that a `ProjectReference` would produce. Each project sets `PinnedReference`, `PinnedMinVersion` and `PinnedUpperBound`, and the pack fails if the minimum isn't the version it compiles against. Checked with a local-feed consumer of the add-on: it restores all three packages at `0.1.0-preview`.
 - [ ] Add a samples project: a minimal ASP.NET endpoint that uses QueryShaper end to end.
 
 ### Phase 6: Later
