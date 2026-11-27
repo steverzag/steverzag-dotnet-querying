@@ -21,17 +21,38 @@ namespace Steverzag.PropertySelectors
 		}
 	}
 
+	/// <summary>
+	/// The base of a function in the generic form, such as <c>$FN_MATH_ROUND</c>. Derive from it, and from the non-generic
+	/// <see cref="FunctionPropertySelector"/>, to add a custom function.
+	/// </summary>
+	/// <remarks>
+	/// A derived function needs public constructors <c>()</c> and <c>(List&lt;PropertySelector&gt;)</c>, a
+	/// <see cref="Registration.SelectorTokenAttribute"/>, and a static table of overloads through
+	/// <see cref="IFunctionSignatures"/>; register its assembly with <see cref="Registration.SelectorRegistry.RegisterAssembly"/>.
+	/// See "Extending: custom functions" in <c>docs/property-selectors.md</c>.
+	/// </remarks>
+	/// <typeparam name="T">The type the selector starts from.</typeparam>
 	public abstract record FunctionPropertySelector<T> : PropertySelector<T>, IPipeableFunctionSelector, IFunctionSelector
 	{
 		private readonly Type? _declaredType;
 
+		/// <summary>Whether a value was piped into this function with <c>|</c>, rather than being the head of the chain.</summary>
 		public bool IsPiped { get; internal set; }
 		bool IPipeableFunctionSelector.IsPiped { get => IsPiped; set => IsPiped = value; }
-		public IReadOnlyList<PropertySelector> Parameters { get; init; } = [];
+
+		/// <summary>The function's arguments, as written. A piped function that takes its subject as argument 0 has a placeholder for the piped value there.</summary>
+		public IReadOnlyList<PropertySelector> Parameters { get; internal init; } = [];
+
+		/// <summary>The overload the arguments resolved to, or <see langword="null"/> if it can only be chosen when the expression is built.</summary>
 		public FunctionSignature? Signature { get; }
 
+		/// <inheritdoc/>
 		public override Type? SelectorType => _declaredType;
 
+		/// <summary>Initializes the function and resolves its overload against the arguments.</summary>
+		/// <param name="PlainValue">The function's token, such as <c>$FN_ACME_CLAMP</c>.</param>
+		/// <param name="parameters">The arguments, as parsed.</param>
+		/// <exception cref="SelectorParseException">No overload fits the arguments, or more than one fits equally well.</exception>
 		protected FunctionPropertySelector(string PlainValue, List<PropertySelector>? parameters = null) : base()
 		{
 			Parameters = parameters ?? [];
@@ -43,20 +64,34 @@ namespace Steverzag.PropertySelectors
 			PropertyAccess = call.PropertyAccess;
 		}
 
-		protected override string SegmentToString() => FunctionSelectorFormatter.Format(PlainValue, Parameters);
+		private protected override string SegmentToString() => FunctionSelectorFormatter.Format(PlainValue, Parameters);
 	}
 
+	/// <summary>
+	/// The base of a function in the non-generic form. A custom function derives from it and from
+	/// <see cref="FunctionPropertySelector{T}"/>, with the same token and the same table of overloads.
+	/// </summary>
 	public abstract record FunctionPropertySelector : PropertySelector, IPipeableFunctionSelector, IFunctionSelector
 	{
 		private readonly Type? _declaredType;
 
+		/// <summary>Whether a value was piped into this function with <c>|</c>, rather than being the head of the chain.</summary>
 		public bool IsPiped { get; internal set; }
 		bool IPipeableFunctionSelector.IsPiped { get => IsPiped; set => IsPiped = value; }
-		public IReadOnlyList<PropertySelector> Parameters { get; init; } = [];
+
+		/// <summary>The function's arguments, as written. A piped function that takes its subject as argument 0 has a placeholder for the piped value there.</summary>
+		public IReadOnlyList<PropertySelector> Parameters { get; internal init; } = [];
+
+		/// <summary>The overload the arguments resolved to, or <see langword="null"/> if it can only be chosen when the expression is built.</summary>
 		public FunctionSignature? Signature { get; }
 
+		/// <inheritdoc/>
 		public override Type? SelectorType => _declaredType;
 
+		/// <summary>Initializes the function and resolves its overload against the arguments, as far as their types are known.</summary>
+		/// <param name="PlainValue">The function's token, such as <c>$FN_ACME_CLAMP</c>.</param>
+		/// <param name="parameters">The arguments, as parsed.</param>
+		/// <exception cref="SelectorParseException">No overload fits the arguments, or more than one fits equally well.</exception>
 		protected FunctionPropertySelector(string PlainValue, List<PropertySelector>? parameters = null) : base()
 		{
 			Parameters = parameters ?? [];
@@ -68,7 +103,7 @@ namespace Steverzag.PropertySelectors
 			PropertyAccess = call.PropertyAccess;
 		}
 
-		protected override string SegmentToString() => FunctionSelectorFormatter.Format(PlainValue, Parameters);
+		private protected override string SegmentToString() => FunctionSelectorFormatter.Format(PlainValue, Parameters);
 	}
 
 	internal static class FunctionSelectorFormatter

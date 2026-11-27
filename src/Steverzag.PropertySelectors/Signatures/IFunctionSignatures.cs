@@ -3,8 +3,13 @@ using System.Reflection;
 
 namespace Steverzag.PropertySelectors
 {
+	/// <summary>
+	/// Declares a function's overloads, so they can be read without creating the function. Every function selector must
+	/// implement it; the registry rejects one that doesn't.
+	/// </summary>
 	public interface IFunctionSignatures
 	{
+		/// <summary>The function's overloads. Return the same table from the generic and the non-generic form.</summary>
 		static abstract IReadOnlyList<FunctionSignature> Signatures { get; }
 	}
 

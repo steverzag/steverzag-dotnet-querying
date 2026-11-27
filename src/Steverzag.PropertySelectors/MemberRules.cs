@@ -3,6 +3,10 @@ using System.Reflection;
 
 namespace Steverzag.PropertySelectors
 {
+	/// <summary>
+	/// A set of member rules that <see cref="MemberFilter.Apply"/> and <see cref="MemberFilter.ApplyFromAssembly"/> add to a
+	/// filter. Derive from <see cref="MemberRules{T}"/>.
+	/// </summary>
 	public abstract class MemberRules
 	{
 		private protected MemberRules()
@@ -12,13 +16,32 @@ namespace Steverzag.PropertySelectors
 		internal abstract MemberFilter ApplyTo(MemberFilter filter);
 	}
 
+	/// <summary>The member rules for one type, kept in a class of their own, such as one next to each entity.</summary>
+	/// <typeparam name="T">The type the rules apply to, along with types derived from it.</typeparam>
+	/// <example>
+	/// <code>
+	/// public sealed class CustomerMemberRules : MemberRules&lt;Customer&gt;
+	/// {
+	///     public override void Configure(MemberRulesBuilder&lt;Customer&gt; rules) => rules
+	///         .Hide(c => c.PasswordHash)
+	///         .Hide(c => c.CreditLimit);
+	/// }
+	/// </code>
+	/// </example>
 	public abstract class MemberRules<T> : MemberRules
 	{
+		/// <summary>Adds the rules for <typeparamref name="T"/>.</summary>
+		/// <param name="rules">The builder to add the rules to.</param>
 		public abstract void Configure(MemberRulesBuilder<T> rules);
 
 		internal sealed override MemberFilter ApplyTo(MemberFilter filter) => filter.For<T>(Configure);
 	}
 
+	/// <summary>
+	/// Collects the rules for one type, for <see cref="MemberFilter.For{T}"/> and <see cref="MemberRules{T}.Configure"/>.
+	/// Rules add up and the strictest wins: <c>Hide</c>s add up, and two <c>Only</c> lists intersect.
+	/// </summary>
+	/// <typeparam name="T">The type the rules apply to, along with types derived from it.</typeparam>
 	public sealed class MemberRulesBuilder<T>
 	{
 		private readonly List<(bool Only, HashSet<string> Names)> _rules = [];
@@ -27,12 +50,20 @@ namespace Steverzag.PropertySelectors
 		{
 		}
 
+		/// <summary>Hides the named members. Hiding a navigation also hides everything behind it.</summary>
+		/// <param name="members">The members, each a lambda that reads one property of its parameter, such as <c>x => x.PasswordHash</c>.</param>
+		/// <returns>This builder, to chain more rules.</returns>
+		/// <exception cref="ArgumentException">No member is named, or a lambda doesn't read one property of its parameter directly.</exception>
 		public MemberRulesBuilder<T> Hide(params Expression<Func<T, object?>>[] members)
 		{
 			_rules.Add((false, Names(members)));
 			return this;
 		}
 
+		/// <summary>Makes the named members the only ones reachable on <typeparamref name="T"/>.</summary>
+		/// <param name="members">The members, each a lambda that reads one property of its parameter, such as <c>x => x.Name</c>.</param>
+		/// <returns>This builder, to chain more rules.</returns>
+		/// <exception cref="ArgumentException">No member is named, or a lambda doesn't read one property of its parameter directly.</exception>
 		public MemberRulesBuilder<T> Only(params Expression<Func<T, object?>>[] members)
 		{
 			_rules.Add((true, Names(members)));

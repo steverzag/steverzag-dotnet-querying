@@ -3,7 +3,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record DecimalValueSelector<T> : PropertySelector<T>
 	{
 		public decimal Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(decimal);
+		public override Type? SelectorType { get; internal init; } = typeof(decimal);
 
 		public DecimalValueSelector(decimal value) : base(SelectorLiteral.Format(value))
 		{
@@ -15,7 +15,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record DecimalValueSelector : PropertySelector
 	{
 		public decimal Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(decimal);
+		public override Type? SelectorType { get; internal init; } = typeof(decimal);
 
 		public DecimalValueSelector(decimal value) : base(SelectorLiteral.Format(value))
 		{

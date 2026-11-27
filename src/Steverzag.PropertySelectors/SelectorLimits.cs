@@ -3,10 +3,21 @@ using System.Runtime.CompilerServices;
 
 namespace Steverzag.PropertySelectors
 {
+	/// <summary>
+	/// The limits every parse checks, because selectors usually come from clients. Going over either is a
+	/// <see cref="SelectorParseException"/> with no position.
+	/// </summary>
+	/// <remarks>
+	/// Without them, a long or deeply nested selector would overflow the stack and end the process, which .NET can't
+	/// catch. The limits are global settings, read on every parse. See "Limits" in <c>docs/property-selectors.md</c>.
+	/// </remarks>
 	public static class SelectorLimits
 	{
+		/// <summary>The default <see cref="MaxLength"/>: 2,000 characters.</summary>
 		public const int DefaultMaxLength = 2000;
+		/// <summary>The default <see cref="MaxDepth"/>: 32 levels.</summary>
 		public const int DefaultMaxDepth = 32;
+		/// <summary>The highest value <see cref="MaxDepth"/> can be set to: 256 levels.</summary>
 		public const int MaxDepthCeiling = 256;
 
 		private static int _maxLength = DefaultMaxLength;
@@ -21,6 +32,8 @@ namespace Steverzag.PropertySelectors
 		[ThreadStatic]
 		private static string? _outermost;
 
+		/// <summary>The most characters a selector can have. It's checked before anything else is read.</summary>
+		/// <exception cref="ArgumentOutOfRangeException">The value is less than 1.</exception>
 		public static int MaxLength
 		{
 			get => Volatile.Read(ref _maxLength);
@@ -31,6 +44,11 @@ namespace Steverzag.PropertySelectors
 			}
 		}
 
+		/// <summary>
+		/// How deeply a selector can nest, measured on the expression it builds: a property path counts one level per
+		/// segment, and a function, an operation or a parenthesized group counts one plus its deepest operand.
+		/// </summary>
+		/// <exception cref="ArgumentOutOfRangeException">The value is less than 1 or more than <see cref="MaxDepthCeiling"/>.</exception>
 		public static int MaxDepth
 		{
 			get => Volatile.Read(ref _maxDepth);

@@ -181,4 +181,19 @@ public class PropertiesExplorerTests
         foreach (var node in Nodes(Tree).Where(n => n.IsCollection))
             Assert.Contains(FunctionCatalog.After(node.SelectorType), m => m.Function.Token == "$FN_AGGR_COUNT");
     }
+
+    [Fact]
+    public void ExploringTwice_ReturnsTwoIndependentTrees()
+    {
+        var explorer = new PropertiesExplorer<Person>();
+
+        var first = explorer.ExplorePropertiesTree(2);
+        var second = explorer.ExplorePropertiesTree(2, MemberFilter.All.Hide<Person>(p => p.Name));
+
+        Assert.NotSame(first, second);
+        Assert.Equal(first.Selectors.Count, first.Selectors.Select(n => n.Path).Distinct().Count());
+        Assert.Contains(first.Selectors, n => n.Path == "Name");
+        Assert.DoesNotContain(second.Selectors, n => n.Path == "Name");
+        Assert.Equal(first.Selectors.Count - 1, second.Selectors.Count);
+    }
 }

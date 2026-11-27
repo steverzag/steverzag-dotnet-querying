@@ -3,7 +3,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record BooleanValueSelector<T> : PropertySelector<T>
 	{
 		public bool Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(bool);
+		public override Type? SelectorType { get; internal init; } = typeof(bool);
 
 		public BooleanValueSelector(bool value) : base(SelectorLiteral.Format(value))
 		{
@@ -15,7 +15,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record BooleanValueSelector : PropertySelector
 	{
 		public bool Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(bool);
+		public override Type? SelectorType { get; internal init; } = typeof(bool);
 
 		public BooleanValueSelector(bool value) : base(SelectorLiteral.Format(value))
 		{

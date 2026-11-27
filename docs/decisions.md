@@ -1673,23 +1673,33 @@ are dead. Nothing is generated as XML documentation, and nothing stops the surfa
 5. **Public types are sealed unless they are designed for inheritance.** Unsealing later doesn't break callers,
    but sealing later does. `SelectorDefaults` becomes `static`. Its token constants stay public: the grammar freezes
    tokens (032), so the compiler copying `const` values into callers is acceptable.
-6. **The surface is locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`** in the three library projects, with
-   `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` per package. Any change to the public API then fails the build
-   until the file is updated. It is a build-only reference (`PrivateAssets="all"`), so PropertySelectors keeps zero
-   runtime dependencies.
+6. ~~**The surface is locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`**~~ **Revised 2026-11-27: SDK package
+   validation from the first release instead.** The packages turn on `EnablePackageValidation`, with
+   `PackageValidationBaselineVersion` set to the last published version, once `0.1.0-preview` exists. A pack then
+   fails on a breaking change against that version. Reasons for dropping the analyzer:
+   - Before the first release it protects no one: nothing has shipped, and 0.x may break (032).
+   - There is one author, who reviews every change.
+   - It would add several hundred lines of baseline files, and one more file to update with each API change.
+   - Package validation is built into the SDK and needs no extra files or package.
+
+   The cost: until the first release, nothing catches an accidental public change except review, and there is no
+   text diff of API changes during development.
 7. **XML docs are enforced:** `GenerateDocumentationFile` on, and CS1591 (a public member without XML docs) as an
    error, in the library projects only. Tests and `lab/` are untouched.
 8. **Order of work:**
    1. Trim and seal PropertySelectors, then QueryShaper, then the EF add-on, with all tests green after each.
-   2. Generate the API baseline.
-   3. Write the XML docs against the final surface.
+   2. Write the XML docs against the final surface.
+   3. In Phase 5, after the first publish, turn on package validation (6).
 **Considered:**
 - **Keeping the built-in selector classes public**, so C# callers could build one without a string. The tokens and
   `ToGeneric<T>()` already cover that, and about 60 public records would freeze their constructors and properties.
 - **`InternalsVisibleTo` from PropertySelectors to QueryShaper.** Less API to design, but QueryShaper would then
   depend on internals of a separately versioned package, so any internal refactoring could break it.
 - **Relying on review alone to keep the surface stable.** It's cheap at first, but nothing catches an accidental
-  public change.
+  public change. Accepted until the first release (see 6), then package validation takes over.
+- **`Microsoft.CodeAnalysis.PublicApiAnalyzers`** (first chosen as 6, dropped the same day). It catches API changes
+  from day one and shows each one as a diff in `PublicAPI.Unshipped.txt`, but before the first release its value is
+  low (see 6).
 **Consequence:** breaking for anyone who used the classes that become internal or are deleted. Nothing has shipped,
 so that is acceptable before `0.1.0-preview`. Tests that use internals keep working through the existing
 `InternalsVisibleTo` for the test projects. A QueryShaper test that uses a now-internal PropertySelectors type has to

@@ -5,11 +5,19 @@ using System.Reflection;
 
 namespace Steverzag.PropertySelectors
 {
+	/// <summary>Builds LINQ expressions from selectors, for callers and for custom functions.</summary>
 	public static class SelectorExpressions
 	{
 		private static readonly ConcurrentDictionary<Type, Type?> EnumerableElementTypeCache = new();
 		private static readonly ConcurrentDictionary<Type, (Type? Key, Type? Element)?> EnumerableGroupingTypeCache = new();
 
+		/// <summary>
+		/// Gets the element type of a collection type, by the rule selectors use: arrays and anything that implements
+		/// <see cref="IEnumerable{T}"/> are collections, and <see cref="string"/> isn't.
+		/// </summary>
+		/// <param name="type">The type to check.</param>
+		/// <param name="elementType">The element type, or <see langword="null"/> if the type isn't a collection.</param>
+		/// <returns><see langword="true"/> if the type is a collection.</returns>
 		public static bool TryGetEnumerableElementType(Type type, out Type? elementType)
 		{
 			if (EnumerableElementTypeCache.TryGetValue(type, out elementType))
@@ -61,6 +69,17 @@ namespace Steverzag.PropertySelectors
 		[ThreadStatic]
 		private static Expression? _scopeRoot;
 
+		/// <summary>
+		/// Builds the expression for a function argument. A custom function calls it for each argument when it builds its
+		/// expression.
+		/// </summary>
+		/// <remarks>
+		/// The placeholder a piped function receives as argument 0 becomes the piped value. Any other argument is resolved
+		/// against the scope root, the value the whole selector starts from, not against the piped value.
+		/// </remarks>
+		/// <param name="target">The function's target, as its expression builder receives it.</param>
+		/// <param name="argument">One of the function's arguments.</param>
+		/// <returns>The argument's expression.</returns>
 		public static Expression ResolveArgument(Expression? target, PropertySelector argument) =>
 			argument is PipedValueSelector
 				? target!
@@ -69,6 +88,21 @@ namespace Steverzag.PropertySelectors
 		internal static Expression? ArgumentRoot(Expression? target)
 			=> FindRootParameter(target) ?? _scopeRoot ?? target;
 
+		/// <summary>Builds the expression for a whole selector, applying each part of the chain in turn.</summary>
+		/// <param name="target">The expression the selector starts from, usually a lambda parameter of the root type.</param>
+		/// <param name="selector">The selector.</param>
+		/// <returns>The selector's expression, or <paramref name="target"/> itself for an empty selector.</returns>
+		/// <exception cref="SelectorParseException">
+		/// In the non-generic form, a property doesn't exist on the type it's read from, or a function's arguments turn out
+		/// to have the wrong types.
+		/// </exception>
+		/// <example>
+		/// <code>
+		/// var order = Expression.Parameter(typeof(Order), "o");
+		/// var body = SelectorExpressions.CreateMemberAccess(order, (PropertySelector&lt;Order&gt;)"Lines.Amount|$FN_AGGR_SUM");
+		/// var total = Expression.Lambda&lt;Func&lt;Order, decimal&gt;&gt;(body, order); // o => o.Lines.Select(y => y.Amount).Sum()
+		/// </code>
+		/// </example>
 		public static Expression CreateMemberAccess(Expression? target, PropertySelector selector)
 		{
 			if (selector is null || string.IsNullOrEmpty(selector.PlainValue)) return target!;
@@ -94,13 +128,6 @@ namespace Steverzag.PropertySelectors
 			}
 		}
 
-		/// <summary>
-		/// Walks the access spine of <paramref name="expression"/> (member accesses, calls and
-		/// conversions) down to the parameter it was built from. Selectors that take their subject
-		/// from an already resolved chained target use it to recover the scope root their own
-		/// parameters must be resolved against. Returns null when the expression does not
-		/// originate from a parameter, e.g. a constant or a static member access.
-		/// </summary>
 		internal static ParameterExpression? FindRootParameter(Expression? expression) => expression switch
 		{
 			ParameterExpression parameter => parameter,

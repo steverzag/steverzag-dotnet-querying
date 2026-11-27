@@ -3,21 +3,31 @@ using Steverzag.PropertySelectors.Extensions;
 
 namespace Steverzag.PropertySelectors.MetaData
 {
+	/// <summary>
+	/// Lists what a selector path can reach from <typeparamref name="T"/>, as a tree a UI can offer as a field picker.
+	/// </summary>
+	/// <remarks>
+	/// The tree follows the parser's rules: under a collection it lists the element's properties, under a nullable value
+	/// the underlying type's, and it leaves out indexers and fields. A type already on the way down from the root ends as a
+	/// leaf. For the functions that can follow a node, see <see cref="FunctionCatalog.After"/>.
+	/// </remarks>
+	/// <typeparam name="T">The root type.</typeparam>
 	public sealed class PropertiesExplorer<T> where T : class
 	{
 		private readonly Type _rootType = typeof(T);
-		private SelectorsMetaDataTree Result { get; set; }
 		private readonly HashSet<Type> _visitedTypes = [typeof(T)];
 
-		public PropertiesExplorer()
-		{
-			Result = new SelectorsMetaDataTree(_rootType, "Root");
-		}
-
+		/// <summary>Builds the tree of what a selector path can reach from <typeparamref name="T"/>.</summary>
+		/// <param name="maxDepth">How many levels of properties to list below the root.</param>
+		/// <param name="filter">
+		/// Leaves out the members it hides, and everything behind them. <see cref="MemberFilter.All"/> by default.
+		/// </param>
+		/// <returns>The root node, whose <see cref="SelectorsMetaDataTree.Path"/> is empty. Each call returns a new tree.</returns>
 		public SelectorsMetaDataTree ExplorePropertiesTree(int maxDepth = 20, MemberFilter? filter = null)
 		{
-			ExploreProperties(_rootType, Result, maxDepth, filter ?? MemberFilter.All, null);
-			return Result;
+			var root = new SelectorsMetaDataTree(_rootType, "Root");
+			ExploreProperties(_rootType, root, maxDepth, filter ?? MemberFilter.All, null);
+			return root;
 		}
 
 		private void ExploreProperties(Type t, SelectorsMetaDataTree result, int depth, MemberFilter filter, (PropertyInfo Property, Type Type)? source)

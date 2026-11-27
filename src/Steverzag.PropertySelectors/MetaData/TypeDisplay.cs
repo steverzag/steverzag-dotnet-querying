@@ -1,5 +1,6 @@
 namespace Steverzag.PropertySelectors.MetaData
 {
+	/// <summary>Formats types with C#-style names, the way the metadata tree and the function catalog show them.</summary>
 	public static class TypeDisplay
 	{
 		private static readonly Dictionary<Type, string> Aliases = new()
@@ -21,6 +22,9 @@ namespace Steverzag.PropertySelectors.MetaData
 			[typeof(object)] = "object",
 		};
 
+		/// <summary>Returns a C#-style name for a type, such as <c>int?</c>, <c>List&lt;Phone&gt;</c> or <c>decimal[]</c>.</summary>
+		/// <param name="type">The type.</param>
+		/// <returns>The name. Types are written without their namespace.</returns>
 		public static string Name(Type type)
 		{
 			ArgumentNullException.ThrowIfNull(type);

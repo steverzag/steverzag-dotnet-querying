@@ -15,7 +15,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		internal override Type? InitSelectorTypeToApply() => null;
 
-		protected override string SegmentToString() => ArithmeticOperationFormatter.FormatSegment(this, ChildSelector);
+		private protected override string SegmentToString() => ArithmeticOperationFormatter.FormatSegment(this, ChildSelector);
 	}
 
 	internal record ArithmeticOperationSelector : PropertySelector, IArithmeticOperationSelector
@@ -30,7 +30,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			PropertyAccess = (target) => target.CreateArithmeticOperationExpression(this);
 		}
 
-		protected override string SegmentToString() => ArithmeticOperationFormatter.FormatSegment(this, ChildSelector);
+		private protected override string SegmentToString() => ArithmeticOperationFormatter.FormatSegment(this, ChildSelector);
 	}
 
 	internal interface IArithmeticOperationSelector

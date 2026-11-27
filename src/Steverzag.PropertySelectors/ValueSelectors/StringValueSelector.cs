@@ -3,7 +3,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record StringValueSelector<T> : PropertySelector<T>, IStringLiteralSelector
 	{
 		public string Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(string);
+		public override Type? SelectorType { get; internal init; } = typeof(string);
 
 		public StringValueSelector(string value) : base(SelectorLiteral.Format(value))
 		{
@@ -15,7 +15,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record StringValueSelector : PropertySelector, IStringLiteralSelector
 	{
 		public string Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(string);
+		public override Type? SelectorType { get; internal init; } = typeof(string);
 
 		public StringValueSelector(string value) : base(SelectorLiteral.Format(value))
 		{

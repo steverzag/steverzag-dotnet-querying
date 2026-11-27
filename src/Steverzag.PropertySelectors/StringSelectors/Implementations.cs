@@ -7,23 +7,12 @@ namespace Steverzag.PropertySelectors.StringSelectors
 {
 	internal static class Implementations
 	{
-		/// <summary>
-		/// Instance string members read their subject from the chained target, mirroring how the
-		/// function is written in C#: <c>Name|$FN_STR_LENGTH</c> builds <c>x.Name.Length</c>.
-		/// </summary>
 		public static Expression CreateStringLengthAccess(this Expression? target)
 		{
 			var instanceExpr = target.CreateStringInstanceExpression(nameof(string.Length));
 			return Expression.Property(instanceExpr, nameof(string.Length));
 		}
 
-		/// <summary>
-		/// Calls <paramref name="methodInfo"/> on the chained target, so
-		/// <c>Name|$FN_STR_CONTAINS("ell")</c> builds <c>x.Name.Contains("ell")</c>.
-		/// The selector parameters carry only the arguments; because the target is already a
-		/// resolved string expression, property parameters are resolved against the scope root
-		/// the target itself was built from (<c>x</c> in the example above).
-		/// </summary>
 		public static Expression CreateStringInstanceFunction(this Expression? target, MethodInfo methodInfo, params PropertySelector[] parameters)
 		{
 			var instanceExpr = target.CreateStringInstanceExpression(methodInfo.Name);
@@ -33,11 +22,6 @@ namespace Steverzag.PropertySelectors.StringSelectors
 			return Expression.Call(instanceExpr, methodInfo, arguments);
 		}
 
-		/// <summary>
-		/// Calls a static member of <see cref="string"/> (e.g. <see cref="string.Concat(string, string)"/>),
-		/// which has no instance form in C#. The target stays the root every parameter is resolved
-		/// against and all values are passed as arguments.
-		/// </summary>
 		public static Expression CreateStringStaticFunction(this Expression? target, MethodInfo methodInfo, params PropertySelector[] parameters)
 		{
 			var arguments = target.CreateStringFunctionArguments(methodInfo, parameters);
@@ -45,12 +29,6 @@ namespace Steverzag.PropertySelectors.StringSelectors
 			return Expression.Call(methodInfo, arguments);
 		}
 
-		/// <summary>
-		/// Builds <c>string.Join(separator, new[] { value0, value1, … })</c>. Unlike the other static
-		/// members the argument count is variadic, so the values are packed into a string array —
-		/// the shape relational providers recognise. Like every static string function the target
-		/// stays the root the parameters are resolved against.
-		/// </summary>
 		public static Expression CreateStringJoinFunction(this Expression? target, PropertySelector separatorParameter, params PropertySelector[] valueParameters)
 		{
 			var separatorExpr = SelectorExpressions.ResolveArgument(target, separatorParameter);

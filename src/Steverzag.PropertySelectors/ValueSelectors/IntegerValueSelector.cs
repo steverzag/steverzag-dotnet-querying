@@ -3,7 +3,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record IntegerValueSelector<T> : PropertySelector<T>, IIntegerLiteralSelector
 	{
 		public int Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(int);
+		public override Type? SelectorType { get; internal init; } = typeof(int);
 
 		public IntegerValueSelector(int value) : base(SelectorLiteral.Format(value))
 		{
@@ -15,7 +15,7 @@ namespace Steverzag.PropertySelectors.ValueSelectors
 	internal record IntegerValueSelector : PropertySelector, IIntegerLiteralSelector
 	{
 		public int Value { get; set; }
-		public override Type? SelectorType { get; init; } = typeof(int);
+		public override Type? SelectorType { get; internal init; } = typeof(int);
 
 		public IntegerValueSelector(int value) : base(SelectorLiteral.Format(value))
 		{

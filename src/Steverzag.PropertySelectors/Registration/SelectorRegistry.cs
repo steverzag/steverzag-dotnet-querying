@@ -7,25 +7,15 @@ using System.Runtime.ExceptionServices;
 namespace Steverzag.PropertySelectors.Registration
 {
 	/// <summary>
-	/// Token-to-selector registry consulted by the implicit string conversion operators.
-	/// Tokens are resolved by exact name match (the part before the first parenthesis), so
-	/// registrations never depend on prefix ordering.
-	/// <para>
-	/// Selectors in this assembly are discovered automatically through <see cref="SelectorTokenAttribute"/>.
-	/// External assemblies defining their own selectors call <see cref="RegisterAssembly"/> once at startup
-	/// (or <see cref="Register"/> per token). External selectors must inherit
-	/// <see cref="FunctionPropertySelector{T}"/> / <see cref="FunctionPropertySelector"/>, implement
-	/// <see cref="IFunctionSignatures"/> (types without it are rejected), expose public
-	/// parameterless and <c>List&lt;PropertySelector&gt;</c> constructors, and use a token starting with
-	/// <see cref="SelectorDefaults.FunctionStart"/> — prefer a vendor-scoped name (e.g. <c>$FN_ACME_DISTANCE</c>)
-	/// to avoid collisions; duplicate tokens are rejected with an exception.
-	/// </para>
-	/// <para>
-	/// Reflection is paid once per selector/element-type combination: instantiation goes through
-	/// compiled constructor delegates cached per closed type, so repeated conversions do not
-	/// touch reflection at all.
-	/// </para>
+	/// Maps function tokens to the selectors that implement them. Parsing looks a function up here by its exact,
+	/// case-sensitive token.
 	/// </summary>
+	/// <remarks>
+	/// The built-in functions are registered automatically. To add your own, derive from
+	/// <see cref="FunctionPropertySelector{T}"/> and <see cref="FunctionPropertySelector"/>, mark both with
+	/// <see cref="SelectorTokenAttribute"/>, and call <see cref="RegisterAssembly"/> once at startup. Use a vendor-scoped
+	/// token, such as <c>$FN_ACME_DISTANCE</c>, since a duplicate token is rejected.
+	/// </remarks>
 	public static class SelectorRegistry
 	{
 		private static readonly ConcurrentDictionary<string, SelectorRegistration> Entries = new(StringComparer.Ordinal);
@@ -48,9 +38,8 @@ namespace Steverzag.PropertySelectors.Registration
 			ArgumentScope Arguments);
 
 		/// <summary>
-		/// Forces the one-time scan of this assembly's selectors. Calling it is optional — the first
-		/// string conversion triggers the scan lazily — but applications sensitive to first-request
-		/// latency can invoke it during startup to pay the cost eagerly. Idempotent and thread-safe.
+		/// Registers the built-in functions now. This is optional, since the first parse does it, but calling it at startup
+		/// keeps that one-time cost off the first request. Calling it again does nothing.
 		/// </summary>
 		public static void Initialize()
 		{
@@ -58,10 +47,20 @@ namespace Steverzag.PropertySelectors.Registration
 		}
 
 		/// <summary>
-		/// Registers the selector type(s) handling <paramref name="token"/>. Either type may be null;
-		/// a null slot of an existing entry is filled on a later call. Registering the same type twice
-		/// is a no-op; registering a different type for an occupied slot throws.
+		/// Registers the selectors that implement a function token. Prefer <see cref="RegisterAssembly"/>, which reads the
+		/// token from <see cref="SelectorTokenAttribute"/>.
 		/// </summary>
+		/// <remarks>
+		/// Either form may be <see langword="null"/> and registered by a later call. Registering the same type again does
+		/// nothing.
+		/// </remarks>
+		/// <param name="token">The token. It must start with <see cref="SelectorDefaults.FunctionStart"/>.</param>
+		/// <param name="openGenericSelectorType">The generic form, as an open generic type such as <c>typeof(MyFunc&lt;&gt;)</c>, or <see langword="null"/>.</param>
+		/// <param name="nonGenericSelectorType">The non-generic form, or <see langword="null"/>.</param>
+		/// <exception cref="ArgumentException">
+		/// The token doesn't start with <see cref="SelectorDefaults.FunctionStart"/>, a type isn't a selector of the right
+		/// shape or doesn't implement <see cref="IFunctionSignatures"/>, or the token already has a different type in that form.
+		/// </exception>
 		public static void Register(string token, Type? openGenericSelectorType, Type? nonGenericSelectorType)
 		{
 			if (string.IsNullOrWhiteSpace(token) || !token.StartsWith(SelectorDefaults.FunctionStart))
@@ -88,11 +87,12 @@ namespace Steverzag.PropertySelectors.Registration
 		}
 
 		/// <summary>
-		/// Scans <paramref name="assembly"/> for types decorated with <see cref="SelectorTokenAttribute"/>
-		/// and registers them. Called automatically for this assembly on first resolution; external
-		/// assemblies defining their own selectors call this once at startup.
-		/// Note: relies on <see cref="Assembly.GetTypes"/> and is not trimming/AOT friendly.
+		/// Registers every type in an assembly that is marked with <see cref="SelectorTokenAttribute"/>. Call it once at
+		/// startup for each assembly that defines functions.
 		/// </summary>
+		/// <remarks>It scans the assembly with reflection, so it isn't compatible with trimming or native AOT.</remarks>
+		/// <param name="assembly">The assembly, such as <c>typeof(MyFunc&lt;&gt;).Assembly</c>.</param>
+		/// <exception cref="ArgumentException">A marked type isn't a valid function, or its token is already taken by a different type.</exception>
 		public static void RegisterAssembly(Assembly assembly)
 		{
 			foreach (var type in assembly.GetTypes())
