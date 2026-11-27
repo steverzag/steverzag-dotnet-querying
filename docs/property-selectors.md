@@ -323,7 +323,7 @@ resolves against the scope root in both forms, so `Details.Price|$FN_MATH_ROUND(
 - **Wherever the chain starts**, arguments resolve against the scope root: after a literal or a function without a
   subject too (decision 030.5). `5|$FN_MATH_MAX(Age)` builds `Math.Max(5, x.Age)`, and `$FN_DT_NOW|$FN_DT_ADDDAYS(Days)`
   builds `DateTime.Now.AddDays(x.Days)`. Inside an ordering function's argument, the scope root is the element.
-  The root is the target that `ExpressionUtils.CreateMemberAccess` was given, so a caller that invokes a selector's
+  The root is the target that `SelectorExpressions.CreateMemberAccess` was given, so a caller that invokes a selector's
   `PropertyAccess` directly, without it, still gets the root only from the piped value.
 - `ToString()` writes the form that was parsed.
 
@@ -461,8 +461,8 @@ internal static readonly IReadOnlyList<FunctionSignature> Table =
     // $FN_ACME_CLAMP(value, max)
     new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric],
         (target, args) => args[0],                          // declared type, from the argument types
-        p => target => Clamp(ExpressionUtils.ResolveArgument(target, p[0]),
-                             ExpressionUtils.ResolveArgument(target, p[1]))),
+        p => target => Clamp(SelectorExpressions.ResolveArgument(target, p[0]),
+                             SelectorExpressions.ResolveArgument(target, p[1]))),
     // $FN_ACME_CLAMP(value, min, max)
     new([ArgumentConstraint.Numeric, ArgumentConstraint.Numeric, ArgumentConstraint.Numeric], …),
 ];
@@ -504,7 +504,7 @@ The attribute's `Piped` property says what a piped value means for the function:
 | `Piped =` | Meaning |
 |---|---|
 | `PipedForm.Target` (default) | The piped value is the target the function's overload receives, as for `TRIM` or the aggregates. Functions written before 016 behave this way. |
-| `PipedForm.FirstArgument` | The function takes its subject as argument 0. When piped, a placeholder for the piped value is inserted as argument 0, so the same overloads serve both forms. Resolve every argument with `ExpressionUtils.ResolveArgument(target, argument)`, which turns the placeholder into the piped value and resolves the others against the scope root. |
+| `PipedForm.FirstArgument` | The function takes its subject as argument 0. When piped, a placeholder for the piped value is inserted as argument 0, so the same overloads serve both forms. Resolve every argument with `SelectorExpressions.ResolveArgument(target, argument)`, which turns the placeholder into the piped value and resolves the others against the scope root. |
 | `PipedForm.Rejected` | The function has no subject, and piping into it is an error. An optional `PipedHint` sentence is added to the message. |
 
 The `Arguments` property says what the arguments are typed against in the generic form (decision 018). It must match
@@ -512,7 +512,7 @@ where the function resolves them when the expression is built:
 
 | `Arguments =` | Meaning |
 |---|---|
-| `ArgumentScope.Root` (default) | The scope root, which is what `ExpressionUtils.ResolveArgument` uses. |
+| `ArgumentScope.Root` (default) | The scope root, which is what `SelectorExpressions.ResolveArgument` uses. |
 | `ArgumentScope.TargetElement` | The element type of the function's target, for functions that build a lambda over the elements (the ordering functions). If the target isn't a collection, the arguments stay untyped. |
 
 Optionally call `SelectorRegistry.Initialize()` at startup, so the one-time assembly scan doesn't
@@ -646,4 +646,4 @@ filter.Parse<Person>("Created.Ticks");                               // Selector
 | Function metadata | `MetaData/FunctionCatalog.cs`, `Signatures/IFunctionSignatures.cs` |
 | Literals | `ValueSelectors/ValueSelectorFactory.cs` |
 | Coalesce | `NullSelectors/` |
-| Member access building | `ExpressionUtils.cs`, `SelectorImplementations/MethodInfos.cs` |
+| Member access building | `SelectorExpressions.cs`, `SelectorImplementations/MethodInfos.cs` |

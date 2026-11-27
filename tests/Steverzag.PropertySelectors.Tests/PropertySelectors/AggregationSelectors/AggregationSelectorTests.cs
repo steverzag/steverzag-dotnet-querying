@@ -40,7 +40,7 @@ public class AggregationSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector<TestOrder> selector, TestOrder item)
     {
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestOrder, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -48,7 +48,7 @@ public class AggregationSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector selector, TestOrder item)
     {
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestOrder, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -152,7 +152,7 @@ public class AggregationSelectorTests
         PropertySelector<TestOrder> selector = $"Numbers{Delimiter}{SelectorDefaults.LongCountAggregateFunction}";
 
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
 
         Assert.Equal(typeof(long), body.Type);
         Assert.Equal(selector.Type, body.Type);
@@ -430,7 +430,7 @@ public class AggregationSelectorTests
         PropertySelector<TestOrder> selector = $"{property}{Delimiter}{function}";
 
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var value = Expression.Lambda<Func<TestOrder, object?>>(Expression.Convert(body, typeof(object)), parameter).Compile()(EmptyOrder());
 
         Assert.Equal(expectedType, selector.Type);
@@ -445,7 +445,7 @@ public class AggregationSelectorTests
         PropertySelector selector = $"{property}{Delimiter}{function}";
 
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var value = Expression.Lambda<Func<TestOrder, object?>>(Expression.Convert(body, typeof(object)), parameter).Compile()(EmptyOrder());
 
         Assert.Equal(expectedType, body.Type);
@@ -468,7 +468,7 @@ public class AggregationSelectorTests
         PropertySelector<TestOrder> selector = $"{property}{Delimiter}{function}";
 
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var value = Expression.Lambda<Func<TestOrder, object>>(Expression.Convert(body, typeof(object)), parameter).Compile()(new TestOrder());
 
         Assert.Equal(expectedType, selector.Type);
@@ -483,7 +483,7 @@ public class AggregationSelectorTests
         PropertySelector selector = $"{property}{Delimiter}{function}";
 
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var value = Expression.Lambda<Func<TestOrder, object>>(Expression.Convert(body, typeof(object)), parameter).Compile()(new TestOrder());
 
         Assert.Equal(expectedType, body.Type);

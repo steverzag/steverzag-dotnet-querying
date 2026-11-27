@@ -120,7 +120,7 @@ namespace Steverzag.PropertySelectors.Registration
 
 			var argumentScopeType = factories.Arguments switch
 			{
-				ArgumentScope.TargetElement => ExpressionUtils.TryGetEnumerableElementType(currentIterationType, out var elementType) ? elementType : null,
+				ArgumentScope.TargetElement => SelectorExpressions.TryGetEnumerableElementType(currentIterationType, out var elementType) ? elementType : null,
 				_ => rootType,
 			};
 

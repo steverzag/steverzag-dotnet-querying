@@ -1,7 +1,7 @@
 ﻿
 namespace Steverzag.PropertySelectors.ArithmeticSelectors
 {
-	public record ArithmeticOperationSelector<T> : PropertySelector<T>, IArithmeticOperationSelector
+	internal record ArithmeticOperationSelector<T> : PropertySelector<T>, IArithmeticOperationSelector
 	{
 		public PropertySelector LeftExpression { get; init; } = null!;
 		public PropertySelector? RightExpression { get; init; }
@@ -13,12 +13,12 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 			PropertyAccess = (target) => target.CreateArithmeticOperationExpression(this);
 		}
 
-		public override Type? InitSelectorTypeToApply() => null;
+		internal override Type? InitSelectorTypeToApply() => null;
 
 		protected override string SegmentToString() => ArithmeticOperationFormatter.FormatSegment(this, ChildSelector);
 	}
 
-	public record ArithmeticOperationSelector : PropertySelector, IArithmeticOperationSelector
+	internal record ArithmeticOperationSelector : PropertySelector, IArithmeticOperationSelector
 	{
 		public PropertySelector LeftExpression { get; init; } = null!;
 		public PropertySelector? RightExpression { get; init; }

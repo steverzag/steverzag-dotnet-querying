@@ -1,6 +1,6 @@
 namespace Steverzag.PropertySelectors
 {
-	public class SelectorParseException : ArgumentException
+	public sealed class SelectorParseException : ArgumentException
 	{
 		public SelectorParseException(string detail, string selector, int? position = null, string? token = null, Exception? innerException = null)
 			: base(detail, innerException)

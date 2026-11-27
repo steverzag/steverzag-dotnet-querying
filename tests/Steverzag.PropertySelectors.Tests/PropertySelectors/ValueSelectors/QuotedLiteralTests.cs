@@ -13,7 +13,7 @@ public class QuotedLiteralTests
     private static object? Evaluate(PropertySelector selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = Expression.Convert(ExpressionUtils.CreateMemberAccess(parameter, selector), typeof(object));
+        var body = Expression.Convert(SelectorExpressions.CreateMemberAccess(parameter, selector), typeof(object));
         return Expression.Lambda<Func<TestItem, object?>>(body, parameter).Compile()(item);
     }
 

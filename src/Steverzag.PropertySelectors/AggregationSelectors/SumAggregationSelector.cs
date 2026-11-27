@@ -3,14 +3,14 @@ using Steverzag.PropertySelectors.Registration;
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
 [SelectorToken(SelectorDefaults.SumAggregateFunction, Category = FunctionCategory.Aggregation)]
-public record SumAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
+internal record SumAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public SumAggregationSelector() : base(SelectorDefaults.SumAggregateFunction) { }
 	public static IReadOnlyList<FunctionSignature> Signatures => SumAggregationSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.SumAggregateFunction, Category = FunctionCategory.Aggregation)]
-public record SumAggregationSelector : FunctionPropertySelector, IFunctionSignatures
+internal record SumAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[

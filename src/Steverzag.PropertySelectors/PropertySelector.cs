@@ -20,7 +20,7 @@ namespace Steverzag.PropertySelectors
 			SelectorType = InitSelectorTypeToApply();
 		}
 
-		public override Type? InitSelectorTypeToApply()
+		internal override Type? InitSelectorTypeToApply()
 		{
 			return typeof(T).GetPropertyType(this);
 		}
@@ -113,14 +113,14 @@ namespace Steverzag.PropertySelectors
 				return t;
 			}
 		}
-		public PropertySelector? ChildSelector { get; set; }
+		public PropertySelector? ChildSelector { get; internal set; }
 		public Func<Expression?, Expression> PropertyAccess { get; init; } = null!; // assigned by every PropertySelector constructor
-		public abstract Type? InitSelectorTypeToApply();
+		internal abstract Type? InitSelectorTypeToApply();
 	}
 
 	public record PropertySelector : SelectorBase
 	{
-		public override Type? InitSelectorTypeToApply()
+		internal override Type? InitSelectorTypeToApply()
 		{
 			return SelectorType;
 		}
@@ -138,7 +138,7 @@ namespace Steverzag.PropertySelectors
 			{
 				var propertyNames = PlainValue.Split('.');
 
-				return ExpressionUtils.CreateMemberAccessRec(target ?? throw new ArgumentNullException(nameof(target), $"Property path '{PlainValue}' needs a target expression."), propertyNames, 0);
+				return SelectorExpressions.CreateMemberAccessRec(target ?? throw new ArgumentNullException(nameof(target), $"Property path '{PlainValue}' needs a target expression."), propertyNames, 0);
 			};
 		}
 

@@ -17,7 +17,7 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateOrderByAscendingFunction(this Expression target)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -34,14 +34,14 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateOrderByAscendingFunction(this Expression target, PropertySelector orderByProperty)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
 			var orderByAscendingMehodInfo = MethodInfos.OrderByAscendingMethodInfo;
 			var lambdaParam = Expression.Parameter(elementTypeFromEnumerable!, "x");
-			var innerAccess = ExpressionUtils.CreateMemberAccess(lambdaParam, orderByProperty);
+			var innerAccess = SelectorExpressions.CreateMemberAccess(lambdaParam, orderByProperty);
 
 			return Expression.Call(
 				orderByAscendingMehodInfo.MakeGenericMethod(elementTypeFromEnumerable!, innerAccess.Type!),
@@ -52,7 +52,7 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateOrderByDescendingFunction(this Expression target)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -69,14 +69,14 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateOrderByDescendingFunction(this Expression target, PropertySelector orderByProperty)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 
 			var orderByDescendingMehodInfo = MethodInfos.OrderByDescendingMethodInfo;
 			var lambdaParam = Expression.Parameter(elementTypeFromEnumerable!, "x");
-			var innerAccess = ExpressionUtils.CreateMemberAccess(lambdaParam, orderByProperty);
+			var innerAccess = SelectorExpressions.CreateMemberAccess(lambdaParam, orderByProperty);
 
 			return Expression.Call(
 				orderByDescendingMehodInfo.MakeGenericMethod(elementTypeFromEnumerable!, innerAccess.Type!),
@@ -87,7 +87,7 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateThenOrderByAscendingFunction(this Expression target)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -102,13 +102,13 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateThenOrderByAscendingFunction(this Expression target, PropertySelector orderByProperty)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 			var thenByAscendingMehodInfo = MethodInfos.ThenOrderByAscendingMethodInfo;
 			var lambdaParam = Expression.Parameter(elementTypeFromEnumerable!, "x");
-			var innerAccess = ExpressionUtils.CreateMemberAccess(lambdaParam, orderByProperty);
+			var innerAccess = SelectorExpressions.CreateMemberAccess(lambdaParam, orderByProperty);
 			return Expression.Call(
 				thenByAscendingMehodInfo.MakeGenericMethod(elementTypeFromEnumerable!, innerAccess.Type!),
 				target,
@@ -118,7 +118,7 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateThenOrderByDescendingFunction(this Expression target)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -133,13 +133,13 @@ namespace Steverzag.PropertySelectors.OrderingSelectors
 
 		internal static MethodCallExpression CreateThenOrderByDescendingFunction(this Expression target, PropertySelector orderByProperty)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable) && elementTypeFromEnumerable is not null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
 			var thenByDescendingMethodInfo = MethodInfos.ThenOrderByDescendingMethodInfo;
 			var lambdaParam = Expression.Parameter(elementTypeFromEnumerable!, "x");
-			var innerAccess = ExpressionUtils.CreateMemberAccess(lambdaParam, orderByProperty);
+			var innerAccess = SelectorExpressions.CreateMemberAccess(lambdaParam, orderByProperty);
 			return Expression.Call(
 				thenByDescendingMethodInfo.MakeGenericMethod(elementTypeFromEnumerable!, innerAccess.Type!),
 				target,

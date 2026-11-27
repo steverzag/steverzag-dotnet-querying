@@ -43,7 +43,7 @@ namespace Steverzag.QueryShaper.Aggregating
 			for (int i = 0; i < groupByParameters.Count; i++)
 			{
 				var groupBySelector = groupByParameters[i];
-				var groupByExp = ExpressionUtils.CreateMemberAccess(param, groupBySelector);
+				var groupByExp = SelectorExpressions.CreateMemberAccess(param, groupBySelector);
 
 				var bindExpression = Expression.Bind(typeof(GroupByKeys).GetProperty(GroupByKeyPrefix + i)!, Expression.Convert(groupByExp, typeof(object)));
 				groupKeysBindings.Add(bindExpression);
@@ -91,7 +91,7 @@ namespace Steverzag.QueryShaper.Aggregating
 			foreach (var selectorText in aggregateSelectors)
 			{
 				PropertySelector<IGrouping<GroupByKeys, T>> propertySelector = selectorText;
-				var aggregateExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);
+				var aggregateExp = SelectorExpressions.CreateMemberAccess(paramExp, propertySelector);
 
 				var newAggregateValueExp = Expression.New(selectValueConstructor,
 					Expression.Constant(selectorText),
@@ -141,7 +141,7 @@ namespace Steverzag.QueryShaper.Aggregating
 			foreach (var selectorText in selectors)
 			{
 				PropertySelector<T> propertySelector = selectorText;
-				var selectorExp = ExpressionUtils.CreateMemberAccess(paramExp, propertySelector);
+				var selectorExp = SelectorExpressions.CreateMemberAccess(paramExp, propertySelector);
 
 				var selectValueNewExp = Expression.New(selectValueConstructor!,
 					Expression.Constant(selectorText),

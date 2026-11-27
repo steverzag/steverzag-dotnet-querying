@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.Registration;
 namespace Steverzag.PropertySelectors.OrderingSelectors;
 
 [SelectorToken(SelectorDefaults.ThenOrderByDescending, Arguments = ArgumentScope.TargetElement, Category = FunctionCategory.Ordering)]
-public record ThenOrderByDescendingSelector<T> : OrderingFunctionSelector<T>, IFunctionSignatures
+internal record ThenOrderByDescendingSelector<T> : OrderingFunctionSelector<T>, IFunctionSignatures
 {
 	public ThenOrderByDescendingSelector() : base(SelectorDefaults.ThenOrderByDescending) { }
 	public ThenOrderByDescendingSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ThenOrderByDescending, parameters) { }
@@ -11,7 +11,7 @@ public record ThenOrderByDescendingSelector<T> : OrderingFunctionSelector<T>, IF
 }
 
 [SelectorToken(SelectorDefaults.ThenOrderByDescending, Arguments = ArgumentScope.TargetElement, Category = FunctionCategory.Ordering)]
-public record ThenOrderByDescendingSelector : FunctionPropertySelector, IFunctionSignatures
+internal record ThenOrderByDescendingSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[

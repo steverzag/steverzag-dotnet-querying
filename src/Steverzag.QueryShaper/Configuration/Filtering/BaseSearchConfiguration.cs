@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace Steverzag.QueryShaper.Configuration.Filtering
 {
-	public class BaseSearchConfiguration : IBaseSearchConfiguration
+	public sealed class BaseSearchConfiguration : IBaseSearchConfiguration
 	{
 		private readonly Dictionary<Type, LambdaExpression> _expressions = [];
 

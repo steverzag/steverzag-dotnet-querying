@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Steverzag.PropertySelectors.Extensions;
 
-public static class TypesExtensions
+internal static class TypesExtensions
 {
 	internal static SelectorParseException PropertyNotFound(string propertyName, Type type, string propertyPath, int offset, Exception? innerException = null, (PropertyInfo Property, Type Type)? source = null)
 	{
@@ -48,7 +48,7 @@ public static class TypesExtensions
 
 			var property = offset == 0 ? FindProperty(currentType, propertyName) : null;
 
-			if (property is null && ExpressionUtils.TryGetEnumerableElementType(currentType, out var itemType) && itemType is not null)
+			if (property is null && SelectorExpressions.TryGetEnumerableElementType(currentType, out var itemType) && itemType is not null)
 			{
 				projected = true;
 				currentType = itemType;
@@ -79,12 +79,12 @@ public static class TypesExtensions
 			MemberFilter.Remember(propertySelector!, last.Property, last.Type);
 
 		if (lifted)
-			currentType = ExpressionUtils.LiftToNullable(currentType);
+			currentType = SelectorExpressions.LiftToNullable(currentType);
 
 		if (!projected)
 			return currentType;
 
-		if (ExpressionUtils.TryGetEnumerableElementType(currentType, out var finalItemType) && finalItemType is not null)
+		if (SelectorExpressions.TryGetEnumerableElementType(currentType, out var finalItemType) && finalItemType is not null)
 			currentType = finalItemType;
 
 		return typeof(IEnumerable<>).MakeGenericType(currentType);

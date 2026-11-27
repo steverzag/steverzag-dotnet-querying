@@ -18,7 +18,7 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 		{
 			PropertySelector<Product> selector = text;
 			var parameter = Expression.Parameter(typeof(Product), "p");
-			var lambda = Expression.Lambda<Func<Product, TResult>>(ExpressionUtils.CreateMemberAccess(parameter, selector), parameter);
+			var lambda = Expression.Lambda<Func<Product, TResult>>(SelectorExpressions.CreateMemberAccess(parameter, selector), parameter);
 
 			using var context = Database.CreateContext();
 			return context.Products.OrderBy(p => p.Id).Select(lambda).ToList();

@@ -3,7 +3,7 @@ using System.Linq.Expressions;
 
 namespace Steverzag.PropertySelectors.Tests;
 
-public class ExpressionUtilsTests
+public class SelectorExpressionsTests
 {
     #region TryGetEnumerableElementType Tests
 
@@ -14,7 +14,7 @@ public class ExpressionUtilsTests
         var type = typeof(List<int>);
 
         // Act
-        var result = ExpressionUtils.TryGetEnumerableElementType(type, out var elementType);
+        var result = SelectorExpressions.TryGetEnumerableElementType(type, out var elementType);
 
         // Assert
         Assert.True(result);
@@ -28,7 +28,7 @@ public class ExpressionUtilsTests
         var type = typeof(IEnumerable<string>);
 
         // Act
-        var result = ExpressionUtils.TryGetEnumerableElementType(type, out var elementType);
+        var result = SelectorExpressions.TryGetEnumerableElementType(type, out var elementType);
 
         // Assert
         Assert.True(result);
@@ -42,7 +42,7 @@ public class ExpressionUtilsTests
         var type = typeof(int[]);
 
         // Act
-        var result = ExpressionUtils.TryGetEnumerableElementType(type, out var elementType);
+        var result = SelectorExpressions.TryGetEnumerableElementType(type, out var elementType);
 
         // Assert
         Assert.True(result);
@@ -56,7 +56,7 @@ public class ExpressionUtilsTests
         var type = typeof(string);
 
         // Act
-        var result = ExpressionUtils.TryGetEnumerableElementType(type, out var elementType);
+        var result = SelectorExpressions.TryGetEnumerableElementType(type, out var elementType);
 
         // Assert
         Assert.False(result);
@@ -70,7 +70,7 @@ public class ExpressionUtilsTests
         var type = typeof(int);
 
         // Act
-        var result = ExpressionUtils.TryGetEnumerableElementType(type, out var elementType);
+        var result = SelectorExpressions.TryGetEnumerableElementType(type, out var elementType);
 
         // Assert
         Assert.False(result);
@@ -88,7 +88,7 @@ public class ExpressionUtilsTests
         var type = typeof(IGrouping<string, int>);
 
         // Act
-        var result = ExpressionUtils.TryGetGroupingTypes(type, out var keyType, out var elementType);
+        var result = SelectorExpressions.TryGetGroupingTypes(type, out var keyType, out var elementType);
 
         // Assert
         Assert.True(result);
@@ -103,7 +103,7 @@ public class ExpressionUtilsTests
         var type = typeof(List<int>);
 
         // Act
-        var result = ExpressionUtils.TryGetGroupingTypes(type, out var keyType, out var elementType);
+        var result = SelectorExpressions.TryGetGroupingTypes(type, out var keyType, out var elementType);
 
         // Assert
         Assert.False(result);
@@ -118,7 +118,7 @@ public class ExpressionUtilsTests
         var type = typeof(string);
 
         // Act
-        var result = ExpressionUtils.TryGetGroupingTypes(type, out var keyType, out var elementType);
+        var result = SelectorExpressions.TryGetGroupingTypes(type, out var keyType, out var elementType);
 
         // Assert
         Assert.False(result);
@@ -137,7 +137,7 @@ public class ExpressionUtilsTests
     private static TResult Evaluate<TResult>(PropertySelector selector, TestPerson item)
     {
         var parameter = Expression.Parameter(typeof(TestPerson), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestPerson, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -149,7 +149,7 @@ public class ExpressionUtilsTests
         var param = Expression.Parameter(typeof(TestPerson), "x");
 
         // Act
-        var result = ExpressionUtils.CreateMemberAccess(param, null!);
+        var result = SelectorExpressions.CreateMemberAccess(param, null!);
 
         // Assert
         Assert.Same(param, result);
@@ -210,7 +210,7 @@ public class ExpressionUtilsTests
         PropertySelector selector = string.Empty;
 
         // Act
-        var result = ExpressionUtils.CreateMemberAccess(param, selector);
+        var result = SelectorExpressions.CreateMemberAccess(param, selector);
 
         // Assert
         Assert.Same(param, result);
@@ -238,8 +238,8 @@ public class ExpressionUtilsTests
     {
         var param = Expression.Parameter(typeof(TestPerson), "x");
 
-        Assert.Same(param, ExpressionUtils.FindRootParameter(ExpressionUtils.CreateMemberAccess(param, (PropertySelector)text)));
-        Assert.Same(param, ExpressionUtils.FindRootParameter(ExpressionUtils.CreateMemberAccess(param, (PropertySelector<TestPerson>)text)));
+        Assert.Same(param, SelectorExpressions.FindRootParameter(SelectorExpressions.CreateMemberAccess(param, (PropertySelector)text)));
+        Assert.Same(param, SelectorExpressions.FindRootParameter(SelectorExpressions.CreateMemberAccess(param, (PropertySelector<TestPerson>)text)));
     }
 
     [Fact]
@@ -248,8 +248,8 @@ public class ExpressionUtilsTests
         var inner = Expression.Parameter(typeof(TestPhone), "p");
         var lambda = Expression.Lambda(Expression.Property(inner, nameof(TestPhone.Id)), inner);
 
-        Assert.Null(ExpressionUtils.FindRootParameter(lambda));
-        Assert.Null(ExpressionUtils.FindRootParameter(Expression.Constant(1)));
+        Assert.Null(SelectorExpressions.FindRootParameter(lambda));
+        Assert.Null(SelectorExpressions.FindRootParameter(Expression.Constant(1)));
     }
 
     [Theory]
@@ -262,7 +262,7 @@ public class ExpressionUtilsTests
 
         foreach (var selector in new[] { (PropertySelector)text, (PropertySelector<TestPerson>)text })
         {
-            var body = ExpressionUtils.CreateMemberAccess(param, selector);
+            var body = SelectorExpressions.CreateMemberAccess(param, selector);
             Assert.Equal(expected, Expression.Lambda<Func<TestPerson, bool>>(body, param).Compile()(person));
         }
     }

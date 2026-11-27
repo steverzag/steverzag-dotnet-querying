@@ -17,7 +17,7 @@ public class StringSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector<TestItem> selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -25,7 +25,7 @@ public class StringSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
         return lambda(item);
     }

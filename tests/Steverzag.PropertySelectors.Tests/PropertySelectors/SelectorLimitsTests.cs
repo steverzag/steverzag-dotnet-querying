@@ -76,7 +76,7 @@ public class SelectorLimitsTests
     {
         var text = new string(' ', SelectorLimits.DefaultMaxLength - 3) + "Age";
 
-        var body = ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Node), "x"), Parse(text, generic));
+        var body = SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Node), "x"), Parse(text, generic));
 
         Assert.Equal("x.Age", body.ToString());
     }

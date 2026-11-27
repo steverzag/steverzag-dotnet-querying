@@ -20,7 +20,7 @@ public class MathMaxMinTests
     private static Expression Body(PropertySelector selector, out ParameterExpression parameter)
     {
         parameter = Expression.Parameter(typeof(Item), "x");
-        return ExpressionUtils.CreateMemberAccess(parameter, selector);
+        return SelectorExpressions.CreateMemberAccess(parameter, selector);
     }
 
     private static object? Evaluate(PropertySelector selector, Item item)

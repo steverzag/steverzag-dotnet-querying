@@ -4,7 +4,7 @@ using System.Reflection;
 
 namespace Steverzag.QueryShaper.EntityFrameworkCore
 {
-	public sealed class DecimalMathAsDoubleInterceptor : IQueryExpressionInterceptor
+	internal sealed class DecimalMathAsDoubleInterceptor : IQueryExpressionInterceptor
 	{
 		public static DecimalMathAsDoubleInterceptor Instance { get; } = new();
 

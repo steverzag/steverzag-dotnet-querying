@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.ValueSelectors;
 
 namespace Steverzag.PropertySelectors
 {
-	public enum ConstraintMatch
+	internal enum ConstraintMatch
 	{
 		None,
 		Exact,
@@ -27,7 +27,7 @@ namespace Steverzag.PropertySelectors
 			IsLiteral = isLiteral;
 		}
 
-		public ConstraintMatch Match(PropertySelector? argument, Type? type) => _match(argument, type);
+		internal ConstraintMatch Match(PropertySelector? argument, Type? type) => _match(argument, type);
 
 		public bool Accepts(Type type)
 		{
@@ -52,14 +52,14 @@ namespace Steverzag.PropertySelectors
 
 		public static ArgumentConstraint Collection { get; } = new("a collection", (argument, type) => type is null
 			? ConstraintMatch.Unknown
-			: ExpressionUtils.TryGetEnumerableElementType(type, out var _) ? ConstraintMatch.Implicit : ConstraintMatch.None);
+			: SelectorExpressions.TryGetEnumerableElementType(type, out var _) ? ConstraintMatch.Implicit : ConstraintMatch.None);
 
 		public static ArgumentConstraint NumericCollection { get; } = new("a collection of numbers", (argument, type) =>
 		{
 			if (type is null)
 				return ConstraintMatch.Unknown;
 
-			if (!ExpressionUtils.TryGetEnumerableElementType(type, out var element) || element is null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(type, out var element) || element is null)
 				return ConstraintMatch.None;
 
 			var underlying = Nullable.GetUnderlyingType(element) ?? element;

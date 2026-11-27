@@ -6,7 +6,7 @@ using System.Reflection;
 
 namespace Steverzag.PropertySelectors
 {
-	public class PropertySelectorUtils
+	internal static class PropertySelectorUtils
 	{
 		internal static PropertySelector<T> CreateArithmeticOperationSelector<T>(string selector)
 		{

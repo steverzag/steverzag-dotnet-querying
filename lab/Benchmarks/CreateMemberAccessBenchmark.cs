@@ -18,7 +18,7 @@ namespace ExpDataWorker.Benchmark
 		public Expression CreateMemberAccesorL1V2()
 		{
 			var parameterExpressions = Expression.Parameter(typeof(AppPerson), name: "x");
-			var memberAccess = ExpressionUtils.CreateMemberAccess(parameterExpressions, "MaritalStatus");
+			var memberAccess = SelectorExpressions.CreateMemberAccess(parameterExpressions, "MaritalStatus");
 
 			return memberAccess;
 		}
@@ -27,7 +27,7 @@ namespace ExpDataWorker.Benchmark
 		public Expression CreateMemberAccesorL2V2()
 		{
 			var parameterExpressions = Expression.Parameter(typeof(AppPerson), name: "x");
-			var memberAccess = ExpressionUtils.CreateMemberAccess(parameterExpressions, "Phones.Number");
+			var memberAccess = SelectorExpressions.CreateMemberAccess(parameterExpressions, "Phones.Number");
 
 			return memberAccess;
 		}
@@ -36,7 +36,7 @@ namespace ExpDataWorker.Benchmark
 		public Expression CreateMemberAccesorL3V2()
 		{
 			var parameterExpressions = Expression.Parameter(typeof(AppPerson), name: "x");
-			var memberAccess = ExpressionUtils.CreateMemberAccess(parameterExpressions, "Affiliations.Affiliation.WorkingHours");
+			var memberAccess = SelectorExpressions.CreateMemberAccess(parameterExpressions, "Affiliations.Affiliation.WorkingHours");
 
 			return memberAccess;
 		}

@@ -21,7 +21,7 @@ public class SelectorRegistryDispatchTests
     private static TResult Evaluate<TSource, TResult>(PropertySelector selector, TSource source)
     {
         var parameter = Expression.Parameter(typeof(TSource), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TSource, TResult>>(body, parameter).Compile();
         return lambda(source);
     }

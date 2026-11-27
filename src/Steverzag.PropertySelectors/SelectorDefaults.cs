@@ -4,7 +4,7 @@ using System.Linq;
 
 namespace Steverzag.PropertySelectors
 {
-	public class SelectorDefaults
+	public static class SelectorDefaults
 	{
 		public const string PropertyDelimiter = "|";
 		public const string ComplexSelectorStart = "$";

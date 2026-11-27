@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Steverzag.PropertySelectors.ArithmeticSelectors
 {
-	public enum ArithmeticOperator
+	internal enum ArithmeticOperator
 	{
 		Addition,
 		Subtraction,

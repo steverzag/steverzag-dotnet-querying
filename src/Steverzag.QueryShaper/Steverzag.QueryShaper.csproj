@@ -10,11 +10,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- The EF Core add-on shares internal helpers such as PaginationGuard. -->
-    <InternalsVisibleTo Include="Steverzag.QueryShaper.EntityFrameworkCore" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\Steverzag.PropertySelectors\Steverzag.PropertySelectors.csproj" />
   </ItemGroup>
 

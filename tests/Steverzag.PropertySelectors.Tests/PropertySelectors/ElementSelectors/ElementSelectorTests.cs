@@ -28,7 +28,7 @@ public class ElementSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector<TestOrder> selector, TestOrder item)
     {
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestOrder, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -36,7 +36,7 @@ public class ElementSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector selector, TestOrder item)
     {
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestOrder, TResult>>(body, parameter).Compile();
         return lambda(item);
     }

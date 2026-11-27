@@ -68,7 +68,22 @@ in favour of the as-built "running total" model, which maps directly onto a row-
 **Consequence:** the docs must state the rule clearly, because it differs from SQL.
 **Follow-up (2026-11-22):** when QueryShaper gets its configuration approach, add a switch between this behaviour and
 AND-before-OR precedence. Proposed name: `FilterEvaluationOrder { LeftToRight, AndBeforeOr }`, defaulting to `LeftToRight`.
-Tracked in ROADMAP Phase 4.
+**Follow-up deferred (2026-11-27):** the switch is not part of `0.1.0-preview`. Reasons:
+- It isn't a gate. With `LeftToRight` as the default, adding the switch later is purely additive, so nothing breaks.
+- The rule is documented, and groups already express every SQL-style reading (`A`, `Or GroupNode [B, And C]`).
+- A server-wide switch would make the same JSON mean different things on different servers, and a client can't
+  tell from the request which reading applies. That needs its own design, not a quick option.
+
+If it is picked up, settle these first:
+- Where the default lives: `QueryShaperOptions`, next to the other settings (041.8), not `IQueryShaper`.
+- An optional parameter on the public extension methods (`ApplyLogicsFilter`, `ApplyFilters`), which never see the
+  options.
+- Whether a request may state its own order (a `QueryRequest` field), which makes requests self-describing but adds
+  to the wire contract.
+
+Building it: split the list at each `Or`, AND the nodes within each run, then OR the runs together. Groups use the
+same rule inside. Run `FilterNodeLogicTests` under both modes; only the ordering tests should differ. Tracked in
+ROADMAP Phase 6.
 
 ### 008: How filter values are interpreted (2026-11-22)
 **Status:** accepted; implemented (2026-11-23)
@@ -1623,3 +1638,59 @@ converted and the database expands them).
   need a sensible default per condition. The security note says so.
 **Consequence:** additive, but requests over the new defaults that used to run are now a 400. Tests: 26 in
 `RequestCapsTests` (QueryShaper, SQLite).
+
+### 049: The public API audit: what stays public, and how the surface is locked (2026-11-27)
+**Status:** accepted; not yet implemented.
+**Context:** the three library packages expose about 108 public types (PropertySelectors 66, QueryShaper 37, the
+EF add-on 5). Nothing records which ones are meant to be public, and it isn't consistent. The aggregation, element,
+ordering and arithmetic selector classes are public, while math, string and date are internal. Helpers such as
+`TypesExtensions.GetPropertyType` (an extension method on `System.Type`) leak into consumers' IntelliSense. Some types
+are dead. Nothing is generated as XML documentation, and nothing stops the surface from drifting once it ships.
+**Decision:**
+1. **A type is public only if one of three audiences needs it:**
+   - callers: they parse selectors, use the catalog and the metadata tree, and call the QueryShaper extensions and
+     `IQueryShaper`;
+   - extension authors: they register their own functions (`FunctionPropertySelector`, `[SelectorToken]`,
+     `IFunctionSignatures`, `FunctionSignature`, `ArgumentConstraint`, and the helpers a function needs to build its
+     expression);
+   - QueryShaper: as a sibling package it uses only PropertySelectors' public API.
+
+   Everything else becomes internal.
+2. **Every built-in selector class becomes internal**, including the aggregation, element, ordering and arithmetic
+   records and their family bases (`ElementFunctionSelector<T>`, `OrderingFunctionSelector<T>`). The public way to
+   reach a built-in function is its token and `FunctionCatalog`. The abstract bases `FunctionPropertySelector` /
+   `FunctionPropertySelector<T>` stay public for extension authors.
+3. **QueryShaper gets a small, curated public helper for building expressions, not `InternalsVisibleTo`.** This
+   follows the reasoning against cross-package internals (044): the packages ship and version separately (037).
+   - It covers what QueryShaper and extension authors use today: `CreateMemberAccess`, `ResolveArgument` and
+     `TryGetEnumerableElementType`.
+   - The rest of `ExpressionUtils` and all of `PropertySelectorUtils` and `TypesExtensions` become internal.
+   - The helper's name and home are settled during the audit.
+4. **Dead types are deleted:** `IGenericReturnerSelector<T>` (no uses), and QueryShaper's `FilterParameters` and
+   `AggregateParameters` (no uses; `QueryRequest` replaces them). Types that are still used (`GroupByKeys`,
+   `OrderParameters`, `SelectResult` and its parts) get a shape review during the audit, not just a visibility
+   change. `ArgumentConstraint.Match` and `ConstraintMatch` (left open by 035) are settled the same way.
+5. **Public types are sealed unless they are designed for inheritance.** Unsealing later doesn't break callers,
+   but sealing later does. `SelectorDefaults` becomes `static`. Its token constants stay public: the grammar freezes
+   tokens (032), so the compiler copying `const` values into callers is acceptable.
+6. **The surface is locked by `Microsoft.CodeAnalysis.PublicApiAnalyzers`** in the three library projects, with
+   `PublicAPI.Shipped.txt` / `PublicAPI.Unshipped.txt` per package. Any change to the public API then fails the build
+   until the file is updated. It is a build-only reference (`PrivateAssets="all"`), so PropertySelectors keeps zero
+   runtime dependencies.
+7. **XML docs are enforced:** `GenerateDocumentationFile` on, and CS1591 (a public member without XML docs) as an
+   error, in the library projects only. Tests and `lab/` are untouched.
+8. **Order of work:**
+   1. Trim and seal PropertySelectors, then QueryShaper, then the EF add-on, with all tests green after each.
+   2. Generate the API baseline.
+   3. Write the XML docs against the final surface.
+**Considered:**
+- **Keeping the built-in selector classes public**, so C# callers could build one without a string. The tokens and
+  `ToGeneric<T>()` already cover that, and about 60 public records would freeze their constructors and properties.
+- **`InternalsVisibleTo` from PropertySelectors to QueryShaper.** Less API to design, but QueryShaper would then
+  depend on internals of a separately versioned package, so any internal refactoring could break it.
+- **Relying on review alone to keep the surface stable.** It's cheap at first, but nothing catches an accidental
+  public change.
+**Consequence:** breaking for anyone who used the classes that become internal or are deleted. Nothing has shipped,
+so that is acceptable before `0.1.0-preview`. Tests that use internals keep working through the existing
+`InternalsVisibleTo` for the test projects. A QueryShaper test that uses a now-internal PropertySelectors type has to
+go through the public helper.

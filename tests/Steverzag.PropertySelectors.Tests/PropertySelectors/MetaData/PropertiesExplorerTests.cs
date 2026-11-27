@@ -169,7 +169,7 @@ public class PropertiesExplorerTests
 
             foreach (PropertySelector selector in new[] { generic, (PropertySelector)node.Path })
             {
-                var built = ExpressionUtils.CreateMemberAccess(parameter, selector).Type;
+                var built = SelectorExpressions.CreateMemberAccess(parameter, selector).Type;
                 Assert.True(node.SelectorType == built, $"{node.Path}: the tree says {node.SelectorType}, building gives {built}.");
             }
         }

@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 
 namespace Steverzag.QueryShaper.Configuration.Mapping;
 
-public class Mapper : IMapper
+public sealed class Mapper : IMapper
 {
 	private readonly Dictionary<(Type In, Type Out), Expression> _compiledMappers = [];
 

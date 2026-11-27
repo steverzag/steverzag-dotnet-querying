@@ -21,7 +21,7 @@ public class DateSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector<TestItem> selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -29,7 +29,7 @@ public class DateSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -37,7 +37,7 @@ public class DateSelectorTests
     private static object? EvaluateBoxed(PropertySelector selector, TestItem? item = null)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = Expression.Convert(ExpressionUtils.CreateMemberAccess(parameter, selector), typeof(object));
+        var body = Expression.Convert(SelectorExpressions.CreateMemberAccess(parameter, selector), typeof(object));
         return Expression.Lambda<Func<TestItem, object?>>(body, parameter).Compile()(item ?? new TestItem());
     }
 
@@ -381,7 +381,7 @@ public class DateSelectorTests
         var parent = new Parent { Items = [new() { UpdatedAt = SampleDateTime }, new() { UpdatedAt = null }] };
         var parameter = Expression.Parameter(typeof(Parent), "p");
 
-        var body = ExpressionUtils.CreateMemberAccess(parameter, nonGeneric);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, nonGeneric);
         var result = Expression.Lambda<Func<Parent, IEnumerable<int?>>>(body, parameter).Compile()(parent);
 
         Assert.Equal(typeof(IEnumerable<int?>), generic.SelectorType);
@@ -394,7 +394,7 @@ public class DateSelectorTests
         PropertySelector<TestItem> selector = "UpdatedAt.Year";
         var parameter = Expression.Parameter(typeof(TestItem), "x");
 
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
 
         Assert.Equal(typeof(int?), body.Type);
         Assert.Equal("IIF((x.UpdatedAt == null), null, Convert(x.UpdatedAt.Value.Year, Nullable`1))", body.ToString());
@@ -411,7 +411,7 @@ public class DateSelectorTests
         var parameter = Expression.Parameter(typeof(TestItem), "x");
 
         Assert.Equal(declared, generic.SelectorType);
-        Assert.Equal(declared, ExpressionUtils.CreateMemberAccess(parameter, nonGeneric).Type);
+        Assert.Equal(declared, SelectorExpressions.CreateMemberAccess(parameter, nonGeneric).Type);
     }
 
     [Fact]

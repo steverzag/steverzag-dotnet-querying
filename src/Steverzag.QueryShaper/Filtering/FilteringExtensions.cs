@@ -124,7 +124,7 @@ namespace Steverzag.QueryShaper.Filtering
 
 		private static Expression CreateFilterConditionExpression(ParameterExpression parameterExpressions, ConditionNode filter)
 		{
-			var propertyExpression = ExpressionUtils.CreateMemberAccess(parameterExpressions, filter.Field);
+			var propertyExpression = SelectorExpressions.CreateMemberAccess(parameterExpressions, filter.Field);
 
 			var propertyType = Nullable.GetUnderlyingType(propertyExpression.Type);
 			var isNullableType = propertyType != null;
@@ -316,7 +316,7 @@ namespace Steverzag.QueryShaper.Filtering
 					_ => throw new FilterNotSupportedException(filter.Condition, propertyExpression.Type)
 				};
 			}
-			else if (ExpressionUtils.TryGetEnumerableElementType(propertyType, out var elementType))
+			else if (SelectorExpressions.TryGetEnumerableElementType(propertyType, out var elementType))
 			{
 				return filter.Condition switch
 				{
@@ -639,7 +639,7 @@ namespace Steverzag.QueryShaper.Filtering
 
 			foreach (var field in searchLookups)
 			{
-				var propertyExpression = ExpressionUtils.CreateMemberAccess(entityParameter, field);
+				var propertyExpression = SelectorExpressions.CreateMemberAccess(entityParameter, field);
 				if (propertyExpression.Type != typeof(string))
 				{
 					throw new ArgumentException(

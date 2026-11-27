@@ -3,14 +3,14 @@ using Steverzag.PropertySelectors.Registration;
 namespace Steverzag.PropertySelectors.ElementSelectors;
 
 [SelectorToken(SelectorDefaults.ElementFirst, Category = FunctionCategory.Element)]
-public record FirstElementSelector<T> : ElementFunctionSelector<T>, IFunctionSignatures
+internal record FirstElementSelector<T> : ElementFunctionSelector<T>, IFunctionSignatures
 {
 	public FirstElementSelector() : base(SelectorDefaults.ElementFirst) { }
 	public static IReadOnlyList<FunctionSignature> Signatures => FirstElementSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.ElementFirst, Category = FunctionCategory.Element)]
-public record FirstElementSelector : FunctionPropertySelector, IFunctionSignatures
+internal record FirstElementSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[

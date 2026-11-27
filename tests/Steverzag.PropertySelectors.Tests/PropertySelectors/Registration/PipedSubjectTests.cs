@@ -29,8 +29,8 @@ internal static class TestPipeSum
     public static readonly IReadOnlyList<FunctionSignature> Table =
     [
         new([ArgumentConstraint.Any, ArgumentConstraint.Any], (_, _) => typeof(int), p => target => Expression.Add(
-            ExpressionUtils.ResolveArgument(target, p[0]),
-            ExpressionUtils.ResolveArgument(target, p[1]))),
+            SelectorExpressions.ResolveArgument(target, p[0]),
+            SelectorExpressions.ResolveArgument(target, p[1]))),
     ];
 }
 
@@ -167,14 +167,14 @@ public class PipedSubjectTests
         [(PropertySelector)text, (PropertySelector<TestItem>)text];
 
     private static Expression Body(PropertySelector selector) =>
-        ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(TestItem), "p"), selector);
+        SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(TestItem), "p"), selector);
 
     private static int Evaluate(PropertySelector selector) => Evaluate<int>(selector);
 
     private static TResult Evaluate<TResult>(PropertySelector selector)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "p");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         return Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile()(Item);
     }
 

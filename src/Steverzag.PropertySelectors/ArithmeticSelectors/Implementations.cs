@@ -13,13 +13,13 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		{
 			if (selector.Operator == ArithmeticOperator.Negation)
 			{
-				var operand = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
+				var operand = SelectorExpressions.CreateMemberAccess(target, selector.LeftExpression);
 				ArithmeticUtils.RequireNumericOperands(selector, operand, null);
 				return Expression.Negate(operand);
 			}
 
-			var left = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
-			var right = ExpressionUtils.CreateMemberAccess(target, selector.RightExpression!);
+			var left = SelectorExpressions.CreateMemberAccess(target, selector.LeftExpression);
+			var right = SelectorExpressions.CreateMemberAccess(target, selector.RightExpression!);
 			ArithmeticUtils.RequireNumericOperands(selector, left, right);
 
 			var widerType = ArithmeticUtils.GetWiderNumericType(left.Type, right.Type);
@@ -47,13 +47,13 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 		{
 			if (selector.Operator == ArithmeticOperator.Negation)
 			{
-				var operand = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
+				var operand = SelectorExpressions.CreateMemberAccess(target, selector.LeftExpression);
 				ArithmeticUtils.RequireNumericOperands(selector, operand, null);
 				return Expression.Negate(operand);
 			}
 
-			var left = ExpressionUtils.CreateMemberAccess(target, selector.LeftExpression);
-			var right = ExpressionUtils.CreateMemberAccess(target, selector.RightExpression!);
+			var left = SelectorExpressions.CreateMemberAccess(target, selector.LeftExpression);
+			var right = SelectorExpressions.CreateMemberAccess(target, selector.RightExpression!);
 			ArithmeticUtils.RequireNumericOperands(selector, left, right);
 
 			var widerType = ArithmeticUtils.GetWiderNumericType(left.Type, right.Type);
@@ -132,8 +132,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		public static Expression CreateMaxOrMin(this Expression? target, PropertySelector param1, PropertySelector param2, bool max)
 		{
-			var a = ExpressionUtils.ResolveArgument(target, param1);
-			var b = ExpressionUtils.ResolveArgument(target, param2);
+			var a = SelectorExpressions.ResolveArgument(target, param1);
+			var b = SelectorExpressions.ResolveArgument(target, param2);
 
 			if (!ArithmeticUtils.IsNumericType(a.Type) || !ArithmeticUtils.IsNumericType(b.Type))
 				throw new InvalidOperationException($"Both parameters must be of numeric types for {(max ? "Max" : "Min")} arithmetic function.");
@@ -174,7 +174,7 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		public static Expression CreateUnaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector parameter, bool matchOperandType = false)
 		{
-			var parameterExpr = ExpressionUtils.ResolveArgument(target, parameter);
+			var parameterExpr = SelectorExpressions.ResolveArgument(target, parameter);
 
 			if (!ArithmeticUtils.IsNumericType(parameterExpr.Type))
 			{
@@ -203,8 +203,8 @@ namespace Steverzag.PropertySelectors.ArithmeticSelectors
 
 		public static Expression CreateBinaryMathFunction(this Expression? target, MethodInfo methodInfo, PropertySelector param1, PropertySelector param2, bool matchOperandType = false)
 		{
-			var paramExpr1 = ExpressionUtils.ResolveArgument(target, param1);
-			var paramExpr2 = ExpressionUtils.ResolveArgument(target, param2);
+			var paramExpr1 = SelectorExpressions.ResolveArgument(target, param1);
+			var paramExpr2 = SelectorExpressions.ResolveArgument(target, param2);
 
 			if (!ArithmeticUtils.IsNumericType(paramExpr1.Type) || !ArithmeticUtils.IsNumericType(paramExpr2.Type))
 			{

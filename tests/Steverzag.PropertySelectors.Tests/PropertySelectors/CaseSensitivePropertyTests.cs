@@ -44,7 +44,7 @@ public class CaseSensitivePropertyTests
     {
         PropertySelector selector = generic ? (PropertySelector<TRoot>)text : (PropertySelector)text;
         var parameter = Expression.Parameter(typeof(TRoot), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
 
         declared = selector.Type!;
         built = body.Type;
@@ -55,7 +55,7 @@ public class CaseSensitivePropertyTests
         => Assert.Throws<SelectorParseException>(() =>
         {
             PropertySelector selector = generic ? (PropertySelector<TRoot>)text : (PropertySelector)text;
-            ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(TRoot), "x"), selector);
+            SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(TRoot), "x"), selector);
         });
 
     public static TheoryData<string, string, string, string, int, bool> WronglyCased

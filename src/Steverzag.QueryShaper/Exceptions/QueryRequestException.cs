@@ -13,7 +13,7 @@ namespace Steverzag.QueryShaper.Exceptions
 
 		public string Detail { get; }
 
-		internal QueryRequestException Within(string parent)
+		public QueryRequestException Within(string parent)
 			=> new(Join(parent, Path), Detail, InnerException);
 
 		private static string Join(string parent, string child) => child switch

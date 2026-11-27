@@ -25,7 +25,7 @@ public class LiteralAfterPipeTests
     private static object? Evaluate(PropertySelector selector)
     {
         var parameter = Expression.Parameter(typeof(Item), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         return Expression.Lambda(body, parameter).Compile().DynamicInvoke(new Item());
     }
 

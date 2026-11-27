@@ -27,7 +27,7 @@ namespace Steverzag.PropertySelectors.StringSelectors
 		public static Expression CreateStringInstanceFunction(this Expression? target, MethodInfo methodInfo, params PropertySelector[] parameters)
 		{
 			var instanceExpr = target.CreateStringInstanceExpression(methodInfo.Name);
-			var argumentRoot = ExpressionUtils.ArgumentRoot(instanceExpr);
+			var argumentRoot = SelectorExpressions.ArgumentRoot(instanceExpr);
 			var arguments = argumentRoot.CreateStringFunctionArguments(methodInfo, parameters);
 
 			return Expression.Call(instanceExpr, methodInfo, arguments);
@@ -53,7 +53,7 @@ namespace Steverzag.PropertySelectors.StringSelectors
 		/// </summary>
 		public static Expression CreateStringJoinFunction(this Expression? target, PropertySelector separatorParameter, params PropertySelector[] valueParameters)
 		{
-			var separatorExpr = ExpressionUtils.ResolveArgument(target, separatorParameter);
+			var separatorExpr = SelectorExpressions.ResolveArgument(target, separatorParameter);
 
 			if (separatorExpr.Type != typeof(string))
 			{
@@ -63,7 +63,7 @@ namespace Steverzag.PropertySelectors.StringSelectors
 			var values = new Expression[valueParameters.Length];
 			for (var i = 0; i < valueParameters.Length; i++)
 			{
-				var valueExpr = ExpressionUtils.ResolveArgument(target, valueParameters[i]);
+				var valueExpr = SelectorExpressions.ResolveArgument(target, valueParameters[i]);
 
 				if (valueExpr.Type != typeof(string))
 				{
@@ -105,7 +105,7 @@ namespace Steverzag.PropertySelectors.StringSelectors
 			var arguments = new Expression[parameters.Length];
 			for (var i = 0; i < parameters.Length; i++)
 			{
-				var argumentExpr = ExpressionUtils.ResolveArgument(target, parameters[i]);
+				var argumentExpr = SelectorExpressions.ResolveArgument(target, parameters[i]);
 				var expectedType = methodParameters[i].ParameterType;
 
 				if (argumentExpr.Type != expectedType)

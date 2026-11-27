@@ -111,7 +111,7 @@ public class NameCharacterTests
     public void AnIdentifier_IsAccepted(string text, int expected, bool generic)
     {
         var parameter = Expression.Parameter(typeof(Item), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, Parse(text, generic));
+        var body = SelectorExpressions.CreateMemberAccess(parameter, Parse(text, generic));
 
         Assert.Equal(expected, Expression.Lambda(body, parameter).Compile().DynamicInvoke(new Item()));
     }

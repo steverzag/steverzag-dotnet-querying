@@ -84,7 +84,7 @@ public class ReservedCharacterTests
     {
         var selector = Parse(text, generic);
         var parameter = Expression.Parameter(typeof(Item), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
 
         Assert.Equal(expected, Expression.Lambda(body, parameter).Compile().DynamicInvoke(new Item()));
         Assert.Equal(text, selector.ToString());
@@ -102,6 +102,6 @@ public class ReservedCharacterTests
         var text = SelectorLiteral.Format("a:b");
 
         Assert.Equal("\"a:b\"", text);
-        Assert.Equal("a:b", Expression.Lambda(ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), (PropertySelector)text), Expression.Parameter(typeof(Item), "x")).Compile().DynamicInvoke(new Item()));
+        Assert.Equal("a:b", Expression.Lambda(SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), (PropertySelector)text), Expression.Parameter(typeof(Item), "x")).Compile().DynamicInvoke(new Item()));
     }
 }

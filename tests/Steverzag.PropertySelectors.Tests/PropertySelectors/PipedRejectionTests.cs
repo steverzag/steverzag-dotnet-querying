@@ -97,7 +97,7 @@ public class PipedRejectionTests
     private static object? Evaluate(PropertySelector selector)
     {
         var root = Expression.Parameter(typeof(Item), "p");
-        var body = ExpressionUtils.CreateMemberAccess(root, selector);
+        var body = SelectorExpressions.CreateMemberAccess(root, selector);
         return Expression.Lambda<Func<Item, object?>>(Expression.Convert(body, typeof(object)), root).Compile()(new Item());
     }
 }

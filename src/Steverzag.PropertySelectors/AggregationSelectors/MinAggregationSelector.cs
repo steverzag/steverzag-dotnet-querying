@@ -3,14 +3,14 @@ using Steverzag.PropertySelectors.Registration;
 namespace Steverzag.PropertySelectors.AggregationSelectors;
 
 [SelectorToken(SelectorDefaults.MinAggregateFunction, Category = FunctionCategory.Aggregation)]
-public record MinAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
+internal record MinAggregationSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public MinAggregationSelector() : base(SelectorDefaults.MinAggregateFunction) { }
 	public static IReadOnlyList<FunctionSignature> Signatures => MinAggregationSelector.Table;
 }
 
 [SelectorToken(SelectorDefaults.MinAggregateFunction, Category = FunctionCategory.Aggregation)]
-public record MinAggregationSelector : FunctionPropertySelector, IFunctionSignatures
+internal record MinAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[

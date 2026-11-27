@@ -25,12 +25,12 @@ public class ChainRootTests
         => generic ? (PropertySelector<Item>)text : (PropertySelector)text;
 
     private static Expression Body(PropertySelector selector)
-        => ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
+        => SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
 
     private static object? Evaluate(PropertySelector selector)
     {
         var parameter = Expression.Parameter(typeof(Item), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         return Expression.Lambda(body, parameter).Compile().DynamicInvoke(new Item());
     }
 
@@ -122,7 +122,7 @@ public class ChainRootTests
     {
         var first = Body(Parse("5|$FN_MATH_MAX(Age)", generic));
         var lines = Expression.Parameter(typeof(Line), "l");
-        var second = ExpressionUtils.CreateMemberAccess(lines, generic ? (PropertySelector<Line>)"5|$FN_MATH_MAX(Weight)" : (PropertySelector)"5|$FN_MATH_MAX(Weight)");
+        var second = SelectorExpressions.CreateMemberAccess(lines, generic ? (PropertySelector<Line>)"5|$FN_MATH_MAX(Weight)" : (PropertySelector)"5|$FN_MATH_MAX(Weight)");
 
         Assert.Contains("x.Age", first.ToString());
         Assert.Contains("l.Weight", second.ToString());

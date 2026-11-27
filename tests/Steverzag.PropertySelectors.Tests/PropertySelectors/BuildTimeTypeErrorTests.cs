@@ -19,7 +19,7 @@ public class BuildTimeTypeErrorTests
     }
 
     private static void Build(PropertySelector selector)
-        => ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
+        => SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
 
     public static TheoryData<string> Mismatches =>
     [

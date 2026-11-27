@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.Extensions;
 
 namespace Steverzag.PropertySelectors.MetaData
 {
-	public class PropertiesExplorer<T> where T : class
+	public sealed class PropertiesExplorer<T> where T : class
 	{
 		private readonly Type _rootType = typeof(T);
 		private SelectorsMetaDataTree Result { get; set; }
@@ -35,7 +35,7 @@ namespace Steverzag.PropertySelectors.MetaData
 				var child = new SelectorsMetaDataTree(selectorType, property.Name)
 				{
 					Path = path,
-					ElementType = ExpressionUtils.TryGetEnumerableElementType(selectorType, out var element) ? element : null,
+					ElementType = SelectorExpressions.TryGetEnumerableElementType(selectorType, out var element) ? element : null,
 				};
 				result.Selectors.Add(child);
 
@@ -51,7 +51,7 @@ namespace Steverzag.PropertySelectors.MetaData
 
 		private static Type MembersType(Type type)
 		{
-			if (ExpressionUtils.TryGetEnumerableElementType(type, out var element) && element is not null)
+			if (SelectorExpressions.TryGetEnumerableElementType(type, out var element) && element is not null)
 				type = element;
 
 			return Nullable.GetUnderlyingType(type) ?? type;

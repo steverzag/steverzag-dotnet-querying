@@ -27,7 +27,7 @@ public class ArithmeticOperationSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector<TestItem> selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -35,7 +35,7 @@ public class ArithmeticOperationSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestItem, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -54,16 +54,16 @@ public class ArithmeticOperationSelectorTests
     }
 
     [Theory]
-    [InlineData("Amount + 2", ArithmeticOperator.Addition)]
-    [InlineData("Amount - 2", ArithmeticOperator.Subtraction)]
-    [InlineData("Amount * 2", ArithmeticOperator.Multiplication)]
-    [InlineData("Amount / 2", ArithmeticOperator.Division)]
-    public void EachOperator_IsParsedIntoTheMatchingOperator(string expression, ArithmeticOperator expected)
+    [InlineData("Amount + 2", nameof(ArithmeticOperator.Addition))]
+    [InlineData("Amount - 2", nameof(ArithmeticOperator.Subtraction))]
+    [InlineData("Amount * 2", nameof(ArithmeticOperator.Multiplication))]
+    [InlineData("Amount / 2", nameof(ArithmeticOperator.Division))]
+    public void EachOperator_IsParsedIntoTheMatchingOperator(string expression, string expected)
     {
         PropertySelector<TestItem> selector = expression;
 
         var arithmetic = Assert.IsType<ArithmeticOperationSelector<TestItem>>(selector);
-        Assert.Equal(expected, arithmetic.Operator);
+        Assert.Equal(expected, arithmetic.Operator.ToString());
     }
 
     [Fact]
@@ -125,7 +125,7 @@ public class ArithmeticOperationSelectorTests
     public void ArithmeticSelector_DeclaresTheTypeItBuilds(string text)
     {
         PropertySelector<TypedItem> selector = text;
-        var body = ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(TypedItem), "x"), selector);
+        var body = SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(TypedItem), "x"), selector);
 
         Assert.NotNull(selector.Type);
         Assert.Equal(body.Type, selector.Type);
@@ -384,7 +384,7 @@ public class ArithmeticOperationSelectorTests
     private static object EvaluateObject(PropertySelector selector, TestItem item)
     {
         var parameter = Expression.Parameter(typeof(TestItem), "x");
-        var body = Expression.Convert(ExpressionUtils.CreateMemberAccess(parameter, selector), typeof(object));
+        var body = Expression.Convert(SelectorExpressions.CreateMemberAccess(parameter, selector), typeof(object));
         return Expression.Lambda<Func<TestItem, object>>(body, parameter).Compile()(item);
     }
 

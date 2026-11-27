@@ -24,7 +24,7 @@ public class SelectorParseExceptionTests
         => Assert.Throws<SelectorParseException>(() => (PropertySelector)text);
 
     private static Expression Body(PropertySelector selector)
-        => ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Order), "x"), selector);
+        => SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Order), "x"), selector);
 
     [Fact]
     public void IsAnArgumentException()

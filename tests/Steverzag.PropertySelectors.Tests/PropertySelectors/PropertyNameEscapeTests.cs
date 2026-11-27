@@ -24,7 +24,7 @@ public class PropertyNameEscapeTests
     private static object? Evaluate(PropertySelector selector, out Type built)
     {
         var parameter = Expression.Parameter(typeof(Item), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
 
         built = body.Type;
         return Expression.Lambda(body, parameter).Compile().DynamicInvoke(new Item());
@@ -84,8 +84,8 @@ public class PropertyNameEscapeTests
     {
         var parameter = Expression.Parameter(typeof(Item), "x");
 
-        var escaped = ExpressionUtils.CreateMemberAccess(parameter, Parse("@Inner.@True", generic));
-        var plain = ExpressionUtils.CreateMemberAccess(parameter, Parse("Inner.True", generic));
+        var escaped = SelectorExpressions.CreateMemberAccess(parameter, Parse("@Inner.@True", generic));
+        var plain = SelectorExpressions.CreateMemberAccess(parameter, Parse("Inner.True", generic));
 
         Assert.Equal(plain.ToString(), escaped.ToString());
     }

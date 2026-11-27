@@ -24,7 +24,7 @@ namespace Steverzag.PropertySelectors.DateSelectors
 			var method = FindAddMethod(instanceExpr.Type, methodName)
 				?? throw new InvalidOperationException($"{instanceExpr.Type.Name} does not support the {methodName} function.");
 
-			var amountExpr = ExpressionUtils.ResolveArgument(target, amountParameter);
+			var amountExpr = SelectorExpressions.ResolveArgument(target, amountParameter);
 
 			if (!ArithmeticUtils.IsNumericType(amountExpr.Type))
 			{
@@ -64,7 +64,7 @@ namespace Steverzag.PropertySelectors.DateSelectors
 
 		private static Expression CreateDateInstanceExpression(this Expression? target, PropertySelector parameter, string functionName)
 		{
-			var instanceExpr = ExpressionUtils.ResolveArgument(target, parameter);
+			var instanceExpr = SelectorExpressions.ResolveArgument(target, parameter);
 
 			if (Nullable.GetUnderlyingType(instanceExpr.Type) is not null)
 			{

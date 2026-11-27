@@ -24,7 +24,7 @@ public class OrderByAscendingSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector<TestOrder> selector, TestOrder item)
     {
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestOrder, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -32,7 +32,7 @@ public class OrderByAscendingSelectorTests
     private static TResult Evaluate<TResult>(PropertySelector selector, TestOrder item)
     {
         var parameter = Expression.Parameter(typeof(TestOrder), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         var lambda = Expression.Lambda<Func<TestOrder, TResult>>(body, parameter).Compile();
         return lambda(item);
     }
@@ -203,7 +203,7 @@ public class OrderByAscendingSelectorTests
         PropertySelector<TestOrder> selector = $"Lines{Delimiter}{SelectorDefaults.OrderAscending}(Amount)";
 
         Assert.Equal(typeof(IOrderedEnumerable<TestLine>), selector.Type);
-        Assert.Equal(ExpressionUtils.CreateMemberAccess(System.Linq.Expressions.Expression.Parameter(typeof(TestOrder), "o"), selector).Type, selector.Type);
+        Assert.Equal(SelectorExpressions.CreateMemberAccess(System.Linq.Expressions.Expression.Parameter(typeof(TestOrder), "o"), selector).Type, selector.Type);
     }
 
     [Fact]

@@ -4,7 +4,7 @@ using Steverzag.PropertySelectors;
 
 namespace Steverzag.QueryShaper.Ordering
 {
-	public record OrderParameters<T> : OrderParameters
+	public sealed record OrderParameters<T> : OrderParameters
 	{
 		public new PropertySelector<T> Field { get; init; }
 

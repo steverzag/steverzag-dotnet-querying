@@ -43,7 +43,7 @@ namespace Steverzag.ProviderTests.Infrastructure
 			{
 				PropertySelector<Moment> selector = selectorText;
 				var parameter = Expression.Parameter(typeof(Moment), "m");
-				var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+				var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
 				var read = Expression.Lambda<Func<Moment, object?>>(Expression.Convert(body, typeof(object)), parameter).Compile();
 
 				using var context = fixture.CreateContext();

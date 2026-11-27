@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Steverzag.QueryShaper.Exceptions;
 
 // Same namespace as the core pagination types so callers only need one using.
 namespace Steverzag.QueryShaper.Pagination
@@ -31,7 +32,7 @@ namespace Steverzag.QueryShaper.Pagination
 		{
 			ArgumentNullException.ThrowIfNull(shaper);
 			ArgumentNullException.ThrowIfNull(request);
-			var page = DefaultQueryShaper.Within("page", () => shaper.ResolvePage(request.Page));
+			var page = ResolvePage(shaper, request);
 			return shaper.Apply(source, request).PaginateAsync(page, cancellationToken);
 		}
 
@@ -39,8 +40,20 @@ namespace Steverzag.QueryShaper.Pagination
 		{
 			ArgumentNullException.ThrowIfNull(shaper);
 			ArgumentNullException.ThrowIfNull(request);
-			var page = DefaultQueryShaper.Within("page", () => shaper.ResolvePage(request.Page));
+			var page = ResolvePage(shaper, request);
 			return shaper.Apply<TIn, TOut>(source, request).PaginateAsync(page, cancellationToken);
+		}
+
+		private static PageRequest ResolvePage(IQueryShaper shaper, QueryRequest request)
+		{
+			try
+			{
+				return shaper.ResolvePage(request.Page);
+			}
+			catch (QueryRequestException ex)
+			{
+				throw ex.Within("page");
+			}
 		}
 	}
 }

@@ -28,7 +28,7 @@ public class FieldAccessTests
     }
 
     private static Expression Body(PropertySelector selector)
-        => ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
+        => SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
 
     private static SelectorParseException Rejects(string text, bool generic)
         => Assert.Throws<SelectorParseException>(() =>
@@ -77,7 +77,7 @@ public class FieldAccessTests
         {
             PropertySelector selector = generic ? (PropertySelector<Item>)text : (PropertySelector)text;
             var parameter = Expression.Parameter(typeof(Item), "x");
-            var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+            var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
             var value = Expression.Lambda(Expression.Convert(body, typeof(object)), parameter).Compile().DynamicInvoke(new Item());
 
             Assert.Equal(expected, Convert.ToInt32(value));

@@ -5,10 +5,6 @@ namespace Steverzag.QueryShaper.EntityFrameworkCore
 {
 	public static class ProviderMemberFilters
 	{
-		public const string SqliteProviderName = "Microsoft.EntityFrameworkCore.Sqlite";
-		public const string SqlServerProviderName = "Microsoft.EntityFrameworkCore.SqlServer";
-		public const string PostgreSqlProviderName = "Npgsql.EntityFrameworkCore.PostgreSQL";
-
 		private static readonly HashSet<Type> DateTimeTypes = [typeof(DateTime), typeof(DateTimeOffset), typeof(DateOnly), typeof(TimeOnly), typeof(TimeSpan)];
 
 		private static MemberFilter OneDateTimeMemberDeep { get; } = MemberFilter.All.Except(context =>
@@ -44,11 +40,11 @@ namespace Steverzag.QueryShaper.EntityFrameworkCore
 			ArgumentNullException.ThrowIfNull(providerName);
 			return providerName switch
 			{
-				SqliteProviderName => Sqlite,
-				SqlServerProviderName => SqlServer,
-				PostgreSqlProviderName => PostgreSql,
+				ProviderNames.Sqlite => Sqlite,
+				ProviderNames.SqlServer => SqlServer,
+				ProviderNames.PostgreSql => PostgreSql,
 				_ => throw new NotSupportedException(
-					$"There is no member filter for the provider '{providerName}'. Known providers: {SqliteProviderName}, {SqlServerProviderName}, {PostgreSqlProviderName}. " +
+					$"There is no member filter for the provider '{providerName}'. Known providers: {ProviderNames.Sqlite}, {ProviderNames.SqlServer}, {ProviderNames.PostgreSql}. " +
 					$"Use {nameof(MemberFilter)}.{nameof(MemberFilter.Portable)} for members that work on all three."),
 			};
 		}

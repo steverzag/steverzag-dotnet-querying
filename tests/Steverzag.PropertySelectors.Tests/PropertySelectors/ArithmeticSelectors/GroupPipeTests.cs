@@ -19,7 +19,7 @@ public class GroupPipeTests
     private static Expression Body(PropertySelector selector, out ParameterExpression parameter)
     {
         parameter = Expression.Parameter(typeof(Order), "o");
-        return ExpressionUtils.CreateMemberAccess(parameter, selector);
+        return SelectorExpressions.CreateMemberAccess(parameter, selector);
     }
 
     private static object? Evaluate(PropertySelector selector, Order? order = null)

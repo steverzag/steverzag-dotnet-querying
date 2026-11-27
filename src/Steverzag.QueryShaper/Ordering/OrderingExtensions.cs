@@ -20,7 +20,7 @@ namespace Steverzag.QueryShaper.Ordering
 
 			var paramExp = Expression.Parameter(typeof(T), name: "p");
 			var propertyToOrderByExp = Expression.Convert(
-				ExpressionUtils.CreateMemberAccess(paramExp, selector)
+				SelectorExpressions.CreateMemberAccess(paramExp, selector)
 				, typeof(object));
 
 			var orderByLambdaExp = Expression.Lambda<Func<T, object>>(propertyToOrderByExp, paramExp);
@@ -47,7 +47,7 @@ namespace Steverzag.QueryShaper.Ordering
 
 				var paramExp = Expression.Parameter(typeof(T), name: "p");
 				var propertyToOrderByExp = Expression.Convert(
-					ExpressionUtils.CreateMemberAccess(paramExp, selector)
+					SelectorExpressions.CreateMemberAccess(paramExp, selector)
 					, typeof(object));
 
 				var orderByLambdaExp = Expression.Lambda<Func<T, object>>(propertyToOrderByExp, paramExp);

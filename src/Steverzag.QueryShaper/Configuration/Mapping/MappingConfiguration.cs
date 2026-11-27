@@ -4,7 +4,7 @@ using Steverzag.PropertySelectors;
 
 namespace Steverzag.QueryShaper.Configuration.Mapping;
 
-public class MappingConfiguration<TIn, TOut>
+public sealed class MappingConfiguration<TIn, TOut>
 {
 	internal Dictionary<PropertyInfo, PropertySelector> Mappings { get; } = [];
 
@@ -33,7 +33,7 @@ public class MappingConfiguration<TIn, TOut>
 			if (!Mappings.TryGetValue(prop, out var selector) && typeof(TIn).GetProperty(prop.Name) is null)
 				continue;
 
-			var valueExpr = ExpressionUtils.CreateMemberAccess(param, selector ?? prop.Name);
+			var valueExpr = SelectorExpressions.CreateMemberAccess(param, selector ?? prop.Name);
 
 			if (Nullable.GetUnderlyingType(valueExpr.Type) is { } underlying
 				&& prop.PropertyType.IsValueType

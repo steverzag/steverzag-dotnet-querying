@@ -5,7 +5,7 @@ using System.Reflection;
 
 namespace Steverzag.PropertySelectors
 {
-	public class ExpressionUtils
+	public static class SelectorExpressions
 	{
 		private static readonly ConcurrentDictionary<Type, Type?> EnumerableElementTypeCache = new();
 		private static readonly ConcurrentDictionary<Type, (Type? Key, Type? Element)?> EnumerableGroupingTypeCache = new();
@@ -101,7 +101,7 @@ namespace Steverzag.PropertySelectors
 		/// parameters must be resolved against. Returns null when the expression does not
 		/// originate from a parameter, e.g. a constant or a static member access.
 		/// </summary>
-		public static ParameterExpression? FindRootParameter(Expression? expression) => expression switch
+		internal static ParameterExpression? FindRootParameter(Expression? expression) => expression switch
 		{
 			ParameterExpression parameter => parameter,
 			MemberExpression member => FindRootParameter(member.Expression),
@@ -126,7 +126,7 @@ namespace Steverzag.PropertySelectors
 			return null;
 		}
 
-		public static Expression CreateMemberAccessRec(Expression target, string[] parts, int index)
+		internal static Expression CreateMemberAccessRec(Expression target, string[] parts, int index)
 		{
 			Expression current = target;
 
@@ -233,16 +233,7 @@ namespace Steverzag.PropertySelectors
 				? typeof(Nullable<>).MakeGenericType(type)
 				: type;
 
-		public static string ToFlatString(Expression exp)
-		{
-			if (exp is BinaryExpression be && be.NodeType == ExpressionType.OrElse)
-			{
-				return $"{ToFlatString(be.Left)} || {ToFlatString(be.Right)}";
-			}
-			return exp.ToString();
-		}
-
-		public static bool TryGetGroupingTypes(Type type, out Type? keyType, out Type? elementType)
+		internal static bool TryGetGroupingTypes(Type type, out Type? keyType, out Type? elementType)
 		{
 			// fast cache hit
 			if (EnumerableGroupingTypeCache.TryGetValue(type, out var cached))

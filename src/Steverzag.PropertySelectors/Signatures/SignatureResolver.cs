@@ -44,12 +44,12 @@ namespace Steverzag.PropertySelectors
 		{
 			if (scope == ArgumentScope.TargetElement)
 			{
-				return target is not null && ExpressionUtils.TryGetEnumerableElementType(target.Type, out var element) && element is not null
-					? ExpressionUtils.CreateMemberAccess(Expression.Parameter(element, "x"), argument).Type
+				return target is not null && SelectorExpressions.TryGetEnumerableElementType(target.Type, out var element) && element is not null
+					? SelectorExpressions.CreateMemberAccess(Expression.Parameter(element, "x"), argument).Type
 					: null;
 			}
 
-			return ExpressionUtils.ResolveArgument(target, argument).Type;
+			return SelectorExpressions.ResolveArgument(target, argument).Type;
 		}
 	}
 

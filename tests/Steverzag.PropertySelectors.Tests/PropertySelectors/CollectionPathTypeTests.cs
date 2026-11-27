@@ -66,7 +66,7 @@ public class CollectionPathTypeTests
 
         foreach (var selector in new PropertySelector[] { generic, nonGeneric })
         {
-            var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+            var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
             var result = Expression.Lambda<Func<Root, IEnumerable<string>>>(body, parameter).Compile()(root);
             Assert.Equal(expected, result);
         }
@@ -81,7 +81,7 @@ public class CollectionPathTypeTests
         var parameter = Expression.Parameter(typeof(Root), "r");
 
         Assert.Equal(expected, generic.SelectorType);
-        Assert.Equal(expected, ExpressionUtils.CreateMemberAccess(parameter, generic).Type);
-        Assert.Equal(expected, ExpressionUtils.CreateMemberAccess(parameter, nonGeneric).Type);
+        Assert.Equal(expected, SelectorExpressions.CreateMemberAccess(parameter, generic).Type);
+        Assert.Equal(expected, SelectorExpressions.CreateMemberAccess(parameter, nonGeneric).Type);
     }
 }

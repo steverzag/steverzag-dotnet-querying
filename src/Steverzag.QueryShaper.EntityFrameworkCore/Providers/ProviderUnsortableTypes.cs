@@ -17,12 +17,12 @@ namespace Steverzag.QueryShaper.EntityFrameworkCore
 			ArgumentNullException.ThrowIfNull(providerName);
 			return providerName switch
 			{
-				ProviderMemberFilters.SqliteProviderName => Sqlite,
-				ProviderMemberFilters.SqlServerProviderName => SqlServer,
-				ProviderMemberFilters.PostgreSqlProviderName => PostgreSql,
+				ProviderNames.Sqlite => Sqlite,
+				ProviderNames.SqlServer => SqlServer,
+				ProviderNames.PostgreSql => PostgreSql,
 				_ => throw new NotSupportedException(
 					$"There is no list of unsortable types for the provider '{providerName}'. Known providers: " +
-					$"{ProviderMemberFilters.SqliteProviderName}, {ProviderMemberFilters.SqlServerProviderName}, {ProviderMemberFilters.PostgreSqlProviderName}."),
+					$"{ProviderNames.Sqlite}, {ProviderNames.SqlServer}, {ProviderNames.PostgreSql}."),
 			};
 		}
 

@@ -10,7 +10,7 @@ internal record MaxAggregationSelector<T> : FunctionPropertySelector<T>, IFuncti
 }
 
 [SelectorToken(SelectorDefaults.MaxAggregateFunction, Category = FunctionCategory.Aggregation)]
-public record MaxAggregationSelector : FunctionPropertySelector, IFunctionSignatures
+internal record MaxAggregationSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[

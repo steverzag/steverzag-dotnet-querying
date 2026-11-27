@@ -33,7 +33,7 @@ public class GroupingSelectorTests
     private static Expression Body<TRoot>(PropertySelector selector, out ParameterExpression parameter)
     {
         parameter = Expression.Parameter(typeof(TRoot), "g");
-        return ExpressionUtils.CreateMemberAccess(parameter, selector);
+        return SelectorExpressions.CreateMemberAccess(parameter, selector);
     }
 
     private static object? Evaluate<TRoot>(PropertySelector selector, TRoot root)

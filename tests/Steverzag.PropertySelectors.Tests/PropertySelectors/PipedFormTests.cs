@@ -230,7 +230,7 @@ public class PipedFormTests
 
     private static readonly ParameterExpression Root = Expression.Parameter(typeof(Product), "p");
 
-    private static Expression Body(PropertySelector selector) => ExpressionUtils.CreateMemberAccess(Root, selector);
+    private static Expression Body(PropertySelector selector) => SelectorExpressions.CreateMemberAccess(Root, selector);
 
     private static object? Evaluate(Expression body) =>
         Expression.Lambda<Func<Product, object?>>(Expression.Convert(body, typeof(object)), Root).Compile()(Sample);

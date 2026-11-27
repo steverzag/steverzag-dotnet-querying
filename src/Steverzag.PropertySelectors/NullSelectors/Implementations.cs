@@ -11,12 +11,12 @@ namespace Steverzag.PropertySelectors.NullSelectors
 				throw new InvalidOperationException(
 					$"{SelectorDefaults.Coalesce} must be applied to a piped value, e.g. 'Value{SelectorDefaults.PropertyDelimiter}{SelectorDefaults.Coalesce}(0)'.");
 
-			var argumentRoot = ExpressionUtils.ArgumentRoot(target);
+			var argumentRoot = SelectorExpressions.ArgumentRoot(target);
 
 			var operands = new Expression[fallbacks.Count + 1];
 			operands[0] = target;
 			for (var i = 0; i < fallbacks.Count; i++)
-				operands[i + 1] = ExpressionUtils.CreateMemberAccess(argumentRoot, fallbacks[i]);
+				operands[i + 1] = SelectorExpressions.CreateMemberAccess(argumentRoot, fallbacks[i]);
 
 			var resultType = ResolveCoalesceType([.. operands.Select(o => o.Type)])!;
 			var underlying = Nullable.GetUnderlyingType(resultType) ?? resultType;
@@ -37,7 +37,7 @@ namespace Steverzag.PropertySelectors.NullSelectors
 				if (type is null)
 					continue;
 
-				if (ExpressionUtils.TryGetEnumerableElementType(type, out _))
+				if (SelectorExpressions.TryGetEnumerableElementType(type, out _))
 					throw new InvalidOperationException(
 						$"{SelectorDefaults.Coalesce} can't be applied to collections: {DescribeOperand(i)} is a {type.Name}.");
 

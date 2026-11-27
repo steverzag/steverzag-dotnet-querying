@@ -100,7 +100,7 @@ namespace Steverzag.QueryShaper
 					{
 						filter.Parse<T>(selector.ToString());
 					}
-					var type = ExpressionUtils.CreateMemberAccess(parameter, selector).Type;
+					var type = SelectorExpressions.CreateMemberAccess(parameter, selector).Type;
 					type = Nullable.GetUnderlyingType(type) ?? type;
 					if (_options.UnsortableTypes.Contains(type))
 					{

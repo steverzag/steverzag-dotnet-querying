@@ -15,7 +15,7 @@ public class NonNumericOperandTests
     private static void ParseAndBuild(string text, bool generic)
     {
         PropertySelector selector = generic ? (PropertySelector<Item>)text : (PropertySelector)text;
-        ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
+        SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
     }
 
     private static string Needs(char op, string operand, string type) => $"'{op}' needs numeric operands: '{operand}' is {type}.";

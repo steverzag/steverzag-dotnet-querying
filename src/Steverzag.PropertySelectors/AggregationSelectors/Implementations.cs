@@ -10,7 +10,7 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 
 		internal static MethodCallExpression CreateAggregateCountFunction(this Expression target)
 		{ 
-			if(!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
+			if(!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -24,7 +24,7 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 
 		internal static MethodCallExpression CreateAggregateLongCountFunction(this Expression target)
 		{ 
-			if(!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
+			if(!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -38,7 +38,7 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 
 		internal static MethodCallExpression CreateAggregateCountDistinctFunction(this Expression target)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType) || elementType is null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementType) || elementType is null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -68,7 +68,7 @@ namespace Steverzag.PropertySelectors.AggregationSelectors
 
 		private static MethodCallExpression CallAggregate(Expression target, string methodName, bool liftToNullable = false)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementType) || elementType is null)
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementType) || elementType is null)
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}

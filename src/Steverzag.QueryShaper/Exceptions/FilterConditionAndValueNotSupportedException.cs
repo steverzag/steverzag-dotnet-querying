@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace Steverzag.QueryShaper.Exceptions
 {
-	public class FilterConditionAndValueNotSupportedException(string message) : Exception(message)
+	public sealed class FilterConditionAndValueNotSupportedException(string message) : Exception(message)
 	{
 	}
 }

@@ -64,7 +64,7 @@ internal static class TestSignatures
     public static FunctionSignature Labelled(ArgumentConstraint constraint, string label) =>
         new([constraint], (_, _) => typeof(string), p => target =>
         {
-            _ = ExpressionUtils.ResolveArgument(target, p[0]);
+            _ = SelectorExpressions.ResolveArgument(target, p[0]);
             return Expression.Constant(label);
         });
 }
@@ -93,12 +93,12 @@ public class SignatureResolutionTests
     public SignatureResolutionTests() => TestSignatures.Register();
 
     private static Expression Body(PropertySelector selector) =>
-        ExpressionUtils.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
+        SelectorExpressions.CreateMemberAccess(Expression.Parameter(typeof(Item), "x"), selector);
 
     private static object? Evaluate(PropertySelector selector)
     {
         var parameter = Expression.Parameter(typeof(Item), "x");
-        var body = ExpressionUtils.CreateMemberAccess(parameter, selector);
+        var body = SelectorExpressions.CreateMemberAccess(parameter, selector);
         return Expression.Lambda(body, parameter).Compile().DynamicInvoke(new Item());
     }
 

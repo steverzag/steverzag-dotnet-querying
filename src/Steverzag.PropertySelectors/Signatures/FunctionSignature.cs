@@ -29,6 +29,6 @@ namespace Steverzag.PropertySelectors
 		internal static Func<Type?, IReadOnlyList<Type?>, Type?> Fixed(Type type) => (_, _) => type;
 
 		internal static Type? ElementOf(Type? collectionType) =>
-			collectionType is not null && ExpressionUtils.TryGetEnumerableElementType(collectionType, out var element) ? element : null;
+			collectionType is not null && SelectorExpressions.TryGetEnumerableElementType(collectionType, out var element) ? element : null;
 	}
 }

@@ -31,7 +31,7 @@ public class CoalesceSelectorTests
     private static Expression Build(PropertySelector selector, out ParameterExpression parameter)
     {
         parameter = Expression.Parameter(typeof(TestItem), "x");
-        return ExpressionUtils.CreateMemberAccess(parameter, selector);
+        return SelectorExpressions.CreateMemberAccess(parameter, selector);
     }
 
     private static object? Evaluate(PropertySelector selector, TestItem item)

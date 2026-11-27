@@ -8,7 +8,7 @@ namespace Steverzag.PropertySelectors.ElementSelectors
 	{
 		internal static MethodCallExpression CreateElementFirstOrDefaultFunction(this Expression target)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -22,7 +22,7 @@ namespace Steverzag.PropertySelectors.ElementSelectors
 
 		internal static MethodCallExpression CreateElementLastOrDefaultFunction(this Expression target)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}
@@ -36,7 +36,7 @@ namespace Steverzag.PropertySelectors.ElementSelectors
 
 		internal static MethodCallExpression CreateElementAtFunction(this Expression target, PropertySelector index)
 		{
-			if (!ExpressionUtils.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
+			if (!SelectorExpressions.TryGetEnumerableElementType(target.Type, out var elementTypeFromEnumerable))
 			{
 				throw new InvalidOperationException("Target is not an enumerable type.");
 			}

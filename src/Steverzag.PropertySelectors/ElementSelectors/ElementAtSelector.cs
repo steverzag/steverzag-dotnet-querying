@@ -3,7 +3,7 @@ using Steverzag.PropertySelectors.Registration;
 namespace Steverzag.PropertySelectors.ElementSelectors;
 
 [SelectorToken(SelectorDefaults.ElementAtIndex, Category = FunctionCategory.Element)]
-public record ElementAtSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
+internal record ElementAtSelector<T> : FunctionPropertySelector<T>, IFunctionSignatures
 {
 	public ElementAtSelector() : base(SelectorDefaults.ElementAtIndex) { }
 	public ElementAtSelector(List<PropertySelector> parameters) : base(SelectorDefaults.ElementAtIndex, parameters) { }
@@ -11,7 +11,7 @@ public record ElementAtSelector<T> : FunctionPropertySelector<T>, IFunctionSigna
 }
 
 [SelectorToken(SelectorDefaults.ElementAtIndex, Category = FunctionCategory.Element)]
-public record ElementAtSelector : FunctionPropertySelector, IFunctionSignatures
+internal record ElementAtSelector : FunctionPropertySelector, IFunctionSignatures
 {
 	internal static readonly IReadOnlyList<FunctionSignature> Table =
 	[

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace Steverzag.QueryShaper.Exceptions
 {
-	public class FilterNotSupportedException : Exception
+	public sealed class FilterNotSupportedException : Exception
 	{
 		public FilterNotSupportedException(Type notSupportedType) : base($"Filtering is not supported for type '{notSupportedType.Name}'.") { }
 		public FilterNotSupportedException(FilterCondition notSupportedCondition, Type notSupportedType) : base($"Filter condition '{notSupportedCondition}' is not supported for type '{notSupportedType.Name}'.") { }
