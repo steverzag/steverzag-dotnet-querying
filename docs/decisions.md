@@ -1356,3 +1356,201 @@ cast only accepts the `DateTime` kind, so today a date can't be filtered from JS
   48 in `QueryShaperTests`: registration and options, the same SQL as the hand-chained extensions for `Apply` and
   each granular method, every error path, paging, and EF `ApplyPagedAsync`. All 701 existing QueryShaper tests pass
   after the rename.
+
+### 042: A `MemberFilter` hides members from the tree and rejects them in client selectors (2026-11-27)
+**Status:** accepted; implemented (2026-11-27). Follows the member-filter item agreed 2026-11-26.
+**Context:** `SelectorsMetaDataTree` lists everything a selector path can reach, which is right for in-memory data. On a
+database it offers members that don't translate, or translate wrongly, and a client can send any of them whatever the UI
+offers. What translates depends on the provider, and PropertySelectors can't know it (006).
+**Decision:**
+1. **One rule for both jobs.** `MemberFilter` (root namespace) has `All` (the default), `Portable`, `Allows(type,
+   property)`, `Except(hide)`, `Only(allow)` and `IsAll`. The type passed is the one the member is read from: the
+   underlying type of a nullable, the element of a collection projection.
+2. **The tree:** `ExplorePropertiesTree(maxDepth, filter = null)` skips a hidden member and its subtree.
+3. **Parsing:** `filter.Parse<T>(selector)` parses in the generic form with the filter active, and
+   `TypesExtensions.GetPropertyType`, which resolves every property path the generic form parses, checks each member.
+   So the head, a piped segment, function arguments, arithmetic operands and ordering arguments are all covered, and the
+   error is a `SelectorParseException` at the member's position: "Property 'Ticks' on 'DateTime' is not allowed."
+   The filter is a thread-static scope like `SelectorLimits`' counters. It's active only inside `Parse<T>`, so a plain
+   parse is unchanged. The parsed selector is checked, not the built expression, because built-in functions produce
+   member accesses of their own that the client never wrote.
+4. **QueryShaper:** `QueryShaperOptions.MemberFilter`, default `All`. `IQueryShaper` parses every `field` in `filters`
+   and `order` through it (`OrderParameters<T>` included), so a hidden member is a `QueryRequestException` at the
+   field's path. The configured search and the mapper are server configuration and aren't filtered. A null filter
+   fails when the shaper is resolved. The extensions, the trusted layer (041.6), don't filter.
+5. **`Portable` is an allow-list for the framework date and time types only** (`DateTime`, `DateTimeOffset`,
+   `DateOnly`, `TimeOnly`, `TimeSpan`). Any member not listed is hidden, so a member a future .NET adds stays hidden
+   until it's probed. Other types are untouched. Its contents come from a probe on SQLite, SQL Server 2022 and
+   PostgreSQL 17 (`tests/Steverzag.ProviderTests`, Testcontainers). The probe filters `member == value` for every
+   distinct seeded value, through a plain and a nullable column, and compares the rows with the same expression in
+   memory over the rows as read back. A filter is used rather than a projection, because EF evaluates an
+   untranslatable final projection on the client without saying so.
+   - In: `DateTime` `Year`, `Month`, `Day`, `Hour`, `Minute`, `Date`, `DayOfYear`; `DateOnly` `Year`, `Month`,
+     `Day`, `DayOfYear`.
+   - Out, with the reason:
+     - `Second` (on `DateTime`, `DateTimeOffset` and `TimeOnly`; `TimeSpan.Seconds`): **wrong rows on PostgreSQL**.
+       It rounds the fractional second instead of truncating it, so `23:59:59.999` gives 60.
+     - `DayOfWeek`: not translated on SQL Server.
+     - `Millisecond`: not translated on PostgreSQL.
+     - `DateTime.TimeOfDay`: wrong rows on SQLite (the `TimeSpan` text format, as in 028).
+     - `DateTime.Ticks`: wrong rows on SQLite, not translated elsewhere.
+     - `Kind`, `Microsecond`, `Nanosecond`: not translated anywhere.
+     - Every `DateTimeOffset`, `TimeOnly` and `TimeSpan` member: SQLite translates none of them.
+   - The seeds are limited by storage: PostgreSQL's `timestamptz` takes only UTC offsets, and SQL Server stores a
+     `TimeSpan` as `time` (under a day). The full matrix is printed by the probe's `Report` tests.
+**Considered:**
+- **Checking the built expression** with a visitor. It needs no parse hook, but it would blame the client for member
+  accesses that built-in functions emit, and its errors have no position.
+- **Walking the parsed tree** after parsing. It would duplicate the generic form's type resolution (projection,
+  lifting, the argument scope of 031), and the tree doesn't keep positions.
+- **A deny-list preset** (`Ticks`, `Kind`, `Nanosecond`). Simpler, but a new or forgotten member would be offered by
+  default.
+- **`Portable` as QueryShaper's default.** Safer for EF users, but it would break selectors that work on the provider
+  in use today. It's opt-in.
+**Consequence:** additive. Docker is needed to run the provider tests locally, and CI runs them (GitHub's Ubuntu
+runners have it). Still to do: a matching rule for functions in `FunctionCatalog`, and a provider-specific preset from
+the EF add-on. Both fit the same class later. Tests: 52 in `MemberFilterTests` (PropertySelectors), 13 in
+`MemberFilterRequestTests` (QueryShaper), and 6 in `Steverzag.ProviderTests` (per provider: every allowed member filters
+correctly, and the report).
+
+### 043: Typed member rules, and one rules class per entity (2026-11-27)
+**Status:** accepted; implemented (2026-11-27). Builds on 042.
+**Context:** 042's only way to name a member was a predicate over `(Type, PropertyInfo)`. It's easy to write one that
+checks only `property.Name`, which hides that name on every type the shaper handles. And a project with many entities
+would end up with every rule in one place.
+**Decision:**
+1. **Typed rules on `MemberFilter`:** `Hide<T>(params Expression<Func<T, object?>>[])`,
+   `Only<T>(params Expression<Func<T, object?>>[])` and `For<T>(Action<MemberRulesBuilder<T>>)`, whose builder has the
+   same `Hide` and `Only`. The type is part of the rule, not of the filter. The filter stays global, and a rule on
+   `Customer` applies wherever `Customer` is reached, including from another root (`Orders.Customer.PasswordHash`).
+2. **Matching:** a rule applies when the type the member is read from is `T` or derives from it, and the property has
+   the same name. So it covers derived types (and a `new` member with that name), but not `T`'s base types or siblings.
+   `PropertyInfo` equality isn't used, because reflection returns a different object for an inherited property seen
+   from a derived type.
+3. **Lambdas:** only a direct property of the parameter (`x => x.Name`, with the compiler's `Convert` for value types).
+   A nested path (`x => x.Home.Street`) is rejected with a hint to use `For<Address>`, because the engine can only say
+   "`Street` on `Address`", which would hide it everywhere, not just under `Home`. Fields, methods, constants, other
+   variables and an empty list are rejected too. Every error is an `ArgumentException` when the filter is built,
+   which is at startup.
+4. **Composition:** each call returns a new filter that must also pass the new rule, so the strictest result wins.
+   `Hide`s add up, two `Only` lists on one type intersect, and `Only` plus `Hide` removes the hidden member from the
+   allowed ones. A builder kept after `For` returns can't change the filter, because the rules are copied when it's built.
+5. **One class per entity:** `MemberRules<T>` with `Configure(MemberRulesBuilder<T>)`, like EF's
+   `IEntityTypeConfiguration<T>`. `Apply(params MemberRules[])` adds instances with no reflection.
+   `ApplyFromAssembly(assembly)` adds every non-abstract, non-generic `MemberRules<T>` with a public parameterless
+   constructor, ordered by full name (the result doesn't depend on the order). The non-generic `MemberRules` base can't
+   be subclassed outside the library.
+6. The predicate `Except`/`Only` stay, for rules no lambda can name, such as an attribute of the caller's own
+   (`p.IsDefined(typeof(SensitiveAttribute))`). The library ships no attribute: entities often live in a project that
+   shouldn't reference a query library.
+**Considered:**
+- **A filter bound to a root type** (`MemberFilter.PortableOf<Customer>()`). It reads well, but the filter is global,
+  so it would suggest the rules apply only to `Customer` queries. Per-root filters are a separate feature: an
+  overload on `IQueryShaper` or named options, if a project needs different rules per endpoint.
+- **Lambdas read as paths** (hide `Street` only under `Customer.Home`). It would need the check to know the path from
+  the root, which pipes and argument scopes (031) make fragile.
+- **Throwing on a second `Only` for the same type.** Stricter, but it makes splitting rules across modules awkward.
+  Intersecting fails safe.
+- **Trimming annotations on `ApplyFromAssembly`.** The library has none yet, `SelectorRegistry.RegisterAssembly`
+  included. They belong to one pass over the whole library. `Apply` is the trim-safe route.
+**Consequence:** additive. Tests: 16 in `MemberRulesTests` (PropertySelectors). `MemberFilterRequestTests` now uses
+the typed form.
+
+### 044: One date/time member deep, `MemberContext`, and provider presets (2026-11-27)
+**Status:** accepted; implemented (2026-11-27). Corrects 042.5 (what `Portable` promises) and builds on 043.
+**Context:**
+- **A probe of two-step chains found that 042's `Portable` was wrong.** On SQL Server `CreatedAt.Date.Hour` and
+  `.Date.Minute` fail: EF turns `Date` into a SQL `date`, and SQL Server rejects `DATEPART(hour, date)`. `Portable`
+  allowed both, because a filter decided per (type, member), and `Hour` on `DateTime` is fine on a real column.
+  Translation depends on the database type of the value, and that depends on the member before it. 042's tests
+  missed it: they probed members on columns only, and the explorer stops at a type it has already visited, so
+  `At.Date` is a leaf.
+- **The same probe, for wider presets, found more:**
+  - SQL Server: `DateTimeOffset.Date` followed by `Hour`, `Minute`, `Second`, `Millisecond` or `TimeOfDay` fails the
+    same way.
+  - PostgreSQL: `TimeOfDay` becomes `time`, and `.Days` on it errors ("unit "day" not supported"), while
+    `.TotalDays` gives wrong rows.
+  - Every broken chain is useless in practice: `Date.Hour` and `TimeOfDay.Days` are always 0, and
+    `TimeOfDay.Hours` is just `Hour`.
+- **SQLite only:** the first probe found SQLite translates no member of `DateTimeOffset`, `TimeOnly` or `TimeSpan`, so
+  `Portable` allows none of them. Projects that use SQLite only in tests asked for wider presets.
+- **The docs claimed something untested:** they said such a value "can still be selected and compared", but whole
+  values had never been probed.
+**Decision:**
+1. **`MemberContext(Type, Property, Source, SourceType)` is public.** `Allows(MemberContext)`,
+   `Except(Func<MemberContext, bool>)` and `Only(Func<MemberContext, bool>)` sit next to the `(Type, PropertyInfo)`
+   overloads; a lambda's parameter count picks the overload.
+   - `Source` is the property the value was read from, `SourceType` the type it was read on. Both are null on the root,
+     after a function or after a literal.
+   - Inside a path, the source is the previous segment. Across `|` and out of a parenthesized group, it's the last
+     property of the path before. The generic `Chain` records that before parsing a path part, and
+     `GetPropertyType` reads it.
+   - A path remembers its last property in a `ConditionalWeakTable`, only while a filter is active. So record
+     equality and plain parses are untouched.
+   - In the tree, a node's source is its parent.
+2. **`Portable` is one date/time member deep.** A member of one of the five types can't be read from a value that
+   another member of those types produced. The error says why: "… is not allowed after 'Date'." `CreatedAt.Date`
+   stays, which keeps the most useful member. Rejected alternatives: hiding `Date` and `TimeOfDay` instead, or
+   probing and allow-listing chain by chain.
+3. **Provider presets** in the EF add-on: `ProviderMemberFilters.Sqlite`, `.SqlServer` and `.PostgreSql`, plus
+   `For(DbContext)` and `For(string providerName)`. An unknown provider throws `NotSupportedException` and points to
+   `Portable`.
+   - They're built from the public typed API (`Only<T>` and a context `Except`), so they show it works for a
+     package outside PropertySelectors.
+   - Each preset allows a member if it gives the right rows on that provider through a plain and a nullable column,
+     and each is one member deep. The contents are in query-shaper.md.
+   - Out on the provider where they fail: `Second` on PostgreSQL (it rounds), `TimeOfDay` on SQLite (wrong rows),
+     `Ticks`, and `DayOfWeek` on SQL Server.
+4. **Whole values aren't members, so no filter restricts them.** They're probed and documented. On SQLite,
+   `DateTimeOffset` and `TimeSpan` support only `==`: `>` and `<` aren't translated, and ordering throws
+   `NotSupportedException`. Everything else (`==`, `>`, `<`, ordering on all five types) works on all three providers.
+5. **What the provider tests pin, per provider:**
+   - every path in the filtered tree, for `Portable` and for the preset, filters correctly;
+   - every two-step chain the filter accepts, dotted and piped, filters correctly;
+   - the preset allows exactly the members that pass on columns, so an EF update that changes what translates fails
+     in either direction;
+   - `Portable` is exactly what all three presets allow;
+   - whole values behave as documented.
+**Considered:**
+- **Per-pair rules** (hide `Hour` only after `Date` on SQL Server). They'd be precise, but every new pair needs
+  probing, and the pairs it would allow are all useless.
+- **Keeping the chain rule internal**, with `InternalsVisibleTo` for the EF package. Cross-package internals couple
+  the versions, and the same kind of rule is useful to callers.
+**Consequence:**
+- **Breaking against 042, before any release:** `Portable` now rejects `CreatedAt.Date.Year` and similar chains.
+- Members read from a function result are checked by type only, and no probe covers them.
+- Tests:
+  - 21 more in `MemberFilterTests`: chains through `.`, `|`, groups, arguments and arithmetic; what a context
+    predicate sees; context rules; no leaking across functions or parses; the tree.
+  - The provider tests: 27 in all, 8 per provider plus 3 that need no database.
+
+### 045: An order on a type the database can't sort is a request error (2026-11-27)
+**Status:** accepted; implemented (2026-11-27). A guard rail for the item in Phase 4. Builds on 044.4.
+**Context:** member filters only cover members. On SQLite, `"order": [{ "field": "StartsAt" }]` on a `DateTimeOffset`
+passed every check, then EF threw `NotSupportedException` when the query ran. A server reports that as a 500, not a
+400. A probe ordering 19 types on each provider found four that SQLite can't `ORDER BY`: `decimal`, `ulong`,
+`DateTimeOffset` and `TimeSpan`. `UseDecimalMathAsDouble` doesn't change that. SQL Server and PostgreSQL sort every
+probed type.
+**Decision:**
+1. **`QueryShaperOptions.UnsortableTypes`** (`ISet<Type>`, empty by default, so nothing changes until it's filled).
+   `IQueryShaper` checks the **built** type of every `order` field, with a nullable unwrapped. Functions are covered
+   too, so `Price|$FN_MATH_ROUND` and `$FN_MATH_MAX(Price, 1)` are caught as `decimal`. A match is a
+   `QueryRequestException` at `order[i].field`: "'Price' can't be ordered: the database can't sort decimal values."
+   - Filters aren't affected.
+   - The trusted extensions don't check, as for the other guard rails (041.6).
+   - A null set fails when the shaper is resolved.
+2. **`ProviderUnsortableTypes`** in the EF add-on: `Sqlite` (the four types), `SqlServer` and `PostgreSql` (empty),
+   plus `For(context)` and `For(providerName)`. They're read-only sets that callers add to the option
+   (`o.UnsortableTypes.UnionWith(…)`), so their own value types can join them.
+3. **Sorting in a different order isn't blocked.** SQL Server's `uniqueidentifier` order and PostgreSQL's
+   nulls-last are consistent, just not .NET's, so they're documented, not rejected.
+4. **The provider tests pin it:** each set is exactly the probed types the provider can't order, and with the set,
+   every probed column ordered through `IQueryShaper` is either rejected up front or runs.
+**Considered:**
+- **A per-provider preset object holding both the member filter and the unsortable types**
+  (`o.UseProvider(name)`). One line, but it would replace a `MemberFilter` the caller had already set. Two explicit
+  lines compose better. It can be added later.
+- **Rejecting non-scalar orders** (a navigation, a collection) in the same check. It's a different failure, and a
+  type with a value converter can be sortable, so it would need its own design.
+**Consequence:** additive. Tests: 10 in `OrderGuardTests` (QueryShaper, SQLite), and 6 in the provider tests (2 per
+provider). The provider tests now have a `Scalar` entity with one column per common scalar type.

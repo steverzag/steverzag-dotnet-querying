@@ -25,6 +25,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sandbox", "lab\Sandbox\Sand
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Steverzag.QueryShaper.Tests", "tests\Steverzag.QueryShaper.Tests\Steverzag.QueryShaper.Tests.csproj", "{A9FE9406-E044-4E30-9FFA-A2243E71679D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Steverzag.ProviderTests", "tests\Steverzag.ProviderTests\Steverzag.ProviderTests.csproj", "{274CE77B-275B-42F1-8873-2A9110D15AF4}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -131,6 +133,18 @@ Global
 		{A9FE9406-E044-4E30-9FFA-A2243E71679D}.Release|x64.Build.0 = Release|Any CPU
 		{A9FE9406-E044-4E30-9FFA-A2243E71679D}.Release|x86.ActiveCfg = Release|Any CPU
 		{A9FE9406-E044-4E30-9FFA-A2243E71679D}.Release|x86.Build.0 = Release|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Debug|x64.Build.0 = Debug|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Debug|x86.Build.0 = Debug|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Release|x64.ActiveCfg = Release|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Release|x64.Build.0 = Release|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Release|x86.ActiveCfg = Release|Any CPU
+		{274CE77B-275B-42F1-8873-2A9110D15AF4}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -144,5 +158,6 @@ Global
 		{8524E310-B773-4407-B0CA-85D2DF8C8BA8} = {88AB7371-40A3-7B65-CF7E-ACD3CC9F1E10}
 		{8BCAA7DB-4068-4DE3-B3FC-E10E6A3F626C} = {88AB7371-40A3-7B65-CF7E-ACD3CC9F1E10}
 		{A9FE9406-E044-4E30-9FFA-A2243E71679D} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{274CE77B-275B-42F1-8873-2A9110D15AF4} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

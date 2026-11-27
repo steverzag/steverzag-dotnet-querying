@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.Extensions.Options;
 using Steverzag.PropertySelectors;
+using Steverzag.PropertySelectors.MetaData;
 using Steverzag.QueryShaper.Aggregating;
 using Steverzag.QueryShaper.Configuration.Filtering;
 using Steverzag.QueryShaper.Configuration.Mapping;
@@ -36,6 +37,14 @@ namespace Steverzag.QueryShaper
 				throw new InvalidOperationException(
 					$"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.DefaultPageSize)} ({_options.DefaultPageSize}) can't be more than {nameof(QueryShaperOptions.MaxPageSize)} ({_options.MaxPageSize}).");
 			}
+			if (_options.MemberFilter is null)
+			{
+				throw new InvalidOperationException($"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.MemberFilter)} can't be null.");
+			}
+			if (_options.UnsortableTypes is null)
+			{
+				throw new InvalidOperationException($"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.UnsortableTypes)} can't be null.");
+			}
 		}
 
 		public IQueryable<T> ApplySearch<T>(IQueryable<T> source, string? search)
@@ -53,7 +62,7 @@ namespace Steverzag.QueryShaper
 				return source;
 			}
 
-			ValidateSelectors<T>(filters, "");
+			ValidateSelectors<T>(filters, "", _options.MemberFilter);
 			return source.Where(FilteringExtensions.CreateFilterLambda<T>(filters, path: ""));
 		}
 
@@ -72,8 +81,18 @@ namespace Steverzag.QueryShaper
 				var item = order[i] ?? throw new QueryRequestException($"[{i}]", "An order can't be null.");
 				try
 				{
-					PropertySelector<T> selector = item is OrderParameters<T> typed ? typed.Field : item.Field;
-					ExpressionUtils.CreateMemberAccess(parameter, selector);
+					var filter = _options.MemberFilter;
+					PropertySelector<T> selector = item is OrderParameters<T> typed ? typed.Field : filter.Parse<T>(item.Field);
+					if (item is OrderParameters<T> && !filter.IsAll)
+					{
+						filter.Parse<T>(selector.ToString());
+					}
+					var type = ExpressionUtils.CreateMemberAccess(parameter, selector).Type;
+					type = Nullable.GetUnderlyingType(type) ?? type;
+					if (_options.UnsortableTypes.Contains(type))
+					{
+						throw new QueryRequestException($"[{i}].field", $"'{item.Field}' can't be ordered: the database can't sort {TypeDisplay.Name(type)} values.");
+					}
 				}
 				catch (SelectorParseException ex)
 				{
@@ -137,7 +156,7 @@ namespace Steverzag.QueryShaper
 			}
 		}
 
-		private static void ValidateSelectors<T>(IReadOnlyList<FilterNode> nodes, string path)
+		private static void ValidateSelectors<T>(IReadOnlyList<FilterNode> nodes, string path, MemberFilter filter)
 		{
 			for (var i = 0; i < nodes.Count; i++)
 			{
@@ -147,12 +166,12 @@ namespace Steverzag.QueryShaper
 					case null:
 						throw new QueryRequestException(nodePath, "A filter can't be null.");
 					case GroupNode group:
-						ValidateSelectors<T>(group.Filters, nodePath + ".filters");
+						ValidateSelectors<T>(group.Filters, nodePath + ".filters", filter);
 						break;
 					case ConditionNode condition:
 						try
 						{
-							_ = (PropertySelector<T>)condition.Field.ToString();
+							_ = filter.Parse<T>(condition.Field.ToString());
 						}
 						catch (SelectorParseException ex)
 						{

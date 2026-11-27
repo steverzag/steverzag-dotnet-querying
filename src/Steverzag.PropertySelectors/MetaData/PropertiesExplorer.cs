@@ -14,20 +14,20 @@ namespace Steverzag.PropertySelectors.MetaData
 			Result = new SelectorsMetaDataTree(_rootType, "Root");
 		}
 
-		public SelectorsMetaDataTree ExplorePropertiesTree(int maxDepth = 20)
+		public SelectorsMetaDataTree ExplorePropertiesTree(int maxDepth = 20, MemberFilter? filter = null)
 		{
-			ExploreProperties(_rootType, Result, maxDepth);
+			ExploreProperties(_rootType, Result, maxDepth, filter ?? MemberFilter.All, null);
 			return Result;
 		}
 
-		private void ExploreProperties(Type t, SelectorsMetaDataTree result, int depth)
+		private void ExploreProperties(Type t, SelectorsMetaDataTree result, int depth, MemberFilter filter, (PropertyInfo Property, Type Type)? source)
 		{
 			if (depth == 0 || IsSimpleType(t))
 				return;
 
 			foreach (var property in t.GetProperties(BindingFlags.Public | BindingFlags.Instance))
 			{
-				if (property.GetIndexParameters().Length > 0)
+				if (property.GetIndexParameters().Length > 0 || !filter.Allows(new MemberContext(t, property, source?.Property, source?.Type)))
 					continue;
 
 				var path = result.Path.Length == 0 ? Segment(property.Name) : $"{result.Path}.{Segment(property.Name)}";
@@ -44,7 +44,7 @@ namespace Steverzag.PropertySelectors.MetaData
 					continue;
 
 				_visitedTypes.Add(membersType);
-				ExploreProperties(membersType, child, depth - 1);
+				ExploreProperties(membersType, child, depth - 1, filter, (property, t));
 				_visitedTypes.Remove(membersType);
 			}
 		}

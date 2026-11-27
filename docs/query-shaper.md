@@ -94,8 +94,54 @@ its position is in the whole selector. A non-blank `search` on a type with no se
 |---|---|
 | `DefaultPageSize` | 10 |
 | `MaxPageSize` | 100. A larger size is rejected, not clamped. |
+| `MemberFilter` | `MemberFilter.All`. Every `field` in `filters` and `order` is parsed through it, so a selector that reaches a hidden member is a `QueryRequestException` at that field's path. Use `MemberFilter.Portable` to accept only date and time members that translate on SQLite, SQL Server and PostgreSQL, or the EF add-on's preset for your provider (below), and `Hide<T>`, `For<T>` or per-entity `MemberRules<T>` classes to hide your own members (see PropertySelectors → "Member filters"). The configured search and the mapper are server configuration and aren't filtered. |
+| `UnsortableTypes` | Empty. An `order` field whose built type (nullable unwrapped) is in the set is a `QueryRequestException` at `order[i].field`: "'Price' can't be ordered: the database can't sort decimal values." Without it, the database throws when the query runs, which a server reports as a 500. Fill it from the EF add-on: `o.UnsortableTypes.UnionWith(ProviderUnsortableTypes.Sqlite)`. Filters on those types aren't affected. |
 
-Invalid options (below 1, or a default above the maximum) fail when `IQueryShaper` is first resolved.
+Invalid options (below 1, a default above the maximum, or a null `MemberFilter` or `UnsortableTypes`) fail when `IQueryShaper` is first resolved.
+
+**Provider presets** (`ProviderMemberFilters` in `Steverzag.QueryShaper.EntityFrameworkCore`, decision 044) allow the
+date and time members that filter correctly on one provider. Each preset is one date/time member deep, like `Portable`,
+and leaves your own types alone. Combine a preset with your own rules as usual:
+`ProviderMemberFilters.SqlServer.ApplyFromAssembly(…)`. `For(context)` or `For(providerName)` picks the preset from
+`Database.ProviderName`, and throws `NotSupportedException` for any other provider.
+
+| Type | `Sqlite` | `SqlServer` | `PostgreSql` |
+|---|---|---|---|
+| `DateTime` | Year, Month, Day, Hour, Minute, Second, Millisecond, Date, DayOfWeek, DayOfYear | Year, Month, Day, Hour, Minute, Second, Millisecond, Date, DayOfYear, TimeOfDay | Year, Month, Day, Hour, Minute, Date, DayOfWeek, DayOfYear, TimeOfDay |
+| `DateTimeOffset` | none | Year, Month, Day, Hour, Minute, Second, Millisecond, Date, DayOfYear, TimeOfDay | Year, Month, Day, Hour, Minute, Date, DayOfWeek, DayOfYear, TimeOfDay, DateTime, UtcDateTime |
+| `DateOnly` | Year, Month, Day, DayOfWeek, DayOfYear | Year, Month, Day, DayOfYear | Year, Month, Day, DayOfWeek, DayOfYear, DayNumber |
+| `TimeOnly` | none | Hour, Minute, Second, Millisecond | Hour, Minute |
+| `TimeSpan` | none | Hours, Minutes, Seconds, Milliseconds | Days, Hours, Minutes, Milliseconds, TotalDays, TotalHours, TotalSeconds, TotalMilliseconds |
+
+Measured on EF Core 9 with SQLite, SQL Server 2022 and PostgreSQL 17. The provider tests fail if an update changes
+what translates, in either direction. Things to know:
+- On PostgreSQL, `Second` (and `TimeSpan.Seconds`) is out because it rounds the fractional second instead of
+  truncating it.
+- PostgreSQL's `timestamptz` stores only UTC, so `DateTimeOffset.Hour` there is the UTC hour. On SQL Server it's the
+  hour at the stored offset.
+- The SQL Server `TimeSpan` results only cover values under a day, since SQL Server stores a `TimeSpan` as `time`.
+- On SQLite, a whole `DateTimeOffset` or `TimeSpan` value can only be compared with `==`: no `>`, `<` or ordering.
+
+**Unsortable types per provider** (`ProviderUnsortableTypes`, decision 045). These are the probed types each provider can't `ORDER BY`. `For(context)` and `For(providerName)` work as for the member filters.
+
+| `Sqlite` | `SqlServer` | `PostgreSql` |
+|---|---|---|
+| `decimal`, `ulong`, `DateTimeOffset`, `TimeSpan` (`NotSupportedException` from EF, with or without `UseDecimalMathAsDouble`) | none | none |
+
+The probed types: `bool`, `byte`, `short`, `int`, `long`, `ulong`, `float`, `double`, `decimal`, `char`, `string`, `Guid`, an enum, `byte[]` and the five date and time types.
+
+Some types sort, but not in .NET's order, so the guard doesn't block them:
+- SQL Server orders `Guid` by its own `uniqueidentifier` byte order.
+- PostgreSQL puts nulls last in ascending order; .NET and SQL Server put them first.
+
+A typical setup:
+```csharp
+builder.Services.AddQueryShaper<AppQueryShaperConfig>(o =>
+{
+    o.MemberFilter = ProviderMemberFilters.Sqlite.ApplyFromAssembly(typeof(Program).Assembly);
+    o.UnsortableTypes.UnionWith(ProviderUnsortableTypes.Sqlite);
+});
+```
 
 ## Building blocks
 

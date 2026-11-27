@@ -28,6 +28,7 @@ public static class TypesExtensions
 		ArgumentNullException.ThrowIfNull(propertySelector, nameof(propertySelector));
 
 		var propertyPath = propertySelector?.PlainValue;
+		var source = MemberFilter.TakePipedSource();
 
 		if (string.IsNullOrWhiteSpace(propertyPath))
 			return rootType;
@@ -53,11 +54,13 @@ public static class TypesExtensions
 			}
 
 			property ??= FindProperty(currentType, propertyName);
+			var owner = currentType;
 
 			if (property is null && Nullable.GetUnderlyingType(currentType) is { } underlying)
 			{
 				property = FindProperty(underlying, propertyName);
 				lifted |= property is not null;
+				owner = underlying;
 			}
 
 			if (property is null)
@@ -65,8 +68,14 @@ public static class TypesExtensions
 				throw PropertyNotFound(propertyName, Nullable.GetUnderlyingType(currentType) ?? currentType, propertyPath, offset);
 			}
 
+			MemberFilter.Check(owner, property, source, propertyPath, offset);
+			source = (property, owner);
+
 			currentType = property.PropertyType;
 		}
+
+		if (source is { } last)
+			MemberFilter.Remember(propertySelector!, last.Property, last.Type);
 
 		if (lifted)
 			currentType = ExpressionUtils.LiftToNullable(currentType);

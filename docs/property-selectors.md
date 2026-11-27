@@ -561,6 +561,76 @@ reports. The
 categories are `Aggregation`, `Element`, `Ordering`, `Math`, `String`, `Date` and `Null`, set with
 `[SelectorToken(…, Category = FunctionCategory.Math)]`. A custom function that doesn't set one is `Other`.
 
+### Member filters
+
+The tree lists everything the grammar can reach. A database can't translate all of it (`DateTime.Ticks`,
+`TimeSpan.Hours` on SQLite), and some members shouldn't be reachable by a client at all. A `MemberFilter` decides which
+members are offered and accepted (decision 042). The same filter hides members from the tree and rejects them when a
+selector is parsed:
+
+```csharp
+var filter = MemberFilter.Portable.Hide<Person>(p => p.PasswordHash);
+
+new PropertiesExplorer<Person>().ExplorePropertiesTree(4, filter);   // the hidden members and their subtrees are left out
+filter.Parse<Person>("Created.Ticks");                               // SelectorParseException: "Property 'Ticks' on 'DateTime' is not allowed."
+```
+
+- `MemberFilter.All` allows everything. It's the default everywhere, so the tree and parsing are unchanged without a filter.
+- `MemberFilter.Portable` only restricts the framework date and time types, and only to the members that filter
+  correctly on SQLite, SQL Server and PostgreSQL. `DateTime`: `Year`, `Month`, `Day`, `Hour`, `Minute`, `Date`,
+  `DayOfYear`. `DateOnly`: `Year`, `Month`, `Day`, `DayOfYear`. `DateTimeOffset`, `TimeOnly` and `TimeSpan`: none, since
+  SQLite translates none of their members. Your own types are left alone. The list comes from a probe against the
+  three providers (`tests/Steverzag.ProviderTests`).
+  - **One date/time member deep** (decision 044): a date/time member can't be read from a value that another date/time
+    member produced. `CreatedAt.Date` is allowed; `CreatedAt.Date.Hour`, `CreatedAt.Date|Year` and
+    `(CreatedAt.Date)|Year` are not ("Property 'Hour' on 'DateTime' is not allowed after 'Date'."). Translation depends on
+    the database type of the value: on SQL Server `Date` is a SQL `date`, and `DATEPART(hour, …)` on a `date` is an
+    error. A function result starts afresh, so `CreatedAt|$FN_DT_ADDDAYS(1)|Year` is checked by type only, and no
+    probe covers members read from a function result.
+  - **Whole values aren't members**, so no filter can restrict them. On SQLite, a `DateTimeOffset` or `TimeSpan`
+    property supports `==` but not `>`/`<` (not translated) or ordering (`NotSupportedException`). Every other check
+    of the five types (`==`, `>`, `<`, ordering) works on all three providers. QueryShaper rejects ordering on such
+    types with its `UnsortableTypes` option (query-shaper.md, decision 045).
+  - For one known provider, the EF add-on has a preset per provider with more members (`ProviderMemberFilters`, see
+    query-shaper.md).
+- Typed rules (decision 043) name the members with lambdas, so they can't hit another type by accident:
+  - `Hide<T>(x => x.A, …)` hides members of `T`. `Only<T>(x => x.A, …)` makes them the only members reachable on `T`.
+    Either way, other types are left alone.
+  - `For<T>(r => r.Hide(…).Only(…))` groups several rules for one type.
+  - A rule on `T` also covers types derived from `T`, but not `T`'s base types.
+  - The lambda must read one property of its parameter directly (`x => x.Name`). For a nested type, write a rule
+    for that type: `For<Address>(…)`, not `x => x.Home.Street`.
+  - Hiding a navigation also hides everything behind it.
+  - Rules compose and the strictest wins: `Hide`s add up, and two `Only` lists on one type intersect.
+- For many entities, put one rules class next to each one and collect them at startup:
+  ```csharp
+  public sealed class CustomerMemberRules : MemberRules<Customer>
+  {
+      public override void Configure(MemberRulesBuilder<Customer> rules) => rules
+          .Hide(c => c.PasswordHash)
+          .Hide(c => c.CreditLimit);
+  }
+
+  MemberFilter.Portable.Apply(new CustomerMemberRules(), new AuditLogMemberRules());   // explicit, no reflection
+  MemberFilter.Portable.ApplyFromAssembly(typeof(Program).Assembly);                   // every concrete MemberRules<T> with a public parameterless constructor
+  ```
+- `Except(hide)` and `Only(allow)` take a predicate, for rules no lambda can name, such as
+  `Except((_, p) => p.IsDefined(typeof(SensitiveAttribute)))`. Every method returns a new filter. The predicate receives
+  the type the member is read from and the `PropertyInfo`. That type is the underlying type for a nullable (`DateTime`,
+  not `DateTime?`) and the element for a collection projection (`Line` in `Lines.When`). A predicate that only checks
+  `property.Name` applies to every type with a member of that name.
+- `Except(Func<MemberContext, bool>)` and `Only(Func<MemberContext, bool>)` also see where the value came from.
+  `MemberContext` has `Type` and `Property`, plus `Source` and `SourceType`: the property the value was read from and
+  the type it was read on. Both are `null` when the member is read on the root, on a function result or on a literal.
+  The source carries across `|` and out of a parenthesized group, so `Main.When`, `Main|When` and `(Main)|When` all
+  see `Main`. In the tree, a node's source is its parent. For example, `Except(c => c.Source?.Name == "Address")`
+  hides everything behind any `Address` property.
+- `Parse<T>(selector)` parses in the generic form and checks every property path in it: the head, after a pipe, in a
+  function argument, in arithmetic and inside an ordering argument. The error has the usual position and token.
+  Other parse errors are reported first.
+- The filter only applies inside `Parse<T>`. A plain parse (`PropertySelector<T> s = "…"`) and the non-generic form
+  don't check members.
+
 ## Internals map
 
 | Area | Location |

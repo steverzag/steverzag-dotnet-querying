@@ -61,6 +61,8 @@ namespace Steverzag.PropertySelectors
 						return result is null ? valueSelector : throw PropertySelectorUtils.LiteralAfterPipe(selectorPart);
 
 					PropertySelectorUtils.ValidatePropertyPath(selectorPart);
+					if (MemberFilter.IsActive)
+						MemberFilter.PipeFrom(LastSegment(result));
 					return PropertySelectorUtils.CreatePropertySegment(selectorPart, currentIterationType);
 				});
 
@@ -81,6 +83,13 @@ namespace Steverzag.PropertySelectors
 			}
 
 			return result;
+		}
+
+		private static PropertySelector? LastSegment(PropertySelector? selector)
+		{
+			while (selector?.ChildSelector is not null)
+				selector = selector.ChildSelector;
+			return selector;
 		}
 	}
 
