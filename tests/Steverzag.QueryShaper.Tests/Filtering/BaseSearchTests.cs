@@ -114,10 +114,105 @@ namespace Steverzag.QueryShaper.Tests.Filtering
 			Assert.Equal([1], Ids(q => q.ApplyBaseFilter(["Name|$FN_STR_TOLOWER"], "ham")));
 		}
 
-		[Fact]
-		public void IsCaseSensitive_OnSqlite()
+		// ---- case: insensitive by default; caseSensitive: true opts out. The expression form compares as it's written.
+
+		[Theory]
+		[InlineData("hammer")]
+		[InlineData("HAMMER")]
+		[InlineData("hAmMeR")]
+		[InlineData("Ham")]
+		public void IgnoresCase_ByDefault(string value)
 		{
-			Assert.Empty(Ids(q => q.ApplyBaseFilter([nameof(Product.Name)], "hammer")));
+			Assert.Equal([1], Ids(q => q.ApplyBaseFilter([nameof(Product.Name)], value)));
+			Assert.Equal([1], Ids(q => q.Where(FilteringExtensions.CreateBaseSearchLambdaExpression<Product>([nameof(Product.Name)], value))));
+		}
+
+		[Fact]
+		public void IgnoresCase_ByDefault_OnEveryLookup()
+		{
+			// "GARDEN": Rake's description, and the category of 2 and 4
+			Assert.Equal([2, 4], Ids(q => q.ApplyBaseFilter([nameof(Product.Description), "Category.Name"], "GARDEN")));
+		}
+
+		[Fact]
+		public void CaseSensitive_OptIn()
+		{
+			Assert.Empty(Ids(q => q.ApplyBaseFilter([nameof(Product.Name)], "hammer", caseSensitive: true)));
+			Assert.Equal([1], Ids(q => q.ApplyBaseFilter([nameof(Product.Name)], "Ham", caseSensitive: true)));
+			Assert.Empty(Ids(q => q.Where(FilteringExtensions.CreateBaseSearchLambdaExpression<Product>([nameof(Product.Name)], "hammer", caseSensitive: true))));
+		}
+
+		[Fact]
+		public void Configured_IgnoresCase_ByDefault()
+		{
+			var configuration = new BaseSearchConfiguration().Configure<Product>([nameof(Product.Name), "Category.Name"]);
+
+			Assert.Equal([2], Ids(q => q.ApplyBaseFilter("SHO", configuration)));
+			Assert.Equal([1, 3], Ids(q => q.ApplyBaseFilter("tools", configuration)));
+		}
+
+		[Fact]
+		public void Configured_CaseSensitive_OptIn()
+		{
+			var configuration = new BaseSearchConfiguration().Configure<Product>([nameof(Product.Name)], caseSensitive: true);
+
+			Assert.Empty(Ids(q => q.ApplyBaseFilter("SHO", configuration)));
+			Assert.Equal([2], Ids(q => q.ApplyBaseFilter("Sho", configuration)));
+		}
+
+		private class CaseSensitiveSearchConfiguration : QueryShaperConfiguration
+		{
+			protected override void OnConfiguring(QueryShaperConfigurationBuilder builder) => builder
+				.ConfigureSearch<Product>([nameof(Product.Name)], caseSensitive: true)
+				.ConfigureSearch<Category>([nameof(Category.Name)]);
+		}
+
+		[Fact]
+		public void ConfigureSearch_IgnoresCase_ByDefault_AndTakesTheOptIn()
+		{
+			var configuration = new ServiceCollection().AddQueryShaper<CaseSensitiveSearchConfiguration>()
+				.BuildServiceProvider().GetRequiredService<IBaseSearchConfiguration>();
+			using var context = Database.CreateContext();
+
+			Assert.Empty(Ids(q => q.ApplyBaseFilter("hammer", configuration)));
+			Assert.Equal([2], context.Categories.ApplyBaseFilter("GARDEN", configuration).Select(c => c.Id).ToArray());
+		}
+
+		[Fact]
+		public void Configured_FromACustomPredicate_ComparesAsWritten()
+		{
+			var configuration = new BaseSearchConfiguration().Configure<Product>((p, search) => p.Name.Contains(search));
+
+			Assert.Empty(Ids(q => q.ApplyBaseFilter("hammer", configuration)));
+		}
+
+		// SQLite's lower() folds ASCII letters only. A row still matches the text as it's written, so a non-ASCII search
+		// finds what it found before; only its case-insensitive match is ASCII-only on SQLite.
+		private const string NonAsciiLookup = "$FN_STR_CONCAT(\"Ángel \", Name)";
+
+		[Fact]
+		public void NonAscii_StillMatchesAsWritten_OnSqlite()
+		{
+			Assert.Equal([1, 2, 3, 4], Ids(q => q.ApplyBaseFilter([NonAsciiLookup], "Ángel")));
+			Assert.Equal([1], Ids(q => q.ApplyBaseFilter([NonAsciiLookup], "Ángel Hammer")));
+			Assert.Equal([1], Ids(q => q.ApplyBaseFilter([NonAsciiLookup], "HAMMER")));
+		}
+
+		[Fact]
+		public void NonAscii_CaseIsNotFolded_OnSqlite()
+		{
+			// The value is lowered in .NET ("ángel hammer"), the column by SQLite ("Ángel hammer").
+			Assert.Empty(Ids(q => q.ApplyBaseFilter([NonAsciiLookup], "ángel")));
+			Assert.Empty(Ids(q => q.ApplyBaseFilter([NonAsciiLookup], "Ángel HAMMER")));
+		}
+
+		[Fact]
+		public void NonAscii_CaseIsFolded_InMemory()
+		{
+			var products = new[] { new Product { Id = 1, Name = "Ángel" }, new Product { Id = 2, Name = "Angel" } }.AsQueryable();
+
+			Assert.Equal([1], products.ApplyBaseFilter([nameof(Product.Name)], "ÁNGEL").Select(p => p.Id).ToArray());
+			Assert.Equal([1], products.ApplyBaseFilter([nameof(Product.Name)], "ángel").Select(p => p.Id).ToArray());
 		}
 
 		[Theory]

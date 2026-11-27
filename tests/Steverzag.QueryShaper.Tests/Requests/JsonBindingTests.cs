@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Steverzag.PropertySelectors;
 using Steverzag.QueryShaper.Filtering;
 using Steverzag.QueryShaper.Ordering;
@@ -127,15 +128,96 @@ namespace Steverzag.QueryShaper.Tests.Requests
 		}
 
 		[Theory]
-		[InlineData("""{ "field": "Name", "direction": 1 }""", "OrderDirection must be written by name")]
-		[InlineData("""{ "field": "Name", "direction": "Down" }""", "'Down' is not a OrderDirection")]
-		[InlineData("""{ "direction": "Ascending" }""", "An order needs 'field'")]
-		[InlineData("""{ "field": null }""", "An order needs 'field'")]
-		[InlineData("\"Name\"", "An order must be an object, not a string")]
+		[InlineData("""{ "field": "Name", "direction": 1 }""", "An OrderDirection must be written by name (Ascending, Descending), not as a number. (at 'direction' in this order)")]
+		[InlineData("""{ "field": "Name", "direction": "Down" }""", "'Down' is not an OrderDirection. Use one of: Ascending, Descending. (at 'direction' in this order)")]
+		[InlineData("""{ "field": 5 }""", "A selector must be a string, not a number. (at 'field' in this order)")]
+		[InlineData("""{ "field": ["Name"] }""", "A selector must be a string, not an array. (at 'field' in this order)")]
+		[InlineData("""{ "direction": "Ascending" }""", "An order needs 'field'.")]
+		[InlineData("""{ "field": null }""", "An order needs 'field'.")]
+		[InlineData("\"Name\"", "An order must be an object, not a string.")]
 		public void AnInvalidOrder_IsRejected(string json, string message)
 		{
 			var ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<OrderParameters>(json, Web));
-			Assert.Contains(message, ex.Message);
+			Assert.Equal(message, ex.Message);
+		}
+
+		[Theory]
+		[InlineData("""{ "order": [ { "field": "Name" }, { "field": "Name", "direction": "Down" } ] }""", "(at 'direction' in this order)")]
+		[InlineData("""{ "order": [ { "field": "Name" }, { "field": "Name", "direction": 1 } ] }""", "(at 'direction' in this order)")]
+		[InlineData("""{ "order": [ { "field": "Name" }, { "field": 5 } ] }""", "(at 'field' in this order)")]
+		[InlineData("""{ "order": [ { "field": "Name" }, { "direction": "Ascending" } ] }""", "An order needs 'field'.")]
+		public void AnOrderError_IsPlacedByThePathToItsOrder_AndTheMessage(string json, string messageEnd)
+		{
+			var ex = Assert.Throws<JsonException>(() => Bind(json));
+
+			Assert.Equal("$.order[1]", ex.Path);
+			Assert.EndsWith(messageEnd, ex.Message);
+			Assert.DoesNotContain("System.", ex.Message);
+		}
+
+		[Fact]
+		public void EnumMessages_UseTheRightArticle()
+		{
+			Assert.StartsWith("A FilterCondition must be written by name", Assert.Throws<JsonException>(() => Node("""{ "field": "Name", "condition": 0 }""")).Message);
+			Assert.StartsWith("A LogicalConnector must be written by name", Assert.Throws<JsonException>(() => Node("""{ "field": "Name", "condition": "Equals", "connector": 1 }""")).Message);
+			Assert.StartsWith("'Xor' is not a LogicalConnector.", Assert.Throws<JsonException>(() => Node("""{ "field": "Name", "condition": "Equals", "connector": "Xor" }""")).Message);
+		}
+
+		// Apps often add JsonStringEnumConverter to their JSON options, and a converter in the options outranks one on a
+		// type. The request's enums must still be read by name only, with QueryShaper's messages.
+		private static readonly JsonSerializerOptions WebWithEnumConverter = new(JsonSerializerDefaults.Web)
+		{
+			Converters = { new JsonStringEnumConverter() },
+		};
+
+		private static readonly JsonSerializerOptions WebWithCamelCaseEnumConverter = new(JsonSerializerDefaults.Web)
+		{
+			Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+		};
+
+		public static TheoryData<string, string> EnumErrors => new()
+		{
+			{ """{ "filters": [ { "field": "Name", "condition": 0 } ] }""", "FilterCondition must be written by name" },
+			{ """{ "filters": [ { "field": "Name", "condition": "Bigger" } ] }""", "'Bigger' is not a FilterCondition. Use one of: Equals," },
+			{ """{ "filters": [ { "field": "Name", "condition": "Equals", "connector": 1 } ] }""", "LogicalConnector must be written by name" },
+			{ """{ "filters": [ { "field": "Name", "condition": "Equals", "connector": "Xor" } ] }""", "'Xor' is not a LogicalConnector" },
+			{ """{ "order": [ { "field": "Name", "direction": 1 } ] }""", "OrderDirection must be written by name" },
+			{ """{ "order": [ { "field": "Name", "direction": "Down" } ] }""", "'Down' is not an OrderDirection" },
+		};
+
+		[Theory]
+		[MemberData(nameof(EnumErrors))]
+		public void TheRequestsOwnEnums_AreReadByNameOnly_UnderAGlobalEnumConverter(string json, string message)
+		{
+			foreach (var options in new[] { WebWithEnumConverter, WebWithCamelCaseEnumConverter })
+			{
+				var ex = Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<QueryRequest>(json, options));
+				Assert.Contains(message, ex.Message);
+				Assert.DoesNotContain("System.", ex.Message);
+			}
+		}
+
+		[Fact]
+		public void TheRequestsOwnEnums_KeepTheirNames_UnderAGlobalEnumConverter()
+		{
+			var json = """
+				{ "filters": [ { "field": "Name", "condition": "startswith", "value": "Ha" },
+				               { "field": "Name", "condition": "IsNotEmpty", "connector": "OR" } ],
+				  "order": [ { "field": "Name", "direction": "descending" } ] }
+				""";
+
+			foreach (var options in new[] { WebWithEnumConverter, WebWithCamelCaseEnumConverter })
+			{
+				var request = JsonSerializer.Deserialize<QueryRequest>(json, options)!;
+				Assert.Equal(FilterCondition.StartsWith, Assert.IsType<ConditionNode>(request.Filters[0]).Condition);
+				Assert.Equal(LogicalConnector.Or, request.Filters[1].Connector);
+				Assert.Equal(OrderDirection.Descending, request.Order[0].Direction);
+
+				var written = JsonSerializer.Serialize(request, options);
+				Assert.Contains("\"condition\":\"StartsWith\"", written);
+				Assert.Contains("\"connector\":\"Or\"", written);
+				Assert.Contains("\"direction\":\"Descending\"", written);
+			}
 		}
 
 		[Theory]
