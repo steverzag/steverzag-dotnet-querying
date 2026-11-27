@@ -23,6 +23,9 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+
+    <EnablePackageValidation>true</EnablePackageValidation>
+    <PackageValidationBaselineVersion>0.1.0-preview</PackageValidationBaselineVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
