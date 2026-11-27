@@ -9,6 +9,7 @@ using System.Reflection;
 
 namespace Steverzag.QueryShaper.Filtering
 {
+	/// <summary>Filters and searches a query, from filters and searches built in code.</summary>
 	/// <remarks>
 	/// For trusted input built in code: these methods have no options and no guard rails. Pass client requests
 	/// through <see cref="IQueryShaper"/>, which validates them first.
@@ -38,6 +39,13 @@ namespace Steverzag.QueryShaper.Filtering
 			.First();
 		
 
+		/// <summary>Applies a search over the given lookups, then filters, as <see cref="ApplyBaseFilter{T}(IQueryable{T}, IEnumerable{string}, string)"/> and <see cref="ApplyLogicsFilter"/> do.</summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="query">The query.</param>
+		/// <param name="searchLookups">String selectors to search, or <see langword="null"/>.</param>
+		/// <param name="searchValue">The text to search for. A blank value skips the search.</param>
+		/// <param name="logicFilters">The filters, combined left to right, or <see langword="null"/> for none.</param>
+		/// <returns>The filtered query.</returns>
 		public static IQueryable<T> ApplyFilters<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue, IEnumerable<FilterNode> logicFilters)
 		{
 			if (searchLookups is not null)
@@ -53,6 +61,16 @@ namespace Steverzag.QueryShaper.Filtering
 			return query;
 		}
 
+		/// <summary>Applies filters, combined strictly left to right. Values reach the database as parameters.</summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="query">The query.</param>
+		/// <param name="logicFilters">The filters. An empty list leaves the query unchanged.</param>
+		/// <returns>The filtered query.</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="logicFilters"/> is <see langword="null"/>.</exception>
+		/// <exception cref="ArgumentException">The list contains a <see langword="null"/> node.</exception>
+		/// <exception cref="PropertySelectors.SelectorParseException">A field isn't a valid selector for <typeparamref name="T"/>.</exception>
+		/// <exception cref="Exceptions.FilterConditionAndValueNotSupportedException">A value can't be used with its field and condition.</exception>
+		/// <exception cref="Exceptions.FilterNotSupportedException">A field's type doesn't support its condition.</exception>
 		public static IQueryable<T> ApplyLogicsFilter<T>(this IQueryable<T> query, IEnumerable<FilterNode> logicFilters)
 		{
 			if (logicFilters is null)
@@ -583,6 +601,14 @@ namespace Steverzag.QueryShaper.Filtering
 			|| type == typeof(TimeSpan)
 			|| type == typeof(DateTimeOffset);
 
+		/// <summary>Applies the search configured for <typeparamref name="T"/>.</summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="query">The query.</param>
+		/// <param name="searchValue">The text to search for. A blank value leaves the query unchanged.</param>
+		/// <param name="configuration">The configured searches, such as the <see cref="IBaseSearchConfiguration"/> <c>AddQueryShaper</c> registers.</param>
+		/// <returns>The searched query.</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="configuration"/> is <see langword="null"/>.</exception>
+		/// <exception cref="InvalidOperationException">The value isn't blank and no search is configured for <typeparamref name="T"/>.</exception>
 		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, string? searchValue, IBaseSearchConfiguration configuration)
 		{
 			ArgumentNullException.ThrowIfNull(configuration);
@@ -603,6 +629,13 @@ namespace Steverzag.QueryShaper.Filtering
 			return query.Where(predicate!);
 		}
 
+		/// <summary>Applies a search over the given lookups: a row matches when any lookup contains the text. It needs no configuration.</summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="query">The query.</param>
+		/// <param name="searchLookups">Selectors whose type is <see cref="string"/>, or <see langword="null"/> for no search.</param>
+		/// <param name="searchValue">The text to search for. A blank value leaves the query unchanged.</param>
+		/// <returns>The searched query.</returns>
+		/// <exception cref="ArgumentException">A lookup isn't a string, or isn't a valid selector for <typeparamref name="T"/>.</exception>
 		public static IQueryable<T> ApplyBaseFilter<T>(this IQueryable<T> query, IEnumerable<string>? searchLookups, string? searchValue)
 		{
 			if (searchLookups is null)
@@ -619,6 +652,15 @@ namespace Steverzag.QueryShaper.Filtering
 			return query.Where(lambda);
 		}
 
+		/// <summary>
+		/// Builds the predicate <see cref="ApplyBaseFilter{T}(IQueryable{T}, IEnumerable{string}, string)"/> applies, to
+		/// combine it with your own conditions.
+		/// </summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="searchLookups">Selectors whose type is <see cref="string"/>.</param>
+		/// <param name="searchValue">The text to search for.</param>
+		/// <returns>The predicate.</returns>
+		/// <exception cref="ArgumentException">A lookup isn't a string, or isn't a valid selector for <typeparamref name="T"/>.</exception>
 		public static Expression<Func<T, bool>> CreateBaseSearchLambdaExpression<T>(IEnumerable<string>? searchLookups, string? searchValue)
 		{
 			var parameterExpression = Expression.Parameter(typeof(T), "x");

@@ -4,10 +4,23 @@ using Steverzag.PropertySelectors;
 
 namespace Steverzag.QueryShaper.Configuration.Mapping;
 
+/// <summary>
+/// A map from <typeparamref name="TIn"/> to <typeparamref name="TOut"/>. Each public property of the destination is
+/// filled from its <see cref="ForMember"/> selector, or else from the source property with the same name
+/// (case-sensitive), or else left at its default.
+/// </summary>
+/// <typeparam name="TIn">The source type.</typeparam>
+/// <typeparam name="TOut">The destination type.</typeparam>
 public sealed class MappingConfiguration<TIn, TOut>
 {
 	internal Dictionary<PropertyInfo, PropertySelector> Mappings { get; } = [];
 
+	/// <summary>Fills a destination property from a selector on the source.</summary>
+	/// <typeparam name="TProp">The destination property's type.</typeparam>
+	/// <param name="destinationMember">The destination property, read directly: <c>d => d.PhoneCount</c>, not <c>d => d.Inner.X</c>.</param>
+	/// <param name="selector">The selector on the source, such as <c>"Phones|$FN_AGGR_COUNT"</c>. Its value is converted to the property's type.</param>
+	/// <returns>This map, to chain more calls.</returns>
+	/// <exception cref="ArgumentException"><paramref name="destinationMember"/> isn't a property of the destination read directly.</exception>
 	public MappingConfiguration<TIn, TOut> ForMember<TProp>(
 		Expression<Func<TOut, TProp>> destinationMember,
 		PropertySelector<TIn> selector)

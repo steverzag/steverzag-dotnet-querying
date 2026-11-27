@@ -3,10 +3,19 @@ using System.Linq.Expressions;
 
 namespace Steverzag.QueryShaper.Configuration.Filtering
 {
+	/// <summary>
+	/// The base search configured for each type. <c>AddQueryShaper</c> registers one, filled from
+	/// <c>ConfigureSearch&lt;T&gt;</c>, as <see cref="IBaseSearchConfiguration"/>.
+	/// </summary>
 	public sealed class BaseSearchConfiguration : IBaseSearchConfiguration
 	{
 		private readonly Dictionary<Type, LambdaExpression> _expressions = [];
 
+		/// <summary>Configures the search for <typeparamref name="T"/> as an expression of the row and the search text.</summary>
+		/// <remarks>The expression isn't checked: what it matches is up to its author. It replaces any search configured for <typeparamref name="T"/>.</remarks>
+		/// <typeparam name="T">The type to search.</typeparam>
+		/// <param name="globalSearchExpression">The search, such as <c>(p, s) => p.Name.Contains(s) || p.Email.StartsWith(s)</c>.</param>
+		/// <returns>This configuration, to chain more calls.</returns>
 		public BaseSearchConfiguration Configure<T>(Expression<Func<T, string, bool>> globalSearchExpression)
 		{
 			_expressions[typeof(T)] = globalSearchExpression;
@@ -14,10 +23,13 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 		}
 
 		/// <summary>
-		/// Configures the base search for <typeparamref name="T"/> from a set of property lookups,
-		/// building an <c>OR</c> of <c>Contains</c> checks across every lookup. The search value is
-		/// kept as a parameter so it can be substituted per-search by <see cref="GetSearchPredicate{T}"/>.
+		/// Configures the search for <typeparamref name="T"/>: a row matches when any lookup contains the search text. It
+		/// replaces any search configured for <typeparamref name="T"/>.
 		/// </summary>
+		/// <typeparam name="T">The type to search.</typeparam>
+		/// <param name="searchLookups">Selectors whose type is <see cref="string"/>, such as <c>Name</c> or <c>Description|$FN_COALESCE("")</c>.</param>
+		/// <returns>This configuration, to chain more calls.</returns>
+		/// <exception cref="ArgumentException">A lookup isn't a string, or isn't a valid selector for <typeparamref name="T"/>.</exception>
 		public BaseSearchConfiguration Configure<T>(IEnumerable<string> searchLookups)
 		{
 			var entityParameter = Expression.Parameter(typeof(T), "x");
@@ -28,12 +40,10 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 			return this;
 		}
 
+		/// <inheritdoc/>
 		public bool HasConfiguration<T>() => _expressions.ContainsKey(typeof(T));
 
-		/// <summary>
-		/// Returns the preconfigured base search for <typeparamref name="T"/> as a single-parameter
-		/// predicate with <paramref name="searchValue"/> baked in, ready to pass to <c>Where</c>.
-		/// </summary>
+		/// <inheritdoc/>
 		public Expression<Func<T, bool>> GetSearchPredicate<T>(string searchValue)
 		{
 			var expression = GetSearchExpression<T>();
@@ -46,6 +56,7 @@ namespace Steverzag.QueryShaper.Configuration.Filtering
 			return Expression.Lambda<Func<T, bool>>(body, entityParameter);
 		}
 
+		/// <inheritdoc/>
 		public bool TryGetSearchPredicate<T>(string searchValue, out Expression<Func<T, bool>>? predicate)
 		{
 			if (!HasConfiguration<T>())

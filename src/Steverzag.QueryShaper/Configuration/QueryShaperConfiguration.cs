@@ -1,22 +1,25 @@
 namespace Steverzag.QueryShaper.Configuration
 {
 	/// <summary>
-	/// Base class for a single, centralized configuration of QueryShaper. Extend it and override
-	/// <see cref="OnConfiguring"/> to register object maps and global searches in one place, much like
-	/// overriding <c>OnConfiguring</c> on an EF Core <c>DbContext</c>.
+	/// The place to register QueryShaper's maps and searches. Derive from it, override <see cref="OnConfiguring"/>, and
+	/// pass the class to <c>AddQueryShaper&lt;TConfiguration&gt;</c>.
 	/// </summary>
+	/// <example>
+	/// <code>
+	/// public class AppQueryShaperConfig : QueryShaperConfiguration
+	/// {
+	///     protected override void OnConfiguring(QueryShaperConfigurationBuilder b) => b
+	///         .AddMap&lt;Person, PersonDto&gt;(m => m.ForMember(d => d.PhoneCount, "Phones|$FN_AGGR_COUNT"))
+	///         .ConfigureSearch&lt;Person&gt;(["Name", "Email"]);
+	/// }
+	/// </code>
+	/// </example>
 	public abstract class QueryShaperConfiguration
 	{
-		/// <summary>
-		/// Override to register maps and configure global searches through the supplied
-		/// <paramref name="builder"/>.
-		/// </summary>
+		/// <summary>Registers the maps and searches.</summary>
+		/// <param name="builder">The builder to register them with.</param>
 		protected abstract void OnConfiguring(QueryShaperConfigurationBuilder builder);
 
-		/// <summary>
-		/// Applies this configuration's maps and searches onto the supplied builder (which wraps the
-		/// shared registry instances). Intended for use by the DI registration; not called directly.
-		/// </summary>
 		internal void Apply(QueryShaperConfigurationBuilder builder) => OnConfiguring(builder);
 	}
 }

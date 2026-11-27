@@ -5,15 +5,29 @@ using System.Reflection;
 
 namespace Steverzag.QueryShaper.Aggregating
 {
+	/// <summary>Groups, aggregates and projects a query.</summary>
 	/// <remarks>
 	/// For trusted input built in code: these methods have no options and no guard rails. Pass client requests
 	/// through <see cref="IQueryShaper"/>, which validates them first.
 	/// </remarks>
 	public static class QueryableExtensions
 	{
-
 		private const string GroupByKeyPrefix = "GroupKey";
 
+		/// <summary>Groups a query by up to 21 selectors. Follow it with <see cref="ApplySelect{T}(IQueryable{IGrouping{GroupByKeys, T}}, List{string})"/>.</summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="query">The query.</param>
+		/// <param name="groupByParameters">The grouping selectors, in order: the first is <c>Key.GroupKey0</c>, the next <c>Key.GroupKey1</c>, and so on.</param>
+		/// <returns>The grouped query.</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="groupByParameters"/> is <see langword="null"/>.</exception>
+		/// <exception cref="ArgumentException">There are no selectors, more than <see cref="GroupByKeys.MaxKeys"/>, or a <see langword="null"/> one.</exception>
+		/// <example>
+		/// <code>
+		/// db.Products
+		///     .ApplyGrouping(["Category.Name"])
+		///     .ApplySelect(["Key.GroupKey0", "$FN_AGGR_COUNT", "Quantity|$FN_AGGR_SUM"]);
+		/// </code>
+		/// </example>
 		public static IQueryable<IGrouping<GroupByKeys, T>> ApplyGrouping<T>(this IQueryable<T> query, List<PropertySelector<T>> groupByParameters)
 		{
 			ArgumentNullException.ThrowIfNull(groupByParameters);
@@ -66,6 +80,16 @@ namespace Steverzag.QueryShaper.Aggregating
 			return groupedQuery;
 		}
 
+		/// <summary>
+		/// Returns one <see cref="SelectResult"/> per group. The selectors resolve against the group: <c>Key.GroupKey0</c>
+		/// for a key, <c>$FN_AGGR_COUNT</c> for the number of rows, <c>Quantity|$FN_AGGR_SUM</c> for an aggregate over the
+		/// group's rows.
+		/// </summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="groupedQuery">The query from <see cref="ApplyGrouping"/>.</param>
+		/// <param name="aggregateSelectors">The selectors, one value each, in order.</param>
+		/// <returns>The projected query.</returns>
+		/// <exception cref="PropertySelectors.SelectorParseException">A selector isn't valid against the group.</exception>
 		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<IGrouping<GroupByKeys, T>> groupedQuery, List<string> aggregateSelectors)
 		{
 			var paramExp = Expression.Parameter(typeof(IGrouping<GroupByKeys, T>), "x");
@@ -115,6 +139,12 @@ namespace Steverzag.QueryShaper.Aggregating
 			return groupedQuery.Select(selectLambda);
 		}
 
+		/// <summary>Returns one <see cref="SelectResult"/> per row, with one value per selector.</summary>
+		/// <typeparam name="T">The source type.</typeparam>
+		/// <param name="query">The query.</param>
+		/// <param name="selectors">The selectors, one value each, in order.</param>
+		/// <returns>The projected query.</returns>
+		/// <exception cref="PropertySelectors.SelectorParseException">A selector isn't valid for <typeparamref name="T"/>.</exception>
 		public static IQueryable<SelectResult> ApplySelect<T>(this IQueryable<T> query, List<string> selectors)
 		{
 
@@ -165,6 +195,14 @@ namespace Steverzag.QueryShaper.Aggregating
 			return query.Select(selectLambda);
 		}
 
+		/// <summary>Projects a query with the map registered from <typeparamref name="TIn"/> to <typeparamref name="TOut"/>.</summary>
+		/// <typeparam name="TIn">The source type.</typeparam>
+		/// <typeparam name="TOut">The destination type.</typeparam>
+		/// <param name="query">The query.</param>
+		/// <param name="mapper">The registered maps, such as the <see cref="IMapper"/> <c>AddQueryShaper</c> registers.</param>
+		/// <returns>The projected query.</returns>
+		/// <exception cref="ArgumentNullException"><paramref name="mapper"/> is <see langword="null"/>.</exception>
+		/// <exception cref="InvalidOperationException">No map is registered for the pair.</exception>
 		public static IQueryable<TOut> ApplySelect<TIn, TOut>(this IQueryable<TIn> query, IMapper mapper)
 		{
 			ArgumentNullException.ThrowIfNull(mapper);

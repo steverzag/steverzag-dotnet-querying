@@ -5,18 +5,24 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Steverzag.QueryShaper.Configuration
 {
+	/// <summary>Registers QueryShaper with dependency injection.</summary>
 	public static class QueryShaperServiceCollectionExtensions
 	{
 		/// <summary>
-		/// Builds the supplied <typeparamref name="TConfiguration"/> and contributes its maps and searches
-		/// to a single shared <see cref="Mapper"/> and <see cref="BaseSearchConfiguration"/>, registered as
-		/// singletons behind both their concrete types and the <see cref="IMapper"/> /
-		/// <see cref="IBaseSearchConfiguration"/> contracts.
+		/// Registers <see cref="IQueryShaper"/>, <see cref="IMapper"/> and <see cref="IBaseSearchConfiguration"/> as
+		/// singletons, filled with the maps and searches of <typeparamref name="TConfiguration"/>.
 		/// </summary>
 		/// <remarks>
-		/// Safe to call multiple times: every configuration merges into the same registry instances rather
-		/// than registering duplicate singletons.
+		/// It can be called more than once: every configuration adds to the same maps and searches, and the options
+		/// compose in the standard way. Invalid options fail when <see cref="IQueryShaper"/> is first resolved.
 		/// </remarks>
+		/// <typeparam name="TConfiguration">The configuration whose maps and searches to register.</typeparam>
+		/// <param name="services">The service collection.</param>
+		/// <param name="configure">Sets the <see cref="QueryShaperOptions"/>, or <see langword="null"/> to keep the defaults.</param>
+		/// <returns>The service collection, to chain more calls.</returns>
+		/// <exception cref="InvalidOperationException">A map is invalid.</exception>
+		/// <exception cref="ArgumentException">A search lookup is invalid.</exception>
+		/// <example><code>services.AddQueryShaper&lt;AppQueryShaperConfig&gt;(o => o.MaxPageSize = 50);</code></example>
 		public static IServiceCollection AddQueryShaper<TConfiguration>(this IServiceCollection services, Action<QueryShaperOptions>? configure = null)
 			where TConfiguration : QueryShaperConfiguration, new()
 		{
