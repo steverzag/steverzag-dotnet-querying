@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Description>EF Core add-on for Steverzag.QueryShaper: async pagination (ApplyPagedAsync, PaginateAsync), provider member filters, and decimal math on SQLite.</Description>
+    <PackageTags>linq;iqueryable;filtering;sorting;pagination;entity-framework-core;efcore</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

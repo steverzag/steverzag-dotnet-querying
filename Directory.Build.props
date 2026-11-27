@@ -8,5 +8,7 @@
     <Deterministic>true</Deterministic>
     <!-- Opt in per project with <TreatWarningsAsErrors>true</TreatWarningsAsErrors> once its warnings are cleared. -->
     <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <!-- Only src/ packs; src/Directory.Build.props turns it back on. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 </Project>

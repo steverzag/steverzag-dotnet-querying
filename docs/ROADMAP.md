@@ -347,7 +347,7 @@ Each phase ends in a state where everything compiles, all tests are green, and t
 - [x] ~~Make the And/Or evaluation order configurable (decision 007 follow-up).~~ **Deferred 2026-11-27** to Phase 6 (decision 007). It isn't a gate: with `LeftToRight` as the default, the switch can be added later without breaking anything.
 
 ### Phase 5: Package and release `0.1.0-preview`
-- [ ] Package metadata (`PackageId`, description, license, README in the package, SourceLink, deterministic builds).
+- [x] Package metadata (`PackageId`, description, license, README in the package, SourceLink, deterministic builds). **Done 2026-11-27:** shared metadata in `src/Directory.Build.props` (version `0.1.0-preview`, MIT with a root `LICENSE`, repository URL, `.snupkg` symbols, `ContinuousIntegrationBuild` on GitHub Actions; SourceLink comes with the .NET 8+ SDK). Each project has its own `Description`, `PackageTags` and a short package `README.md`. Only `src/` packs (`IsPackable` is off in the root props). The repository was made public and renamed `steverzag/steverzag-dotnet-querying` the same day (decision 039 note), so SourceLink and the README links resolve for everyone.
 - [ ] Add `CHANGELOG.md` per package, use SemVer, and tag the repository per package (`propertyselectors-v0.1.0`).
 - [ ] Publish PropertySelectors first, since it has no dependencies. Publish QueryShaper against the released PropertySelectors version.
 - [ ] Turn on SDK package validation for each package after its first publish (decision 049.6). Set `EnablePackageValidation` and `PackageValidationBaselineVersion` to the last published version, so a pack fails on a breaking change. Raise the baseline at each release, and suppress an intended 0.x break explicitly (032).

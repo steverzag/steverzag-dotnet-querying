@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Description>A small, dependency-free language that turns strings such as "Phones.Id|$FN_AGGR_AVG" or "(Amount + 2) * 3" into LINQ expressions that query providers like EF Core can translate to SQL.</Description>
+    <PackageTags>linq;expressions;expression-trees;dynamic;selectors;entity-framework-core</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

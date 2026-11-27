@@ -2,6 +2,8 @@
 
   <PropertyGroup>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <Description>Filter, order, paginate, group and map IQueryable&lt;T&gt; from a request described as data, such as a JSON body bound to QueryRequest. Fields are named with Steverzag.PropertySelectors, and the result stays one translatable query.</Description>
+    <PackageTags>linq;iqueryable;filtering;sorting;pagination;query;dynamic-query;entity-framework-core</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

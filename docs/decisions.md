@@ -1137,6 +1137,10 @@ remaining Phase 4 work touches both libraries.
   still moving.
 **Consequence:** Phase 5 gets the explicit dependency range; Phase 6 carries the split. The lab (`lab/`) is not a
 product and goes to neither by default; where it lives after the split is decided then.
+**Note (2026-11-27):** the preview packages point at this repository (`RepositoryUrl`, `PackageProjectUrl`, the
+package READMEs, SourceLink), so it was made public and renamed from `exp-demo-worker` to
+`steverzag/steverzag-dotnet-querying`, a name neutral between the two products. At the split, each new repository
+sets its own URLs in its `Directory.Build.props`; versions already published keep pointing here.
 
 ### 040: Base search lookups must be strings (2026-11-26)
 **Status:** accepted (2026-11-26). Settles D8.
