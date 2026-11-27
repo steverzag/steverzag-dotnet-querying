@@ -23,6 +23,7 @@ src/     the libraries, which will become packages
   Steverzag.QueryShaper/
   Steverzag.QueryShaper.EntityFrameworkCore/
 tests/   Steverzag.PropertySelectors.Tests/ (xUnit)
+samples/ QueryShaperSample/   minimal ASP.NET API over in-memory SQLite, end to end
 lab/     never packed
   Data/        EF Core model on SQL Server, Bogus seed data
   Sandbox/     scratch console app for trying things against the database

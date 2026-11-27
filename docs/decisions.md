@@ -1242,6 +1242,13 @@ cast only accepts the `DateTime` kind, so today a date can't be filtered from JS
      - System.Text.Json binds an undefined number (`"condition": 99`) without complaint, and it would fail later,
        deep in the builder. That's the silent reinterpretation 009 removed.
      - Names are readable in logs and bug reports.
+     **Note (2026-11-27):** as implemented, the converter is `NameOnlyEnumConverter<T>`, on the enum **and on the
+     request shapes' properties** (`condition` and `connector` in `FilterNodeJsonConverter`, `direction` in
+     `OrderParametersJsonConverter`). With the attribute only on the enum, an app that added `JsonStringEnumConverter`
+     to its JSON options (a common line in ASP.NET apps) replaced it, because a converter in the options outranks one on
+     a type: numbers were accepted again, a bad name got System.Text.Json's message naming
+     ``System.Nullable`1[…FilterCondition]``, and a camelCase policy changed the written names. A converter on a property
+     outranks the options. Pinned by `JsonBindingTests` under a global `JsonStringEnumConverter`, plain and camelCase.
      - Accepting numbers later (explicit, frozen member values, with undefined numbers rejected) is additive;
        removing them after release would be breaking.
 4. **A string is converted to the property's type when the filter is built** (target typing, 008.3). The converter
@@ -1713,3 +1720,78 @@ are dead. Nothing is generated as XML documentation, and nothing stops the surfa
 so that is acceptable before `0.1.0-preview`. Tests that use internals keep working through the existing
 `InternalsVisibleTo` for the test projects. A QueryShaper test that uses a now-internal PropertySelectors type has to
 go through the public helper.
+
+### 050: The base search ignores case by default (2026-11-27)
+**Status:** accepted (2026-11-27).
+**Context:** the lookup form of the base search (`ConfigureSearch<T>(lookups)`, `BaseSearchConfiguration.Configure<T>`,
+`ApplyBaseFilter(lookups, value)`) built `lookup.Contains(search)`, which compares as the database does: case-sensitive
+on SQLite (`instr`) and PostgreSQL (`strpos`), case-insensitive on SQL Server under its default collation. The docs
+didn't say so. The sample (`samples/QueryShaperSample`) found it: on SQLite, `phone` missed "Fold Phone X". A search
+box is expected to ignore case, and the core can't use `EF.Functions.Like`/`ILike` (006).
+**Decision:**
+1. **Ignore case by default; `caseSensitive: true` opts out.** The flag is an optional parameter on each lookup-based
+   entry point: `ConfigureSearch<T>`, `BaseSearchConfiguration.Configure<T>`, `ApplyBaseFilter(lookups, value)`,
+   `ApplyFilters(lookups, value, filters)` and `CreateBaseSearchLambdaExpression`. It's set per type where the search is
+   configured, not in `QueryShaperOptions`, since the lookups live there. The expression form
+   (`ConfigureSearch<T>((p, s) => …)`) is unchanged: its author decides how it compares.
+2. **The shape:** `lookup.Contains(search) || lookup.ToLower().Contains(search.ToLowerInvariant())`, per lookup.
+   - The column is lowered by the database (`ToLower` translates to `lower()` everywhere; `ToLowerInvariant` doesn't on
+     SQLite). The search text is lowered in .NET with the invariant culture, so the parameter doesn't depend on the
+     server's culture, and EF still sends it as one parameter, so a search shape compiles once (028).
+   - The as-written branch keeps every match the search found before. Without it, SQLite would break exact matches on
+     non-ASCII text: its `lower()` folds ASCII only, so `lower('Ángel')` is `'Ángel'`, while the text lowered in .NET
+     is `'ángel'`.
+3. **What each provider folds**, pinned by `SearchCaseProviderTests` on SQLite, SQL Server 2022 and PostgreSQL 17:
+   SQLite folds ASCII letters only, so `ÁNGEL` doesn't find "Ángel" there, and text that mixes non-ASCII letters with a
+   case difference doesn't match. SQL Server and PostgreSQL fold all letters. On SQL Server's default
+   case-insensitive collation, `caseSensitive: true` still ignores case, because the collation decides every
+   comparison.
+**Considered:**
+- **Only `lower(column)` against the lowered text.** One function call per lookup fewer, but it breaks exact non-ASCII
+  matches on SQLite (2).
+- **`ToUpper` instead of `ToLower`.** The same trade-offs, and lowercase is the usual convention.
+- **A server-wide option in `QueryShaperOptions`.** The search is configured per type, and the ad-hoc extensions take
+  no options (041.6), so the flag sits with the lookups.
+- **Leaving it to the provider and documenting it.** Then the same request behaves differently per database, which is
+  what the provider presets (044, 045) exist to avoid.
+**Consequence:** a configured search now also matches rows that differ only in case; a caller that relied on the old
+behaviour passes `caseSensitive: true`. The extra `lower()` makes each lookup cost a little more, but `Contains` already
+scans (`LIKE '%…%'`, `instr`), so no index is lost. Tests: 13 in `BaseSearchTests` (`IsCaseSensitive_OnSqlite` became
+the opt-in test) and 12 in `SearchCaseProviderTests`.
+
+### 051: A default order for paging, with the primary key as the EF fallback (2026-11-27)
+**Status:** accepted (2026-11-27).
+**Context:** `ApplyPaged` ran `Skip`/`Take` on whatever order the request gave, and a request with no `order` paged in
+no defined order: rows could repeat or go missing between pages, and EF logged "row limiting operator without an
+'OrderBy'". Rows that tie on the request's order had the same problem, and the docs' workaround (order the source by
+`Id`) was lost exactly then, because a request's `order` replaces the caller's. The sample found it.
+**Decision:**
+1. **`ConfigureDefaultOrder<T>(IEnumerable<OrderParameters>)`** on the configuration builder sets an order per type,
+   checked at startup like `ConfigureSearch` (`ArgumentException` for an empty list, `null`, or a field that isn't a
+   valid selector for `T`). Configuring a type again replaces it. It's server configuration, so the `MemberFilter` and
+   `MaxOrders` don't apply to it.
+2. **How `IQueryShaper` orders**: the request's `order`, then a tie-breaker added last: the configured default, or the
+   fallback below when none is. A tie-breaker entry the request already orders by is skipped. With no request order, a
+   source the caller already ordered keeps its order (checked on the query's chain of `Queryable` calls, so a filter
+   after the caller's `OrderBy` doesn't hide it); otherwise the tie-breaker alone orders it. A request's order replaces
+   the caller's, as before.
+3. **`IQueryShaper.ApplyForPaging<T>(source, request, fallbackOrder)`** is `Apply` plus a guaranteed order. The core's
+   `ApplyPaged` calls it with no fallback; the EF add-on's `ApplyPagedAsync` passes the entity's primary key, read from
+   the query's `EntityQueryRootExpression` (public EF API) when the root is an entity of type `T` and every key property
+   is a CLR property. `Apply` and `ApplyOrder` use the default but not a fallback, and never throw for a missing order,
+   since they don't page.
+4. **Nothing to order by is a server error.** `ApplyForPaging`, and so both `ApplyPaged` methods, throw
+   `InvalidOperationException` when there's no request order, an unordered source, no default and no fallback, naming
+   `ConfigureDefaultOrder<T>`. As with an unconfigured search (010.8), the failure shows on the first request in
+   development instead of as unstable pages in production. It's reachable only through the sync `ApplyPaged` (no EF
+   model in the core, 006), a keyless entity, a shadow key, or a source projected to another type.
+**Considered:**
+- **Documenting "order the source" only.** Easy to forget, and ties stay unstable once a request sends an order.
+- **Requiring an `IOrderedQueryable<T>` source.** A compile error instead of a runtime one, but the same tie problem.
+- **Paging unordered when nothing applies.** Nothing breaks, but the bug is silent apart from EF's log warning.
+- **A key fallback in the core.** The core can't see EF metadata (006); the fallback parameter lets the add-on supply it.
+**Note:** skipping a repeated tie-breaker isn't needed for EF Core, which drops an ordering that repeats an earlier one
+(checked on SQL Server with the skip disabled). It keeps the expression clean for other providers.
+**Consequence:** an `IQueryShaper` member is added (breaking for other implementations; none exist before the preview),
+and `ApplyPaged` can now throw for a source it used to page unordered. Tests: 23 in `DefaultOrderTests` (SQLite, core
+and EF add-on) and 9 in `DefaultOrderProviderTests` (SQLite, SQL Server 2022, PostgreSQL 17).

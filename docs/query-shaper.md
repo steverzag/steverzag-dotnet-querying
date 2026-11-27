@@ -44,9 +44,17 @@ A `QueryRequest` binds from JSON with `[FromBody]`, with no setup: the converter
 ```csharp
 services.AddQueryShaper<AppQueryShaperConfig>(o => o.MaxPageSize = 50);
 
-app.MapPost("/products/query", async (QueryRequest request, AppDb db, IQueryShaper shaper, CancellationToken ct)
-    => await shaper.ApplyPagedAsync<Product, ProductDto>(db.Products, request, ct));
+app.MapPost("/products/query", async (QueryRequest request, AppDb db, IQueryShaper shaper, CancellationToken ct) =>
+{
+    var page = await shaper.ApplyPagedAsync<Product, ProductDto>(db.Products, request, ct);
+    return new { items = page, page.PageIndex, page.PageSize, page.TotalCount, page.TotalPages };
+});
 ```
+
+The page is wrapped because a `PaginatedList` serializes as a plain array, without its counts (see
+[Pagination](#pagination)). It's in a stable order even when the request has none: `ApplyPagedAsync` breaks ties
+with `Product`'s primary key (see [Default order](#default-order)). [`samples/QueryShaperSample`](../samples/QueryShaperSample)
+runs this endpoint end to end.
 
 **The JSON.**
 - A node with `filters` is a group; otherwise it's a condition, which needs `field` and `condition`. A node with
@@ -63,7 +71,8 @@ app.MapPost("/products/query", async (QueryRequest request, AppDb db, IQueryShap
 - `page.size` can be left out (the default is used); `page.index` defaults to 1.
 - A binding error is a `JsonException`, which ASP.NET turns into a 400. Inside a filter, `Path` points at the
   top-level filter (`$.filters[1]`) and the message names the place inside it
-  (`… (at 'filters[0].condition' in this filter)`). A custom converter can't see the path above it, so this is as
+  (`… (at 'filters[0].condition' in this filter)`). An order works the same way: `$.order[1]`, with
+  `… (at 'direction' in this order)`. A custom converter can't see the path above it, so this is as
   precise as System.Text.Json allows.
 
 **`IQueryShaper`.**
@@ -74,7 +83,8 @@ app.MapPost("/products/query", async (QueryRequest request, AppDb db, IQueryShap
 | `Apply<TIn, TOut>(source, request)` | the same, then the map |
 | `ApplySearch`, `ApplyFilters`, `ApplyOrder`, `Map` | one part on its own, with the same checks |
 | `ResolvePage(page)` | fills the default size; rejects an index below 1 and a size below 1 or above `MaxPageSize` |
-| `ApplyPaged` / `ApplyPagedAsync` (EF add-on) | `Apply`, then the resolved page. A request with no page gets page 1 at the default size, so it never returns every row. |
+| `ApplyForPaging(source, request, fallbackOrder)` | `Apply`, and makes sure the rows have an order; throws `InvalidOperationException` if nothing orders them (see [Default order](#default-order)) |
+| `ApplyPaged` / `ApplyPagedAsync` (EF add-on) | `ApplyForPaging` (the EF add-on passes the primary key as the fallback), then the resolved page. A request with no page gets page 1 at the default size, so it never returns every row. |
 
 Selectors name the **source** type's properties, and the map runs last.
 
@@ -326,6 +336,20 @@ that `AddQueryShaper` registers. There is no ambient fallback (decision 038).
 
 `ApplyBaseFilter(lookups, value)` builds the search from the given lookups instead and needs no configuration.
 
+**Case is ignored by default** (decision 050). A lookup matches when it contains the text as written, or when its
+lowercase form contains the text's: `Name.Contains(s) || Name.ToLower().Contains(s.ToLowerInvariant())`. Pass
+`caseSensitive: true` to `ConfigureSearch<T>(lookups, …)`, `Configure<T>(lookups, …)` or `ApplyBaseFilter(lookups, value, …)`
+to match only the text as written. A search written as an expression compares as its author wrote it. The database
+lowercases the column, so what folds depends on the provider:
+
+| | SQLite | SQL Server | PostgreSQL |
+|---|---|---|---|
+| ASCII letters (`phone` finds "Phone") | folded | folded | folded |
+| Other letters (`ángel` finds "Ángel") | **not folded**: SQLite's `lower()` is ASCII-only. The text as written still matches. | folded | folded |
+| `caseSensitive: true` | compares case | **still ignores case** under the default `_CI_` collation | compares case |
+
+Measured on EF Core 9 with SQLite, SQL Server 2022 and PostgreSQL 17 (`SearchCaseProviderTests`).
+
 **Lookups must be strings** (decision 040). Each lookup is a selector whose type must be `string`; anything else
 (`int`, `DateTime`, `Guid`, an enum, a collection such as `List<string>`) throws `ArgumentException`:
 "Search lookups must be strings: 'Quantity' is int on Product." A selector that produces a string is fine
@@ -365,6 +389,39 @@ the paging properties. To send those to a client, wrap the page in your own resp
 var page = await query.PaginateAsync(request.Page, request.Size, ct);
 return new { items = page, page.PageIndex, page.PageSize, page.TotalCount, page.TotalPages };
 ```
+
+### Default order
+
+Pages need a stable order: without `ORDER BY`, SQL can return rows in any order, so a row can repeat or go missing
+between pages. Rows that tie on the request's order (many products in one category) have the same problem. So
+`IQueryShaper` gives every type an order to page by (decision 051):
+
+1. **The request's `order`**, validated as usual,
+2. **then a tie-breaker**, added last: the default configured with `ConfigureDefaultOrder<T>`, or, when none is, the
+   fallback passed to `ApplyForPaging`. The EF add-on's `ApplyPagedAsync` passes the entity's primary key. An entry the
+   request already orders by isn't repeated.
+
+With no request `order`, a source the caller already ordered (`db.Products.OrderBy(p => p.Name)`) keeps its order;
+otherwise the tie-breaker alone orders it. A request's `order` replaces the caller's.
+
+```csharp
+b.ConfigureDefaultOrder<Product>([new("CreatedAt", OrderDirection.Descending), new("Id")]);
+```
+
+- End a default with a unique key, such as `Id`, so no two rows tie.
+- It's server configuration: the `MemberFilter` and `MaxOrders` don't apply to it, and its fields are checked at
+  startup (`ArgumentException` from `AddQueryShaper`). Configuring a type again replaces its default.
+- `Apply` and `ApplyOrder` use the default too, but not the fallback, and leave a query with nothing to order by
+  unordered, since they don't page.
+
+**When nothing orders the rows**, `ApplyPaged`, `ApplyPagedAsync` and `ApplyForPaging` throw `InvalidOperationException`:
+"Product can't be paged in a stable order: the request has no 'order', the source isn't ordered, and no default order
+is configured. Configure one with `ConfigureDefaultOrder<Product>(…)`, or order the source." It's a server error, like a
+search with no configuration. It happens only with no request order, an unordered source, no default, and no key:
+
+- the core's sync `ApplyPaged`, which can't see EF's model (006), so configure a default for each type it pages;
+- `ApplyPagedAsync` on a keyless entity, a key with a shadow property, or a source projected to another type
+  (`db.Orders.Select(o => o.Customer)`).
 
 ## Grouping and aggregates
 
@@ -425,14 +482,18 @@ public class AppQueryShaperConfig : QueryShaperConfiguration
 {
     protected override void OnConfiguring(QueryShaperConfigurationBuilder b) => b
         .AddMap<AppPerson, PersonDto>(m => m.ForMember(d => d.PhoneCount, "Phones|$FN_AGGR_COUNT"))
-        .ConfigureSearch<AppPerson>(["Name", "Email", "Address.State"]);
+        .ConfigureSearch<AppPerson>(["Name", "Email", "Address.State"])
+        .ConfigureDefaultOrder<AppPerson>([new("Name"), new("Id")]);
 }
 
 services.AddQueryShaper<AppQueryShaperConfig>();   // multiple configurations merge into one registry
 
 // For a client request: inject IQueryShaper (see Client requests)
-app.MapPost("/people/query", (QueryRequest request, AppDb db, IQueryShaper shaper)
-    => shaper.ApplyPaged<AppPerson, PersonDto>(db.People, request));
+app.MapPost("/people/query", (QueryRequest request, AppDb db, IQueryShaper shaper) =>
+{
+    var page = shaper.ApplyPaged<AppPerson, PersonDto>(db.People, request);
+    return new { items = page, page.PageIndex, page.PageSize, page.TotalCount, page.TotalPages };
+});
 
 // For code-built queries: inject what AddQueryShaper registered and pass it (decision 038)
 app.MapGet("/people", (AppDb db, IMapper mapper) => db.People.ApplySelect<AppPerson, PersonDto>(mapper));
