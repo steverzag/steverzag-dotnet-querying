@@ -148,12 +148,16 @@ namespace Steverzag.PropertySelectors
 		{
 			if (_active is { } filter && !filter._allows(new MemberContext(type, property, source?.Property, source?.Type)))
 			{
-				var detail = source is { } from && filter._allows(new MemberContext(type, property))
+				var reason = source is { } from && filter._allows(new MemberContext(type, property))
 					? $"Property '{property.Name}' on '{TypeDisplay.Name(type)}' is not allowed after '{from.Property.Name}'."
 					: $"Property '{property.Name}' on '{TypeDisplay.Name(type)}' is not allowed.";
-				throw new SelectorParseException(detail, propertyPath, offset, property.Name);
+				throw Extensions.TypesExtensions.PropertyNotFound(property.Name, type, propertyPath, offset,
+					new SelectorParseException(reason, propertyPath, offset, property.Name), source);
 			}
 		}
+
+		internal static bool Hides(Type type, PropertyInfo property, (PropertyInfo Property, Type Type)? source)
+			=> _active is { } filter && !filter._allows(new MemberContext(type, property, source?.Property, source?.Type));
 	}
 
 	internal static class PortableMembers

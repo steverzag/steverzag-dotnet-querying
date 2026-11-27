@@ -572,7 +572,7 @@ selector is parsed:
 var filter = MemberFilter.Portable.Hide<Person>(p => p.PasswordHash);
 
 new PropertiesExplorer<Person>().ExplorePropertiesTree(4, filter);   // the hidden members and their subtrees are left out
-filter.Parse<Person>("Created.Ticks");                               // SelectorParseException: "Property 'Ticks' on 'DateTime' is not allowed."
+filter.Parse<Person>("Created.Ticks");                               // SelectorParseException: "Property 'Ticks' was not found on type 'DateTime'."
 ```
 
 - `MemberFilter.All` allows everything. It's the default everywhere, so the tree and parsing are unchanged without a filter.
@@ -583,7 +583,7 @@ filter.Parse<Person>("Created.Ticks");                               // Selector
   three providers (`tests/Steverzag.ProviderTests`).
   - **One date/time member deep** (decision 044): a date/time member can't be read from a value that another date/time
     member produced. `CreatedAt.Date` is allowed; `CreatedAt.Date.Hour`, `CreatedAt.Date|Year` and
-    `(CreatedAt.Date)|Year` are not ("Property 'Hour' on 'DateTime' is not allowed after 'Date'."). Translation depends on
+    `(CreatedAt.Date)|Year` are not (the reason is "Property 'Hour' on 'DateTime' is not allowed after 'Date'."). Translation depends on
     the database type of the value: on SQL Server `Date` is a SQL `date`, and `DATEPART(hour, …)` on a `date` is an
     error. A function result starts afresh, so `CreatedAt|$FN_DT_ADDDAYS(1)|Year` is checked by type only, and no
     probe covers members read from a function result.
@@ -628,6 +628,11 @@ filter.Parse<Person>("Created.Ticks");                               // Selector
 - `Parse<T>(selector)` parses in the generic form and checks every property path in it: the head, after a pipe, in a
   function argument, in arithmetic and inside an ordering argument. The error has the usual position and token.
   Other parse errors are reported first.
+- **A hidden member is reported exactly like a missing one** (decision 047): "Property 'Ticks' was not found on type
+  'DateTime'.", so a client can't tell that it exists. The case hint ("Property names are case-sensitive: …") never
+  names a hidden member, and the filter is checked with the same `MemberContext` as the member itself, so rules on
+  `Source` are respected too. The real reason ("Property 'Ticks' on 'DateTime' is not allowed.", or "… is not
+  allowed after 'Date'.") is the error's `InnerException`, for logs and debugging.
 - The filter only applies inside `Parse<T>`. A plain parse (`PropertySelector<T> s = "…"`) and the non-generic form
   don't check members.
 

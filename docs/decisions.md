@@ -1554,3 +1554,48 @@ probed type.
   type with a value converter can be sortable, so it would need its own design.
 **Consequence:** additive. Tests: 10 in `OrderGuardTests` (QueryShaper, SQLite), and 6 in the provider tests (2 per
 provider). The provider tests now have a `Scalar` entity with one column per common scalar type.
+
+### 046: A cap on the number of filters, groups included (2026-11-27)
+**Status:** accepted; implemented (2026-11-27). A guard rail for the item in Phase 4.
+**Context:** a request could carry any number of filters. Each one is parsed, validated and built into the
+`WHERE` clause, so one request could make the server do unbounded work and send the database an unbounded query.
+The validation and the build recurse into groups. JSON binding stops at System.Text.Json's `MaxDepth` (64 by
+default, unless the host raises it), but a deep enough tree built in code could overflow the stack.
+**Decision:**
+1. **`QueryShaperOptions.MaxFilters`** (`int`, default 50). `IQueryShaper.ApplyFilters` (and so `Apply`) counts
+   **every node**, groups included, and rejects one more than the cap with a `QueryRequestException` at `filters`
+   (`""` through `ApplyFilters`): "A request can have at most 50 filters, groups included."
+2. Because groups count, the depth is at most the cap too, so no separate depth option is needed.
+3. The count is iterative and stops at the first node over the cap, before any selector is parsed. A huge or very
+   deep tree is rejected cheaply and without recursion.
+4. A value below 1 fails when the shaper is resolved. The trusted extensions don't check (041.6).
+**Considered:**
+- **Counting only conditions.** Closer to what a client calls a filter, but a chain of single-item groups would be
+  one filter at any depth, so it would need a second, depth option.
+- **A separate `MaxFilterDepth`.** More control, but one number is easier to set and covers both shapes.
+**Consequence:** additive, but a request with more than 50 nodes that used to run is now a 400. Tests: 13 in
+`FilterLimitTests` (QueryShaper, SQLite).
+
+### 047: A hidden member is reported like a missing one (2026-11-27)
+**Status:** accepted; implemented (2026-11-27). Found while writing the security note (Phase 4).
+**Context:** `MemberFilter.Parse<T>` reported a hidden member as "Property 'PasswordHash' on 'User' is not
+allowed." and a missing one as "… was not found …", so a client could tell that a hidden member exists. Worse, the
+case-sensitivity hint was built before the filter ran, so `passwordHash` got "Property names are case-sensitive:
+'PasswordHash'." even when that member was hidden. QueryShaper sends these messages to the client (`Detail`).
+**Decision:**
+1. A hidden member throws the same `SelectorParseException` as a missing one: the same message
+   ("Property 'X' was not found on type 'T'."), position, token and selector.
+2. The case hint leaves out every member the active filter hides, checked with the same `MemberContext` (type,
+   property, source) as the member itself, so a rule on `Source` hides the hint too. With no filter active, the
+   hint is unchanged.
+3. The real reason ("… is not allowed." / "… is not allowed after 'Date'.") is kept as the `InnerException`, for logs
+   and debugging. QueryShaper's `Detail` is the outer message, so the reason doesn't reach the client unless the
+   server sends inner exceptions.
+**Considered:**
+- **An option to keep the explicit message for trusted callers.** More API for a debugging aid that the inner
+  exception already gives.
+- **Keeping "not allowed after 'Date'" visible**, since the portable date members aren't secret. But a rule on
+  `Source` can hide something that is, and one uniform rule is easier to trust.
+**Consequence:** breaking for callers that matched on "is not allowed" in `Detail`/`Message`: read the
+`InnerException` instead. A hidden date member such as `Created.Ticks` now reads "was not found", although the
+property exists on `DateTime`; the inner reason says why.

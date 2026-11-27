@@ -8,6 +8,8 @@ namespace Steverzag.QueryShaper
 
 		public int MaxPageSize { get; set; } = 100;
 
+		public int MaxFilters { get; set; } = 50;
+
 		public MemberFilter MemberFilter { get; set; } = MemberFilter.All;
 
 		public ISet<Type> UnsortableTypes { get; set; } = new HashSet<Type>();

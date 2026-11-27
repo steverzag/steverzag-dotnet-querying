@@ -12,11 +12,12 @@ namespace Steverzag.PropertySelectors.Extensions;
 
 public static class TypesExtensions
 {
-	internal static SelectorParseException PropertyNotFound(string propertyName, Type type, string propertyPath, int offset, Exception? innerException = null)
+	internal static SelectorParseException PropertyNotFound(string propertyName, Type type, string propertyPath, int offset, Exception? innerException = null, (PropertyInfo Property, Type Type)? source = null)
 	{
 		var differentlyCased = PublicProperties(type)
+			.Where(property => !MemberFilter.Hides(type, property, source))
 			.Select(property => property.Name)
-			.FirstOrDefault(name => string.Equals(name, propertyName, StringComparison.OrdinalIgnoreCase));
+			.FirstOrDefault(name => name != propertyName && string.Equals(name, propertyName, StringComparison.OrdinalIgnoreCase));
 		var hint = differentlyCased is null ? string.Empty : $" Property names are case-sensitive: '{differentlyCased}'.";
 
 		return new($"Property '{propertyName}' was not found on type '{type.Name}'.{hint}", propertyPath, offset, propertyName, innerException);
@@ -65,7 +66,7 @@ public static class TypesExtensions
 
 			if (property is null)
 			{
-				throw PropertyNotFound(propertyName, Nullable.GetUnderlyingType(currentType) ?? currentType, propertyPath, offset);
+				throw PropertyNotFound(propertyName, Nullable.GetUnderlyingType(currentType) ?? currentType, propertyPath, offset, source: source);
 			}
 
 			MemberFilter.Check(owner, property, source, propertyPath, offset);

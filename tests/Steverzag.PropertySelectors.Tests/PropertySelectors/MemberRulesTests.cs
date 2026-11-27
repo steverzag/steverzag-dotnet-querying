@@ -65,7 +65,7 @@ public class MemberRulesTests
             filter.Parse<Account>(selector);
             return false;
         }
-        catch (SelectorParseException ex) when (ex.Detail.EndsWith("is not allowed."))
+        catch (SelectorParseException ex) when (ex.InnerException is SelectorParseException { Detail: var reason } && reason.EndsWith("is not allowed."))
         {
             return true;
         }
@@ -236,7 +236,8 @@ public class MemberRulesTests
 
         var ex = Assert.Throws<SelectorParseException>(() => filter.Parse<Account>("Notes.Author.PasswordHash"));
 
-        Assert.Equal("Property 'PasswordHash' on 'Account' is not allowed.", ex.Detail);
+        Assert.Equal("Property 'PasswordHash' was not found on type 'Account'.", ex.Detail);
+        Assert.Equal("Property 'PasswordHash' on 'Account' is not allowed.", Assert.IsType<SelectorParseException>(ex.InnerException).Detail);
         Assert.Equal(13, ex.Position);
     }
 

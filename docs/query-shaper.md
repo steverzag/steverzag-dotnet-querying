@@ -16,7 +16,7 @@ client. It replaces hand-written `if (request.SortBy == "name") …` plumbing.
 QueryShaper has two public layers (decision 041.6):
 
 - **`IQueryShaper`** is for **client requests**. It validates its input, reports where a request is wrong, and
-  applies the options (paging limits now; the guard rails later). Register it with `AddQueryShaper` and inject it.
+  applies the options and the guard rails (see [Security](#security)). Register it with `AddQueryShaper` and inject it.
 - **The extension methods** (`ApplyLogicsFilter`, `ApplyBaseFilter`, `ApplyOrder`, `ApplySelect`, `Paginate`) are
   for **trusted input built in code**. They need no dependency injection, and they have no options and no guard
   rails. **Don't pass client input to them directly**: that bypasses what `IQueryShaper` checks.
@@ -94,10 +94,11 @@ its position is in the whole selector. A non-blank `search` on a type with no se
 |---|---|
 | `DefaultPageSize` | 10 |
 | `MaxPageSize` | 100. A larger size is rejected, not clamped. |
+| `MaxFilters` | 50. Every node of `filters` counts, groups included, so the cap also bounds how deep groups nest. One more is a `QueryRequestException` at `filters`: "A request can have at most 50 filters, groups included." The count is checked before any selector is parsed, and stops at the first node over the cap. |
 | `MemberFilter` | `MemberFilter.All`. Every `field` in `filters` and `order` is parsed through it, so a selector that reaches a hidden member is a `QueryRequestException` at that field's path. Use `MemberFilter.Portable` to accept only date and time members that translate on SQLite, SQL Server and PostgreSQL, or the EF add-on's preset for your provider (below), and `Hide<T>`, `For<T>` or per-entity `MemberRules<T>` classes to hide your own members (see PropertySelectors → "Member filters"). The configured search and the mapper are server configuration and aren't filtered. |
 | `UnsortableTypes` | Empty. An `order` field whose built type (nullable unwrapped) is in the set is a `QueryRequestException` at `order[i].field`: "'Price' can't be ordered: the database can't sort decimal values." Without it, the database throws when the query runs, which a server reports as a 500. Fill it from the EF add-on: `o.UnsortableTypes.UnionWith(ProviderUnsortableTypes.Sqlite)`. Filters on those types aren't affected. |
 
-Invalid options (below 1, a default above the maximum, or a null `MemberFilter` or `UnsortableTypes`) fail when `IQueryShaper` is first resolved.
+Invalid options (a page size or `MaxFilters` below 1, a default above the maximum, or a null `MemberFilter` or `UnsortableTypes`) fail when `IQueryShaper` is first resolved.
 
 **Provider presets** (`ProviderMemberFilters` in `Steverzag.QueryShaper.EntityFrameworkCore`, decision 044) allow the
 date and time members that filter correctly on one provider. Each preset is one date/time member deep, like `Portable`,
@@ -142,6 +143,61 @@ builder.Services.AddQueryShaper<AppQueryShaperConfig>(o =>
     o.UnsortableTypes.UnionWith(ProviderUnsortableTypes.Sqlite);
 });
 ```
+
+## Security
+
+A `QueryRequest` comes from a client, so treat everything in it as untrusted. A client controls which fields are
+filtered and ordered, the conditions and values, the search text and the page. It doesn't control the source query,
+the configured search, the maps, or the options. This section lists what QueryShaper guards against, and what is
+still yours to do.
+
+**What QueryShaper guards against.**
+
+| Risk | Guard |
+|---|---|
+| SQL injection | No SQL text is built. Selectors become expression trees, and only registered functions can be called. Every client value is sent as a query parameter, never spliced into SQL (decision 028). |
+| Breaking out of your own filters | `ApplyFilters` adds its own `Where`, which the database ANDs with any `Where` already on the source. An `Or` in the request can't widen a scope you applied first. |
+| A selector that crashes the process | `SelectorLimits.MaxLength` (2,000 characters) and `MaxDepth` (32) are checked on every parse (PropertySelectors → "Limits"). |
+| Huge or deeply nested filter trees | `MaxFilters` (50 nodes, groups included). Checked before any selector is parsed. |
+| Returning every row | `MaxPageSize` (100). `ApplyPaged` always pages, at `DefaultPageSize` when the request has no page. |
+| Reading members a client shouldn't see | `MemberFilter`. Off by default: see below. |
+| A 500 from an order the database can't run | `UnsortableTypes`. Empty by default: fill it from `ProviderUnsortableTypes`. |
+
+These guards apply only through `IQueryShaper`. The extension methods have none (see
+[Two layers](#two-layers-client-requests-and-trusted-code)).
+
+**What is yours to do.**
+
+- **Scope the source before shaping it.** Row-level access (tenant, owner, soft delete) belongs on the source:
+  `shaper.ApplyPaged(db.Orders.Where(o => o.TenantId == tenant), request)`. QueryShaper has no notion of who is
+  asking.
+- **Hide sensitive members with a `MemberFilter`.** The default, `MemberFilter.All`, lets a client name **every
+  public property reachable from the source**, through navigations too (`Customer.PasswordHash`). Leaving a
+  property out of the output DTO doesn't protect it. A filter or an order reveals values without returning them:
+  `PasswordHash` `StartsWith` `"a"`, then `"ab"`, and so on, recovers the value one character at a time, and the
+  order of the results leaks it too. Hide such members with `Hide<T>`, `Only<T>` or `MemberRules<T>`, and set
+  `QueryShaperOptions.MemberFilter`. An allow-list (`Only<T>`) is safer than a deny-list for entities that grow.
+- **A hidden member looks like a missing one** (decision 047). The client gets "Property 'PasswordHash' was not
+  found on type 'Account'.", the same message, position and token as for a name that doesn't exist, and a wrongly
+  cased name gets no case hint pointing at a hidden member. The real reason ("… is not allowed.") is the
+  `InnerException` of the `SelectorParseException`, so log the exception, but send only `Path` and `Detail` to the
+  client.
+- **Error messages name your model.** `QueryRequestException` messages are written to be sent to the client, and
+  they name types, properties and functions (`Property 'Missing' was not found on type 'Product'.`). If your
+  entity names are sensitive, return `Path` and a generic message instead of `Detail`.
+- **Bound what isn't capped.** No option limits the number of `order` entries, the length of `search`, or the
+  number of values in an `In`, `NotIn`, `ContainsAny` or `ContainsAll` list. Each one is bounded only by the size of
+  the request body, so set the server's request size limit (Kestrel's `MaxRequestBodySize`, 30 MB by default).
+- **Limit query cost.** A valid request can still be expensive. Examples are a string condition on an unindexed
+  column, an aggregate over a collection navigation (`Orders.Total|$FN_AGGR_SUM`, a correlated subquery) or a
+  function that stops the database from using an index. The member filter doesn't cover functions. Set a command
+  timeout on the database (`CommandTimeout`), and add rate limiting for public endpoints.
+- **Custom functions are callable by every client.** `SelectorRegistry.RegisterAssembly` registers functions
+  globally, so any function you register can be used in any request. Register only functions that are safe to run
+  on client input.
+- **Map the error types.** `QueryRequestException` and `JsonException` (from binding) are client errors (400).
+  `InvalidOperationException` (for example, a search on a type with none configured) is a server bug: let it be a
+  500.
 
 ## Building blocks
 

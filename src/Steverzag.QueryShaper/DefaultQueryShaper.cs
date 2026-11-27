@@ -37,6 +37,10 @@ namespace Steverzag.QueryShaper
 				throw new InvalidOperationException(
 					$"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.DefaultPageSize)} ({_options.DefaultPageSize}) can't be more than {nameof(QueryShaperOptions.MaxPageSize)} ({_options.MaxPageSize}).");
 			}
+			if (_options.MaxFilters < 1)
+			{
+				throw new InvalidOperationException($"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.MaxFilters)} must be at least 1.");
+			}
 			if (_options.MemberFilter is null)
 			{
 				throw new InvalidOperationException($"{nameof(QueryShaperOptions)}: {nameof(QueryShaperOptions.MemberFilter)} can't be null.");
@@ -62,6 +66,7 @@ namespace Steverzag.QueryShaper
 				return source;
 			}
 
+			EnsureWithinFilterLimit(filters, _options.MaxFilters);
 			ValidateSelectors<T>(filters, "", _options.MemberFilter);
 			return source.Where(FilteringExtensions.CreateFilterLambda<T>(filters, path: ""));
 		}
@@ -153,6 +158,27 @@ namespace Steverzag.QueryShaper
 			catch (QueryRequestException ex)
 			{
 				throw ex.Within(parent);
+			}
+		}
+
+		private static void EnsureWithinFilterLimit(IReadOnlyList<FilterNode> filters, int max)
+		{
+			var count = 0;
+			var pending = new Stack<IReadOnlyList<FilterNode>>();
+			pending.Push(filters);
+			while (pending.TryPop(out var nodes))
+			{
+				foreach (var node in nodes)
+				{
+					if (++count > max)
+					{
+						throw new QueryRequestException("", $"A request can have at most {max} filters, groups included.");
+					}
+					if (node is GroupNode group)
+					{
+						pending.Push(group.Filters);
+					}
+				}
 			}
 		}
 

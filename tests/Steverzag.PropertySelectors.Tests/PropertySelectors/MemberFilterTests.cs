@@ -51,14 +51,15 @@ public class MemberFilterTests
     }
 
     [Theory]
-    [InlineData("Created.Ticks", "Property 'Ticks' on 'DateTime' is not allowed.")]
-    [InlineData("Deleted.Ticks", "Property 'Ticks' on 'DateTime' is not allowed.")]
-    [InlineData("Duration.Hours", "Property 'Hours' on 'TimeSpan' is not allowed.")]
-    public void Portable_NamesTheMemberAndTheTypeItIsReadFrom(string selector, string detail)
+    [InlineData("Created.Ticks", "Ticks", "DateTime", "Property 'Ticks' on 'DateTime' is not allowed.")]
+    [InlineData("Deleted.Ticks", "Ticks", "DateTime", "Property 'Ticks' on 'DateTime' is not allowed.")]
+    [InlineData("Duration.Hours", "Hours", "TimeSpan", "Property 'Hours' on 'TimeSpan' is not allowed.")]
+    public void Portable_ReportsAHiddenMemberAsNotFound_AndKeepsTheReasonInside(string selector, string member, string type, string reason)
     {
         var ex = Assert.Throws<SelectorParseException>(() => MemberFilter.Portable.Parse<Item>(selector));
 
-        Assert.Equal(detail, ex.Detail);
+        Assert.Equal($"Property '{member}' was not found on type '{type}'.", ex.Detail);
+        Assert.Equal(reason, Assert.IsType<SelectorParseException>(ex.InnerException).Detail);
     }
 
     [Theory]
@@ -221,7 +222,8 @@ public class MemberFilterTests
     {
         var ex = Assert.Throws<SelectorParseException>(() => MemberFilter.Portable.Parse<Item>(selector));
 
-        Assert.Equal($"Property '{member}' on 'DateTime' is not allowed after '{source}'.", ex.Detail);
+        Assert.Equal($"Property '{member}' was not found on type 'DateTime'.", ex.Detail);
+        Assert.Equal($"Property '{member}' on 'DateTime' is not allowed after '{source}'.", Assert.IsType<SelectorParseException>(ex.InnerException).Detail);
         Assert.Equal(selector.LastIndexOf(member, StringComparison.Ordinal), ex.Position);
     }
 

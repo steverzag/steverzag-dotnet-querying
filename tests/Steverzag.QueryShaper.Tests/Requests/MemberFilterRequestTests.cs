@@ -60,7 +60,23 @@ namespace Steverzag.QueryShaper.Tests.Requests
 			Assert.Equal(path, ex.Path);
 			var inner = Assert.IsType<SelectorParseException>(ex.InnerException);
 			Assert.Equal(position, inner.Position);
-			Assert.EndsWith("is not allowed.", inner.Detail);
+			Assert.Contains("was not found on type", inner.Detail);
+			Assert.EndsWith("is not allowed.", Assert.IsType<SelectorParseException>(inner.InnerException).Detail);
+		}
+
+		[Theory]
+		[InlineData("Price", "Property 'Price' was not found on type 'Product'.")]
+		[InlineData("price", "Property 'price' was not found on type 'Product'.")]
+		[InlineData("Nope", "Property 'Nope' was not found on type 'Product'.")]
+		public void AHiddenMember_ReachesTheClientLikeAMissingOne(string field, string detail)
+		{
+			using var context = Database.CreateContext();
+			var json = $$"""{ "order": [ { "field": "{{field}}" } ] }""";
+
+			var ex = Assert.Throws<QueryRequestException>(() => Shaper(NoPrice).Apply(context.Products, Bind(json)));
+
+			Assert.Equal("order[0].field", ex.Path);
+			Assert.Equal($"{detail} Position 0 in '{field}'.", ex.Detail);
 		}
 
 		[Fact]
